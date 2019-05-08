@@ -66,3 +66,9 @@ _deps
 
 # MacOSX
 .DS_Store
+
+# Build
+build
+
+# VSCode
+.vscode

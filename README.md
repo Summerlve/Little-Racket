@@ -5,13 +5,40 @@ Little Racket Interpreter
 Target:
 ---
 
-1. variables：x
-2. procedure：(lambda (x) expr)
+1. variable：x
+    
+    DataTypes: Numbers、Strings、Characters、Lists、Pairs.
+
+    e.g:
+
+    (define x 1)
+
+    (define x '(1 . 2))
+
+    (define x '(1 2 3))
+
+2. procedure definition(normally argument：(lambda (x) expr)
+
+    e.g. (define x (lambda (arg) expr))
 3. binding:
    1. (let ([x v]) expr)
    2. (let* ...)
    3. (letrec ...)
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
+6. Built-in procdure: (list), (cons), (list?), (pair?)
+
+Racket-Lexical-Scope implementation using JavaScript-Like-Scope-Chain.
+---
+Using cmake to build this project.
+---
+Compile the project:
+```
+cd <path_to_the_project>
+chmod 744 ./build.sh 
+sudo ./build.sh
+cd ./build
+```
+you can find executable file named "Little-Racket" in current folder.
 
 
