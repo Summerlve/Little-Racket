@@ -5,7 +5,7 @@ Little Racket Interpreter
 Target:
 ---
 
-1. variable：x
+1. variable definition and setting：x
     
     DataTypes: Numbers、Strings、Characters、Lists、Pairs.
 
@@ -17,6 +17,8 @@ Target:
 
     (define x '(1 2 3))
 
+    (set! x 1)
+
 2. procedure definition(normally argument)：(lambda (x) expr)
 
     e.g: (define x (lambda (arg) expr))
@@ -26,7 +28,7 @@ Target:
    3. (letrec ...)
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
-6. Built-in procdures: (list), (cons), (list?), (pair?)
+6. Built-in procdures: (list)、(cons)、(list?)、(pair?)
 
 Racket-Lexical-Scope implementation using JavaScript-Like-Scope-Chain.
 ---
