@@ -17,16 +17,16 @@ Target:
 
     (define x '(1 2 3))
 
-2. procedure definition(normally argument：(lambda (x) expr)
+2. procedure definition(normally argument)：(lambda (x) expr)
 
-    e.g. (define x (lambda (arg) expr))
+    e.g: (define x (lambda (arg) expr))
 3. binding:
    1. (let ([x v]) expr)
    2. (let* ...)
    3. (letrec ...)
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
-6. Built-in procdure: (list), (cons), (list?), (pair?)
+6. Built-in procdures: (list), (cons), (list?), (pair?)
 
 Racket-Lexical-Scope implementation using JavaScript-Like-Scope-Chain.
 ---
@@ -38,7 +38,5 @@ cd <path_to_the_project>
 chmod 744 ./build.sh 
 sudo ./build.sh
 cd ./build
+# you can find executable file named "Little-Racket" in current folder.
 ```
-you can find executable file named "Little-Racket" in current folder.
-
-
