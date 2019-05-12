@@ -1,12 +1,9 @@
 # Little-Racket
-Little Racket Interpreter
----
 
-Target:
----
+## Target: ##
 
 1. variable definition and setting：x
-    
+  
     DataTypes: Numbers、Strings、Characters、Lists、Pairs.
 
     e.g:
@@ -29,16 +26,28 @@ Target:
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
 6. Built-in procdures: (list)、(cons)、(list?)、(pair?)
+---
+## Racket-Lexical-Scope implementation using JavaScript-Like-Scope-Chain. ##
+---
+## Using cmake to build this project. ##
 
-Racket-Lexical-Scope implementation using JavaScript-Like-Scope-Chain.
----
-Using cmake to build this project.
----
-Compile the project:
-```
-cd <path_to_the_project>
-chmod 744 ./build.sh 
-sudo ./build.sh
-cd ./build
+### Compile the project: ###
+```bash
+> cd <path_to_the_project>
+> chmod 744 ./build.sh 
+> sudo ./build.sh
+> cd ./build
 # you can find executable file named "Little-Racket" in current folder.
+> ./Little-Racket <path_to_racket_file>
+> ......
 ```
+---
+## Workflow ##
+
+Raw code
+
+-> tokens (tokenizer)
+
+-> Racket type AST (parser)
+
+-> result (calculator)
