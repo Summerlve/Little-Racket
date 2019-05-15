@@ -5,11 +5,40 @@
 #include <limits.h>
 #include <unistd.h>
 
+static bool is_absolute_path(const char *path)
+{
+    // Absolute paths tend to start with the / character.
+    if (path[0] == '/')
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 char *generate_racket_file_absolute_path(const char *path_from_input)
 {
-    char *absolute_path = (char *)malloc(PATH_MAX);
-    
+    if (is_absolute_path(path_from_input) == true)
+    {
+        char *absolute_path = (char *)malloc(strlen(path_from_input) + 1);
+        strcpy(absolute_path, path_from_input);
+        
+        return absolute_path;
+    }
 
+    char *temp = (char *)malloc(PATH_MAX);
+    char *absolute_path = (char *)malloc(PATH_MAX);
+    getcwd(temp, PATH_MAX);
+    // append path_from_input to the tail of temp.
+    strcat(temp, "/");
+    strcat(temp, path_from_input);
+    // get absolute_path 
+    realpath(temp, absolute_path);
+    free(temp);
+
+    return absolute_path;
 }
 
 FILE *load_racket_file(const char *path)
