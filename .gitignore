@@ -70,5 +70,8 @@ _deps
 # Build
 build
 
+# Debug
+debug
+
 # VSCode
 .vscode

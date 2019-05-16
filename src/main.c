@@ -11,14 +11,11 @@ int main(int argc, char *argv[])
     // generate absolute path of a racket file. 
     char *racket_file_path = generate_racket_file_absolute_path(path_from_input); 
    
-    // load racket file
+    // load file stream to racket file. 
     FILE *fp = load_racket_file(racket_file_path);
 
-    int c;
-    if (fp) {
-    while ((c = getc(fp)) != EOF)
-        putchar(c);
-    } 
+    // load racket file content into memory.
+    char **raw_code = load_racket_file_into_mem(fp);
 
     // TO-DO tokenizer 
     // TO-DO parser
@@ -26,7 +23,10 @@ int main(int argc, char *argv[])
 
     // close file
     close_racket_file(fp);
-    free(racket_file_path);
 
+    // release memory.
+    free(racket_file_path);
+    free_racket_file(raw_code);
+    
     return 0;
 }
