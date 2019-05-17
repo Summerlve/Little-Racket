@@ -5,8 +5,6 @@
 #include <limits.h>
 #include <unistd.h>
 
-#define LINE_MAX 233 // the most characters of single line in a racket file. 
-
 static bool is_absolute_path(const char *path)
 {
     // Absolute paths tend to start with the / character.
@@ -45,13 +43,14 @@ char *generate_racket_file_absolute_path(const char *path_from_input)
 
 char **load_racket_file_into_mem(FILE *fp)
 {
-    char **raw_code;
+    Raw_Code raw_code;
+    
 
     char *line = (char *)malloc(LINE_MAX);
 
     while (fgets(line, LINE_MAX, fp) != NULL)
     {
-
+        line = (char *)malloc(LINE_MAX);
     }  
 
     if (feof(fp))
