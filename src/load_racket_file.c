@@ -146,7 +146,6 @@ Raw_Code *load_racket_file(const char *path)
                 raw_code->content[raw_code->line_number - 1][index] = '\0';
             }
         }
-
         line = (char *)malloc(LINE_MAX);
     }  
 
@@ -167,4 +166,20 @@ Raw_Code *load_racket_file(const char *path)
 int free_racket_file(Raw_Code *raw_code)
 {
     return 0;
+}
+
+static char *racket_file_nth(Raw_Code *raw_code, int index)
+{
+    return raw_code->content[index];
+}
+
+void racket_file_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data)
+{
+    int length = raw_code->line_number;
+
+    for (int i = 0; i < length; i++)
+    {
+        const char *line = racket_file_nth(raw_code, i);
+        map(line, aux_data);
+    }
 }
