@@ -18,7 +18,8 @@ static bool is_absolute_path(const char *path)
     }
 }
 
-char *generate_racket_file_absolute_path(const char *path_from_input)
+// remember release the memory.
+static char *generate_racket_file_absolute_path(const char *path_from_input)
 {
     if (is_absolute_path(path_from_input) == true)
     {
@@ -41,37 +42,32 @@ char *generate_racket_file_absolute_path(const char *path_from_input)
     return absolute_path;
 }
 
-char **load_racket_file_into_mem(FILE *fp)
+static int raw_code_new(Raw_Code *raw_code)
 {
-    Raw_Code raw_code;
     
-
-    char *line = (char *)malloc(LINE_MAX);
-
-    while (fgets(line, LINE_MAX, fp) != NULL)
-    {
-        line = (char *)malloc(LINE_MAX);
-    }  
-
-    if (feof(fp))
-    {
-
-    }
-
-    if (ferror(fp))
-    {
-
-    }
-
-    return raw_code;
+    // generate absolute path of a racket file. 
+    char *racket_file_path = generate_racket_file_absolute_path(path_from_input); 
+   
+    // load file stream to racket file. 
+    FILE *fp = load_racket_file(racket_file_path);
 }
 
-void free_racket_file(char **raw_code)
+static int expand(Raw_Code *raw_code)
 {
 
 }
 
-FILE *load_racket_file(const char *path)
+static int add_line(Raw_Code *raw_code)
+{
+
+}
+
+static int raw_code_free(Raw_Code *raw_code)
+{
+
+}
+
+static FILE *open_racket_file(const char *path)
 {
     if (strstr(path, ".rkt") == NULL)
     {
@@ -93,7 +89,43 @@ FILE *load_racket_file(const char *path)
     return fp;
 }
 
-int close_racket_file(FILE *fp)
+static int close_racket_file(FILE *fp)
 {
     return fclose(fp);
 }
+
+
+
+Raw_Code *load_racket_file(const char *path)
+{
+    // TODO open racket file
+    // TODO initialize Raw_Code
+    // TODO copy racket file to Raw_Code::content
+    Raw_Code *raw_code = malloc(siezof(Raw_Code));
+
+    char *line = (char *)malloc(LINE_MAX);
+
+    while (fgets(line, LINE_MAX, fp) != NULL)
+    {
+        line = (char *)malloc(LINE_MAX);
+    }  
+
+    if (feof(fp))
+    {
+
+    }
+
+    if (ferror(fp))
+    {
+
+    }
+
+    return raw_code;
+}
+
+int free_racket_file(Raw_Code *raw_code)
+{
+
+}
+
+
