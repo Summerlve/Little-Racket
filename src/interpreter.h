@@ -5,7 +5,16 @@
 
 // tokenizer part
 typedef enum _z_token_type {
-    IDENTIFIER, PAREN, SQUAER_BRACKET, NUMBER, STRING, CHARACTER, LIST, PAIR  
+    LANGUAGE, /* whcih language are used, supports only: #lang racket */
+    COMMENT, /* supports ';' single line comments */ 
+    IDENTIFIER,
+    PAREN,
+    SQUAER_BRACKET,
+    NUMBER,
+    STRING,
+    CHARACTER,
+    LIST,
+    PAIR
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;
