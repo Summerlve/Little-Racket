@@ -10,6 +10,8 @@
 #define POUND 0x23 // '#'
 #define LEFT_PAREN 0x28 // '('
 #define RIGHT_PAREN 0x29 // ')'
+#define LEFT_SQUARE_BRACKET 0x5b // '['
+#define RIGHT_SQUARE_BRACKET 0x5d // ']'
 
 static void tokens_new(Tokens *tokens)
 {
@@ -18,7 +20,7 @@ static void tokens_new(Tokens *tokens)
     tokens->content = (Token *)malloc(tokens->allocated_length * sizeof(Token));
 }
 
-static int tokens_free(Tokens *tokens)
+int free_tokens(Tokens *tokens)
 {
     return 0;
 }
@@ -55,16 +57,14 @@ static void tokenizer_helper(const char *line, void *aux_data)
     Tokens *tokens = (Tokens *)aux_data;
     int line_length = strlen(line);    
     int cursor = 0;
-    int i = 0;
 
-    while (i < line_length)
+    for(int i = 0; i < line_length; i++)
     {
         cursor = i;
 
         // handle whitespace.
         if (line[i] == WHITE_SPACE)
         {
-            i ++;
             continue;
         }
 
@@ -92,20 +92,20 @@ static void tokenizer_helper(const char *line, void *aux_data)
             }
 
             cursor = i + 6;
-            cmp = strncmp(&line[cursor], racket_sign, strlen(racket_sign));
+            cmp = strcmp(&line[cursor], racket_sign);
             if (cmp != 0)
             {
-                fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
+                fprintf(stderr, "please dont use #lang %s, supports only: #lang racket\n", &line[cursor]);
                 exit(EXIT_FAILURE);
             }
 
             Token *token = (Token *)malloc(sizeof(Token));
             token->type = LANGUAGE;
-            token->value = (char *)malloc(strlen(racket_sign) + 1);
-            strcpy(token->value, racket_sign);
+            token->value = (char *)malloc(strlen(&line[cursor])+ 1);
+            strcpy(token->value, &line[cursor]);
             add_token(tokens, token);
 
-            continue ;
+            continue;
         }
 
         // handle comment
@@ -115,8 +115,50 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle paren
         if (line[i] == LEFT_PAREN)
         {
+            Token *token = (Token *)malloc(sizeof(Token));
+            token->type = PAREN;
+            token->value = (char *)malloc(sizeof(char));
+            strncpy(token->value, &line[i], sizeof(char));
+            add_token(tokens, token); 
 
+            continue;
         }
+
+        if (line[i] == RIGHT_PAREN)
+        {
+            Token *token = (Token *)malloc(sizeof(Token));
+            token->type = PAREN;
+            token->value = (char *)malloc(sizeof(char));
+            strncpy(token->value, &line[i], sizeof(char));
+            add_token(tokens, token); 
+
+            continue;
+        }
+
+        // handle square_bracket
+         if (line[i] == LEFT_SQUARE_BRACKET)
+        {
+            Token *token = (Token *)malloc(sizeof(Token));
+            token->type = SQUARE_BRACKET;
+            token->value = (char *)malloc(sizeof(char));
+            strncpy(token->value, &line[i], sizeof(char));
+            add_token(tokens, token); 
+
+            continue;
+        }
+
+        if (line[i] == RIGHT_SQUARE_BRACKET)
+        {
+            Token *token = (Token *)malloc(sizeof(Token));
+            token->type = SQUARE_BRACKET;
+            token->value = (char *)malloc(sizeof(char));
+            strncpy(token->value, &line[i], sizeof(char));
+            add_token(tokens, token); 
+
+            continue;
+        }
+
+        // handle ...
     }
 }
 

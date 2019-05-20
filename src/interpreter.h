@@ -9,7 +9,7 @@ typedef enum _z_token_type {
     COMMENT, /* supports ';' single line comments */ 
     IDENTIFIER,
     PAREN, /* ( ) */
-    SQUAER_BRACKET, /* [ ] */
+    SQUARE_BRACKET, /* [ ] */
     NUMBER,
     STRING,
     CHARACTER,
@@ -25,11 +25,9 @@ typedef struct _z_tokens {
     int logical_length; // logical length.
     int allocated_length; // allocated length.
 } Tokens;
-typedef void (*TokensMapFunction)(const Token *token, void *aux_data); // racket file lines map function.
-void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
-
-// return tokens here, remember free the memory.
-Tokens *tokenizer(Raw_Code *raw_code);
+typedef void (*TokensMapFunction)(const Token *token, void *aux_data); // tokens map function.
+Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the memory.
+int free_tokens(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // parser
