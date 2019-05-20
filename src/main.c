@@ -3,9 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void map(const char *line, void *aux_data)
+void print_raw_code(const char *line, void *aux_data)
 {
     printf("%s", line);
+}
+
+void print_tokens(const Token *token, void *aux_data)
+{
+    printf("%d %s\n", token->type, token->value);
 }
 
 int main(int argc, char *argv[])
@@ -17,10 +22,14 @@ int main(int argc, char *argv[])
     Raw_Code *raw_code = load_racket_file(path);
 
     // show the raw_code in gaint single string.
-    racket_file_map(raw_code, map, NULL);
+    racket_file_map(raw_code, print_raw_code, NULL);
+    printf("\n");
 
     // WORKING tokenizer 
     Tokens *tokens = tokenizer(raw_code); 
+
+    // show the tokens.
+    tokens_map(tokens, print_tokens, NULL);
 
     // TO-DO parser
     // TO-DO calculator 

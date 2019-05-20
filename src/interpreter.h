@@ -8,8 +8,8 @@ typedef enum _z_token_type {
     LANGUAGE, /* whcih language are used, supports only: #lang racket */
     COMMENT, /* supports ';' single line comments */ 
     IDENTIFIER,
-    PAREN,
-    SQUAER_BRACKET,
+    PAREN, /* ( ) */
+    SQUAER_BRACKET, /* [ ] */
     NUMBER,
     STRING,
     CHARACTER,
@@ -18,7 +18,7 @@ typedef enum _z_token_type {
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;
-    const char *value;
+    char *value;
 } Token;
 typedef struct _z_tokens {
     Token *content; // store all tokens here, Token [].
@@ -30,6 +30,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // return tokens here, remember free the memory.
 Tokens *tokenizer(Raw_Code *raw_code);
+void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // parser
 

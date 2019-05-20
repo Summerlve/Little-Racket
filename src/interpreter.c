@@ -6,7 +6,10 @@
 
 // tokenizer part
 /* define ascii character here*/
-#define WHITE_SPACE 0x20
+#define WHITE_SPACE 0x20 // ' '
+#define POUND 0x23 // '#'
+#define LEFT_PAREN 0x28 // '('
+#define RIGHT_PAREN 0x29 // ')'
 
 static void tokens_new(Tokens *tokens)
 {
@@ -52,33 +55,67 @@ static void tokenizer_helper(const char *line, void *aux_data)
     Tokens *tokens = (Tokens *)aux_data;
     int line_length = strlen(line);    
     int cursor = 0;
+    int i = 0;
 
-    for (int i = 0; i < line_length; i++)
+    while (i < line_length)
     {
         cursor = i;
 
         // handle whitespace.
         if (line[i] == WHITE_SPACE)
         {
+            i ++;
             continue;
         }
 
         // handle language.
         // #lang racket
-        if (line[i] == '#')
+        if (line[i] == POUND)
         {
             const char lang_sign[] = "lang";
             const char racket_sign[] = "racket";
             int cmp = -1;
 
-            cmp = strncmp(&line[i + 1], lang_sign, 4);
+            cursor = i + 1;
+            cmp = strncmp(&line[cursor], lang_sign, strlen(lang_sign));
             if (cmp != 0)
             {
                 fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
                 exit(EXIT_FAILURE);
             }
 
-            
+            cursor = i + 5;
+            if (line[cursor] != WHITE_SPACE)
+            {
+                fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
+                exit(EXIT_FAILURE);
+            }
+
+            cursor = i + 6;
+            cmp = strncmp(&line[cursor], racket_sign, strlen(racket_sign));
+            if (cmp != 0)
+            {
+                fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
+                exit(EXIT_FAILURE);
+            }
+
+            Token *token = (Token *)malloc(sizeof(Token));
+            token->type = LANGUAGE;
+            token->value = (char *)malloc(strlen(racket_sign) + 1);
+            strcpy(token->value, racket_sign);
+            add_token(tokens, token);
+
+            continue ;
+        }
+
+        // handle comment
+
+        // handle identifier
+
+        // handle paren
+        if (line[i] == LEFT_PAREN)
+        {
+
         }
     }
 }
@@ -87,7 +124,18 @@ Tokens *tokenizer(Raw_Code *raw_code)
 {
     Tokens *tokens = malloc(sizeof(Tokens));
     tokens_new(tokens);
-
     racket_file_map(raw_code, tokenizer_helper, tokens);
+    
     return tokens;
+}
+
+void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
+{
+    int length = tokens->logical_length;
+
+    for (int i = 0; i < length; i++)
+    {
+        const Token *token = tokens_nth(tokens, i);
+        map(token, aux_data);
+    }
 }

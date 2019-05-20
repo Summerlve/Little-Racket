@@ -11,10 +11,11 @@ typedef struct _z_Raw_Code {
     char **content;
 /*
  *  the architecture of field content 'char **'.
- *  every single char * in char **(char *[]) pointed to every single line of racket file without newline character.
+ *  every single char * in char **(char *[]) pointed to every single physical line of racket file without newline character.
+ *  physcial line is equal to logical line in this project, because of I dont implement which similiar to \ of C in racket.
  *  and every single char * was created by malloc, and char ** also be, dont forget free it. 
  */
-    int line_number; // line number.
+    int line_number; // physical line number.
     int allocated_length; // allocated number.
 } Raw_Code;
 typedef void (*RacketFileMapFunction)(const char *line, void *aux_data); // racket file lines map function.
