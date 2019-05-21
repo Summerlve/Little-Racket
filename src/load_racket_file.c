@@ -46,14 +46,13 @@ static char *generate_racket_file_absolute_path(const char *path)
 static int raw_code_new(Raw_Code *raw_code, const char *path)
 {
     // generate absolute path of a racket file. 
-    char *absolute_path = generate_racket_file_absolute_path(path); 
-    raw_code->absolute_path = absolute_path;
+    raw_code->absolute_path = generate_racket_file_absolute_path(path); 
     raw_code->fp = NULL;
     raw_code->allocated_length = 4; // init 4 lines space to store.
-    raw_code->content = (char **)malloc(raw_code->allocated_length * sizeof(char *));
-    if (raw_code->content == NULL)
+    raw_code->contents = (char **)malloc(raw_code->allocated_length * sizeof(char *));
+    if (raw_code->contents == NULL)
     {
-        perror("Raw_Code::content malloc failure");
+        perror("Raw_Code::contents malloc failed");
         return 1;
     }
     raw_code->line_number = 0;
@@ -61,28 +60,67 @@ static int raw_code_new(Raw_Code *raw_code, const char *path)
     return 0;
 }
 
-static int raw_code_free(Raw_Code *raw_code)
+static char *raw_code_contents_nth(Raw_Code *raw_code, int index)
 {
-     return 0;
+    return raw_code->contents[index];
+}
+
+static void raw_code_contents_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data)
+{
+    int length = raw_code->line_number;
+
+    for (int i = 0; i < length; i++)
+    {
+        const char *line = raw_code_contents_nth(raw_code, i);
+        map(line, aux_data);
+    }
+}
+
+static int raw_code_free(Raw_Code * raw_code)
+{
+    // release FILE *fp
+    int result = fclose(raw_code->fp);
+    if (result != 0)
+    {
+        perror("fclose() failed");
+        return 1;
+    }
+
+    // release const char *absolute_path
+    free(raw_code->absolute_path);
+
+    // release char **contents
+    for (int i = 0; i < raw_code->line_number; i++)
+    {
+        char *line = raw_code_contents_nth(raw_code, i);
+        free(line);
+    }
+
+    free(raw_code->contents);
+
+    //release raw_code itself
+    free(raw_code);
+
+    return 0;
 }
 
 static int add_line(Raw_Code *raw_code, const char *line)
 {
-    // expand the Raw_Code::content
+    // expand the Raw_Code::contents
     if (raw_code->line_number == raw_code->allocated_length)
     {
-        raw_code->content = realloc(raw_code->content, raw_code->allocated_length * 2 * sizeof(char *));
-        if (raw_code->content == NULL)
+        raw_code->contents = realloc(raw_code->contents, raw_code->allocated_length * 2 * sizeof(char *));
+        if (raw_code->contents == NULL)
         {
             printf("errorno is: %d\n", errno);
-            perror("Raw_Code:content expand failure");
+            perror("Raw_Code:contents expand failed");
             return 1;
         }
         raw_code->allocated_length *= 2;
     }
 
-    raw_code->content[raw_code->line_number] = (char *)malloc(LINE_MAX);
-    strcpy(raw_code->content[raw_code->line_number], line);
+    raw_code->contents[raw_code->line_number] = (char *)malloc(LINE_MAX);
+    strcpy(raw_code->contents[raw_code->line_number], line);
     raw_code->line_number ++;
 
     return 0;
@@ -110,11 +148,6 @@ static FILE *open_racket_file(const char *path)
     return fp;
 }
 
-static int close_racket_file(FILE *fp)
-{
-    return fclose(fp);
-}
-
 Raw_Code *load_racket_file(const char *path)
 {
     // initialize Raw_Code
@@ -124,30 +157,33 @@ Raw_Code *load_racket_file(const char *path)
     // open racket file
     raw_code->fp = open_racket_file(raw_code->absolute_path);
     
-    // copy racket file to Raw_Code::content
+    // copy racket file to Raw_Code::contents
+    // 'line' is a buffer.
     char *line = (char *)malloc(LINE_MAX);
 
     while (fgets(line, LINE_MAX, raw_code->fp) != NULL)
     {
         add_line(raw_code, line);
         // remove newline character in each line.
-        int index = strcspn(raw_code->content[raw_code->line_number - 1], "\r\n");
+        int index = strcspn(raw_code->contents[raw_code->line_number - 1], "\r\n");
         if (index == 0)
         {
-            if (strlen(raw_code->content[raw_code->line_number - 1]) != 0)
+            if (strlen(raw_code->contents[raw_code->line_number - 1]) != 0)
             {
-                raw_code->content[raw_code->line_number - 1][index] = '\0'; 
+                raw_code->contents[raw_code->line_number - 1][index] = '\0'; 
             }
         }
         else
         {
-            if (strlen(raw_code->content[raw_code->line_number -1]) != index)
+            if (strlen(raw_code->contents[raw_code->line_number -1]) != index)
             {
-                raw_code->content[raw_code->line_number - 1][index] = '\0';
+                raw_code->contents[raw_code->line_number - 1][index] = '\0';
             }
         }
-        line = (char *)malloc(LINE_MAX);
     }  
+
+    // free the memeory.
+    free(line);
 
     if (feof(raw_code->fp))
     {
@@ -165,21 +201,15 @@ Raw_Code *load_racket_file(const char *path)
 
 int free_racket_file(Raw_Code *raw_code)
 {
-    return 0;
+    return raw_code_free(raw_code);
 }
 
 static char *racket_file_nth(Raw_Code *raw_code, int index)
 {
-    return raw_code->content[index];
+    return raw_code_contents_nth(raw_code, index);
 }
 
 void racket_file_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data)
 {
-    int length = raw_code->line_number;
-
-    for (int i = 0; i < length; i++)
-    {
-        const char *line = racket_file_nth(raw_code, i);
-        map(line, aux_data);
-    }
+    raw_code_contents_map(raw_code, map, aux_data);
 }

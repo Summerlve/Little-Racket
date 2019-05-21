@@ -12,12 +12,15 @@
 #define RIGHT_PAREN 0x29 // ')'
 #define LEFT_SQUARE_BRACKET 0x5b // '['
 #define RIGHT_SQUARE_BRACKET 0x5d // ']'
+#define APOSTROPHE 0x27 // '\''
+#define DOT 0x2e // '.'
+#define SEMICOLON 0x3b // ';'
 
 static void tokens_new(Tokens *tokens)
 {
     tokens->allocated_length = 4; // init 4 space to store token.
     tokens->logical_length = 0;
-    tokens->content = (Token *)malloc(tokens->allocated_length * sizeof(Token));
+    tokens->contents = (Token *)malloc(tokens->allocated_length * sizeof(Token));
 }
 
 int free_tokens(Tokens *tokens)
@@ -28,25 +31,25 @@ int free_tokens(Tokens *tokens)
 static Token *tokens_nth(Tokens *tokens, int index)
 {
     // explicit cast to (Token *) avoid gcc warning
-    return (Token *)((char *)tokens->content + index * sizeof(Token));
+    return (Token *)((char *)tokens->contents + index * sizeof(Token));
 }
 
 static int add_token(Tokens *tokens, Token *token)
 {
-    // expand the Tokens::content
+    // expand the Tokens::contents
     if (tokens->logical_length == tokens->allocated_length)
     {
-        tokens->content = realloc(tokens->content, tokens->allocated_length * 2 * sizeof(Token));
-        if (tokens->content == NULL)
+        tokens->contents = realloc(tokens->contents, tokens->allocated_length * 2 * sizeof(Token));
+        if (tokens->contents == NULL)
         {
             printf("errorno is: %d\n", errno);
-            perror("Tokens:content expand failure");
+            perror("Tokens:contents expand failed");
             return 1;
         }
         tokens->allocated_length *= 2;
     }
 
-    memcpy(&(tokens->content[tokens->logical_length]), token, sizeof(Token));
+    memcpy(&(tokens->contents[tokens->logical_length]), token, sizeof(Token));
     tokens->logical_length ++;
     
     return 0;
@@ -60,8 +63,6 @@ static void tokenizer_helper(const char *line, void *aux_data)
 
     for(int i = 0; i < line_length; i++)
     {
-        cursor = i;
-
         // handle whitespace.
         if (line[i] == WHITE_SPACE)
         {
@@ -69,7 +70,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         }
 
         // handle language.
-        // #lang racket
+        // supports only: #lang racket
         if (line[i] == POUND)
         {
             const char lang_sign[] = "lang";
@@ -104,15 +105,24 @@ static void tokenizer_helper(const char *line, void *aux_data)
             token->value = (char *)malloc(strlen(&line[cursor])+ 1);
             strcpy(token->value, &line[cursor]);
             add_token(tokens, token);
-
             continue;
         }
 
         // handle comment
+        // supports only: ; single line comment
+        if (line[i] == SEMICOLON)
+        {
+            Token *token = (Token *)malloc(sizeof(Token));
+            token->type = COMMENT; 
+            token->value = (char *)malloc(strlen(&line[i + 1]) + 1);
+            strcpy(token->value, &line[i + 1]);
+            add_token(tokens, token);
+            continue;
+        }
 
         // handle identifier
 
-        // handle paren
+        // handle paren --- maybe some problem? ---
         if (line[i] == LEFT_PAREN)
         {
             Token *token = (Token *)malloc(sizeof(Token));
@@ -120,7 +130,6 @@ static void tokenizer_helper(const char *line, void *aux_data)
             token->value = (char *)malloc(sizeof(char));
             strncpy(token->value, &line[i], sizeof(char));
             add_token(tokens, token); 
-
             continue;
         }
 
@@ -131,19 +140,17 @@ static void tokenizer_helper(const char *line, void *aux_data)
             token->value = (char *)malloc(sizeof(char));
             strncpy(token->value, &line[i], sizeof(char));
             add_token(tokens, token); 
-
             continue;
         }
 
         // handle square_bracket
-         if (line[i] == LEFT_SQUARE_BRACKET)
+        if (line[i] == LEFT_SQUARE_BRACKET)
         {
             Token *token = (Token *)malloc(sizeof(Token));
             token->type = SQUARE_BRACKET;
             token->value = (char *)malloc(sizeof(char));
             strncpy(token->value, &line[i], sizeof(char));
             add_token(tokens, token); 
-
             continue;
         }
 
@@ -154,11 +161,20 @@ static void tokenizer_helper(const char *line, void *aux_data)
             token->value = (char *)malloc(sizeof(char));
             strncpy(token->value, &line[i], sizeof(char));
             add_token(tokens, token); 
-
             continue;
         }
 
-        // handle ...
+        // handle number
+
+        // handle string
+
+        // handle character
+
+        // handle apostrophe
+
+        // handle dot
+
+        // handle ... 
     }
 }
 

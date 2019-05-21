@@ -7,10 +7,10 @@
 #define LINE_MAX 233 // the most characters of single line in a racket file. 
 typedef struct _z_Raw_Code {
     FILE *fp; // store file poniter to racket file stream.
-    const char *absolute_path;
-    char **content;
+    char *absolute_path;
+    char **contents;
 /*
- *  the architecture of field content 'char **'.
+ *  the architecture of field contents 'char **'.
  *  every single char * in char **(char *[]) pointed to every single physical line of racket file without newline character.
  *  physcial line is equal to logical line in this project, because of I dont implement which similiar to \ of C in racket.
  *  and every single char * was created by malloc, and char ** also be, dont forget free it. 

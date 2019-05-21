@@ -6,22 +6,22 @@
 // tokenizer part
 typedef enum _z_token_type {
     LANGUAGE, /* whcih language are used, supports only: #lang racket */
-    COMMENT, /* supports ';' single line comments */ 
+    COMMENT, /* supports ';' single line comment */ 
     IDENTIFIER,
     PAREN, /* ( ) */
     SQUARE_BRACKET, /* [ ] */
     NUMBER,
     STRING,
     CHARACTER,
-    LIST,
-    PAIR
+    APOSTROPHE, /* ' such as '(1 2 3) list */
+    DOT /* . such as '(1 . 2) pair */ 
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;
     char *value;
 } Token;
 typedef struct _z_tokens {
-    Token *content; // store all tokens here, Token [].
+    Token *contents; // store all tokens here, Token [].
     int logical_length; // logical length.
     int allocated_length; // allocated length.
 } Tokens;
