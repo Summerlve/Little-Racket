@@ -43,37 +43,50 @@ static char *generate_racket_file_absolute_path(const char *path)
     return absolute_path;
 }
 
-static int raw_code_new(Raw_Code *raw_code, const char *path)
+static FILE *open_racket_file(const char *path)
 {
+    if (strstr(path, ".rkt") == NULL)
+    {
+        // if the path dont includes '.rkt'.
+        // print error to console and exit program with failure.
+        perror("load .rkt file please");
+        exit(EXIT_FAILURE);
+    }
+
+    FILE *fp;
+    fp = fopen(path, "r");
+    if (fp == NULL)
+    {  
+        // load .rkt file failed, exit program with failure.
+        perror(path);
+        exit(EXIT_FAILURE);
+    }
+
+    return fp;
+}
+
+static Raw_Code *raw_code_new(const char *path)
+{
+    Raw_Code *raw_code = (Raw_Code *)malloc(sizeof(Raw_Code));
     // generate absolute path of a racket file. 
     raw_code->absolute_path = generate_racket_file_absolute_path(path); 
-    raw_code->fp = NULL;
+    // open racket file
+    raw_code->fp = open_racket_file(raw_code->absolute_path);
     raw_code->allocated_length = 4; // init 4 lines space to store.
     raw_code->contents = (char **)malloc(raw_code->allocated_length * sizeof(char *));
     if (raw_code->contents == NULL)
     {
         perror("Raw_Code::contents malloc failed");
-        return 1;
+        exit(EXIT_FAILURE);
     }
     raw_code->line_number = 0;
 
-    return 0;
+    return raw_code;
 }
 
 static char *raw_code_contents_nth(Raw_Code *raw_code, int index)
 {
     return raw_code->contents[index];
-}
-
-static void raw_code_contents_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data)
-{
-    int length = raw_code->line_number;
-
-    for (int i = 0; i < length; i++)
-    {
-        const char *line = raw_code_contents_nth(raw_code, i);
-        map(line, aux_data);
-    }
 }
 
 static int raw_code_free(Raw_Code * raw_code)
@@ -104,6 +117,17 @@ static int raw_code_free(Raw_Code * raw_code)
     return 0;
 }
 
+static void raw_code_contents_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data)
+{
+    int length = raw_code->line_number;
+
+    for (int i = 0; i < length; i++)
+    {
+        const char *line = raw_code_contents_nth(raw_code, i);
+        map(line, aux_data);
+    }
+}
+
 static int add_line(Raw_Code *raw_code, const char *line)
 {
     // expand the Raw_Code::contents
@@ -126,40 +150,13 @@ static int add_line(Raw_Code *raw_code, const char *line)
     return 0;
 }
 
-static FILE *open_racket_file(const char *path)
-{
-    if (strstr(path, ".rkt") == NULL)
-    {
-        // if the path dont includes '.rkt'.
-        // print error to console and exit program with failure.
-        perror("load .rkt file please");
-        exit(EXIT_FAILURE);
-    }
-
-    FILE *fp;
-    fp = fopen(path, "r");
-    if (fp == NULL)
-    {  
-        // load .rkt file failed, exit program with failure.
-        perror(path);
-        exit(EXIT_FAILURE);
-    }
-
-    return fp;
-}
-
 Raw_Code *load_racket_file(const char *path)
 {
     // initialize Raw_Code
-    Raw_Code *raw_code = malloc(sizeof(Raw_Code));
-    raw_code_new(raw_code, path);
-
-    // open racket file
-    raw_code->fp = open_racket_file(raw_code->absolute_path);
+    Raw_Code *raw_code = raw_code_new(path);
     
     // copy racket file to Raw_Code::contents
-    // 'line' is a buffer.
-    char *line = (char *)malloc(LINE_MAX);
+    char *line = (char *)malloc(LINE_MAX); // line buffer.
 
     while (fgets(line, LINE_MAX, raw_code->fp) != NULL)
     {
@@ -182,7 +179,7 @@ Raw_Code *load_racket_file(const char *path)
         }
     }  
 
-    // free the memeory.
+    // free the line buffer.
     free(line);
 
     if (feof(raw_code->fp))

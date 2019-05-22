@@ -186,7 +186,9 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle apostrophe
         if (line[i] == APOSTROPHE)
         {
-            // Token *
+            Token *token = token_new(APOSTROPHE, "\'");
+            add_token(tokens, token);
+            continue;
         }
 
         // handle dot
