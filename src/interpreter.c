@@ -4,8 +4,8 @@
 #include <errno.h>
 #include <string.h>
 
-// tokenizer part
-/* define ascii character here*/
+// tokenizer part macro definitions.
+/* define ascii character here */
 #define WHITE_SPACE 0x20 // ' '
 #define POUND 0x23 // '#'
 #define LEFT_PAREN 0x28 // '('
@@ -16,11 +16,24 @@
 #define DOT 0x2e // '.'
 #define SEMICOLON 0x3b // ';'
 
-static void tokens_new(Tokens *tokens)
+// tokenizer part.
+// value must be a null-terminated string.
+static Token *token_new(Token_Type type, char *value)
 {
+    Token *token = (Token *)malloc(sizeof(Token));
+    token->type = type;
+    token->value = (char *)malloc(strlen(value) + 1);
+    strcpy(token->value, value);
+    return token;
+}
+
+static Tokens *tokens_new()
+{
+    Tokens *tokens = (Tokens *)malloc(sizeof(Tokens));
     tokens->allocated_length = 4; // init 4 space to store token.
     tokens->logical_length = 0;
     tokens->contents = (Token *)malloc(tokens->allocated_length * sizeof(Token));
+    return tokens;
 }
 
 int free_tokens(Tokens *tokens)
@@ -105,7 +118,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             token->value = (char *)malloc(strlen(&line[cursor])+ 1);
             strcpy(token->value, &line[cursor]);
             add_token(tokens, token);
-            continue;
+            return; // go to the next line.
         }
 
         // handle comment
@@ -117,7 +130,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             token->value = (char *)malloc(strlen(&line[i + 1]) + 1);
             strcpy(token->value, &line[i + 1]);
             add_token(tokens, token);
-            continue;
+            return; // go to the next line.
         }
 
         // handle identifier
@@ -127,8 +140,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
         {
             Token *token = (Token *)malloc(sizeof(Token));
             token->type = PAREN;
-            token->value = (char *)malloc(sizeof(char));
-            strncpy(token->value, &line[i], sizeof(char));
+            token->value = (char *)malloc(sizeof(char) + 1);
+            strcpy(token->value, "(");
             add_token(tokens, token); 
             continue;
         }
@@ -137,8 +150,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
         {
             Token *token = (Token *)malloc(sizeof(Token));
             token->type = PAREN;
-            token->value = (char *)malloc(sizeof(char));
-            strncpy(token->value, &line[i], sizeof(char));
+            token->value = (char *)malloc(sizeof(char) + 1);
+            strcpy(token->value, ")"); 
             add_token(tokens, token); 
             continue;
         }
@@ -148,8 +161,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
         {
             Token *token = (Token *)malloc(sizeof(Token));
             token->type = SQUARE_BRACKET;
-            token->value = (char *)malloc(sizeof(char));
-            strncpy(token->value, &line[i], sizeof(char));
+            token->value = (char *)malloc(sizeof(char) + 1);
+            strcpy(token->value, "[");
             add_token(tokens, token); 
             continue;
         }
@@ -158,8 +171,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
         {
             Token *token = (Token *)malloc(sizeof(Token));
             token->type = SQUARE_BRACKET;
-            token->value = (char *)malloc(sizeof(char));
-            strncpy(token->value, &line[i], sizeof(char));
+            token->value = (char *)malloc(sizeof(char) + 1);
+            strcpy(token->value, "]");
             add_token(tokens, token); 
             continue;
         }
@@ -171,6 +184,10 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle character
 
         // handle apostrophe
+        if (line[i] == APOSTROPHE)
+        {
+            // Token *
+        }
 
         // handle dot
 
@@ -180,10 +197,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
 
 Tokens *tokenizer(Raw_Code *raw_code)
 {
-    Tokens *tokens = malloc(sizeof(Tokens));
-    tokens_new(tokens);
+    Tokens *tokens = tokens_new();
     racket_file_map(raw_code, tokenizer_helper, tokens);
-    
     return tokens;
 }
 
