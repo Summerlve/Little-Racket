@@ -7,14 +7,14 @@
 typedef enum _z_token_type {
     LANGUAGE, /* whcih language are used, supports only: #lang racket */
     COMMENT, /* supports ';' single line comment */ 
-    IDENTIFIER,
+    IDENTIFIER, /* except for the sequences of characters that make number constants, means can not full of numbers. */
     PAREN, /* ( ) */
     SQUARE_BRACKET, /* [ ] */
     NUMBER,
     STRING,
     CHARACTER,
-    APOSTROPHE, /* ' such as '(1 2 3) list */
-    DOT /* . such as '(1 . 2) pair */ 
+    APOSTROPHE, /* ' such as '(1 2 3) list, or symbol such as: 'a */
+    DOT /* . such as '(1 . 2) pair, or decimal fraction such as: 1.456 */ 
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;

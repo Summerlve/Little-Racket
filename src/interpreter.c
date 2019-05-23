@@ -6,19 +6,21 @@
 
 // tokenizer part macro definitions.
 /* define ascii character here */
+#define LANGUAGE_SIGN "lang"
+#define RACKET_SIGN "racket"
 #define WHITE_SPACE 0x20 // ' '
 #define POUND 0x23 // '#'
 #define LEFT_PAREN 0x28 // '('
 #define RIGHT_PAREN 0x29 // ')'
 #define LEFT_SQUARE_BRACKET 0x5b // '['
 #define RIGHT_SQUARE_BRACKET 0x5d // ']'
-#define APOSTROPHE 0x27 // '\''
-#define DOT 0x2e // '.'
+#define APOSTROPHE_PUNC 0x27 // '\''
+#define DOT_PUNC 0x2e // '.'
 #define SEMICOLON 0x3b // ';'
 
 // tokenizer part.
 // value must be a null-terminated string.
-static Token *token_new(Token_Type type, char *value)
+static Token *token_new(Token_Type type, const char *value)
 {
     Token *token = (Token *)malloc(sizeof(Token));
     token->type = type;
@@ -86,12 +88,10 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // supports only: #lang racket
         if (line[i] == POUND)
         {
-            const char lang_sign[] = "lang";
-            const char racket_sign[] = "racket";
             int cmp = -1;
 
             cursor = i + 1;
-            cmp = strncmp(&line[cursor], lang_sign, strlen(lang_sign));
+            cmp = strncmp(&line[cursor], LANGUAGE_SIGN, strlen(LANGUAGE_SIGN));
             if (cmp != 0)
             {
                 fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
@@ -106,17 +106,14 @@ static void tokenizer_helper(const char *line, void *aux_data)
             }
 
             cursor = i + 6;
-            cmp = strcmp(&line[cursor], racket_sign);
+            cmp = strcmp(&line[cursor], RACKET_SIGN);
             if (cmp != 0)
             {
                 fprintf(stderr, "please dont use #lang %s, supports only: #lang racket\n", &line[cursor]);
                 exit(EXIT_FAILURE);
             }
 
-            Token *token = (Token *)malloc(sizeof(Token));
-            token->type = LANGUAGE;
-            token->value = (char *)malloc(strlen(&line[cursor])+ 1);
-            strcpy(token->value, &line[cursor]);
+            Token *token = token_new(LANGUAGE, &line[cursor]); 
             add_token(tokens, token);
             return; // go to the next line.
         }
@@ -125,33 +122,32 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // supports only: ; single line comment
         if (line[i] == SEMICOLON)
         {
-            Token *token = (Token *)malloc(sizeof(Token));
-            token->type = COMMENT; 
-            token->value = (char *)malloc(strlen(&line[i + 1]) + 1);
-            strcpy(token->value, &line[i + 1]);
+            Token *token = token_new(COMMENT, &line[i + 1]);
             add_token(tokens, token);
             return; // go to the next line.
         }
 
         // handle identifier
+        if(line[i])
+        {
+            const char except = {
+                '(', ')', '[', ']', '{', '}',
+                '\"', ',', '\'', '`', ';', '#',
+                '|', '\\', ' '
+            };
+        }
 
         // handle paren --- maybe some problem? ---
         if (line[i] == LEFT_PAREN)
         {
-            Token *token = (Token *)malloc(sizeof(Token));
-            token->type = PAREN;
-            token->value = (char *)malloc(sizeof(char) + 1);
-            strcpy(token->value, "(");
+            Token *token = token_new(PAREN, "("); 
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_PAREN)
         {
-            Token *token = (Token *)malloc(sizeof(Token));
-            token->type = PAREN;
-            token->value = (char *)malloc(sizeof(char) + 1);
-            strcpy(token->value, ")"); 
+            Token *token = token_new(PAREN, ")");
             add_token(tokens, token); 
             continue;
         }
@@ -159,20 +155,14 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle square_bracket
         if (line[i] == LEFT_SQUARE_BRACKET)
         {
-            Token *token = (Token *)malloc(sizeof(Token));
-            token->type = SQUARE_BRACKET;
-            token->value = (char *)malloc(sizeof(char) + 1);
-            strcpy(token->value, "[");
+            Token *token = token_new(SQUARE_BRACKET, "[");
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_SQUARE_BRACKET)
         {
-            Token *token = (Token *)malloc(sizeof(Token));
-            token->type = SQUARE_BRACKET;
-            token->value = (char *)malloc(sizeof(char) + 1);
-            strcpy(token->value, "]");
+            Token *token = token_new(SQUARE_BRACKET, "]");
             add_token(tokens, token); 
             continue;
         }
@@ -184,7 +174,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle character
 
         // handle apostrophe
-        if (line[i] == APOSTROPHE)
+        if (line[i] == APOSTROPHE_PUNC)
         {
             Token *token = token_new(APOSTROPHE, "\'");
             add_token(tokens, token);
@@ -192,8 +182,15 @@ static void tokenizer_helper(const char *line, void *aux_data)
         }
 
         // handle dot
+        if (line[i] == DOT_PUNC)
+        {
+            Token *token = token_new(DOT, ".");
+            add_token(tokens, token);
+            continue;
+        }
 
         // handle ... 
+        
     }
 }
 

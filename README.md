@@ -4,7 +4,7 @@
 
 1. variable definition and setting：x
   
-    DataTypes: Numbers、Strings、Characters、Lists、Pairs.
+    DataTypes: Numbers、Strings、Characters、Lists、Pairs、Symbol.
 
     e.g:
 
@@ -15,6 +15,8 @@
     (define x '(1 2 3))
 
     (set! x 1)
+
+    (define x 'a)
 
 2. procedure definition(normally argument)：(lambda (x) expr)
 
