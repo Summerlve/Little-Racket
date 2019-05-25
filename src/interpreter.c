@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 // tokenizer part macro definitions.
 /* define ascii character here */
@@ -14,8 +15,8 @@
 #define RIGHT_PAREN 0x29 // ')'
 #define LEFT_SQUARE_BRACKET 0x5b // '['
 #define RIGHT_SQUARE_BRACKET 0x5d // ']'
-#define APOSTROPHE_PUNC 0x27 // '\''
-#define DOT_PUNC 0x2e // '.'
+#define APOSTROPHE 0x27 // '\''
+#define DOT 0x2e // '.'
 #define SEMICOLON 0x3b // ';'
 
 // tokenizer part.
@@ -130,7 +131,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle identifier
         if(line[i])
         {
-            const char except = {
+            const char except[] = {
                 '(', ')', '[', ']', '{', '}',
                 '\"', ',', '\'', '`', ';', '#',
                 '|', '\\', ' '
@@ -140,14 +141,14 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle paren --- maybe some problem? ---
         if (line[i] == LEFT_PAREN)
         {
-            Token *token = token_new(PAREN, "("); 
+            Token *token = token_new(PUNCTUATION, "("); 
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_PAREN)
         {
-            Token *token = token_new(PAREN, ")");
+            Token *token = token_new(PUNCTUATION, ")");
             add_token(tokens, token); 
             continue;
         }
@@ -155,42 +156,56 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle square_bracket
         if (line[i] == LEFT_SQUARE_BRACKET)
         {
-            Token *token = token_new(SQUARE_BRACKET, "[");
+            Token *token = token_new(PUNCTUATION, "[");
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_SQUARE_BRACKET)
         {
-            Token *token = token_new(SQUARE_BRACKET, "]");
+            Token *token = token_new(PUNCTUATION, "]");
             add_token(tokens, token); 
             continue;
         }
 
         // handle number
+        if (isdigit(line[i]))
+        {
+            cursor = i + 1;
+            int dot_count = 0;
+
+            while (cursor < line_length)
+            {
+                cursor ++;
+            }
+        }
 
         // handle string
 
         // handle character
 
         // handle apostrophe
-        if (line[i] == APOSTROPHE_PUNC)
+        if (line[i] == APOSTROPHE)
         {
-            Token *token = token_new(APOSTROPHE, "\'");
+            Token *token = token_new(PUNCTUATION, "\'");
             add_token(tokens, token);
             continue;
         }
 
         // handle dot
-        if (line[i] == DOT_PUNC)
+        if (line[i] == DOT)
         {
-            Token *token = token_new(DOT, ".");
+            // check whether a number, decimal fraction such as: 1.456
+
+            // check if a identifier contains '.', such as (define a.b 1)
+
+            Token *token = token_new(PUNCTUATION, ".");
             add_token(tokens, token);
             continue;
         }
 
         // handle ... 
-        
+
     }
 }
 

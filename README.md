@@ -4,7 +4,7 @@
 
 1. variable definition and setting：x
   
-    DataTypes: Numbers、Strings、Characters、Lists、Pairs、Symbol.
+    DataTypes: Numbers、Strings、Characters、Lists、Pairs、Symbols.
 
     e.g:
 

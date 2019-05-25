@@ -3,18 +3,21 @@
 
 #include "./load_racket_file.h"
 
-// tokenizer part
+// tokenizer parts
 typedef enum _z_token_type {
     LANGUAGE, /* whcih language are used, supports only: #lang racket */
-    COMMENT, /* supports ';' single line comment */ 
     IDENTIFIER, /* except for the sequences of characters that make number constants, means can not full of numbers. */
-    PAREN, /* ( ) */
-    SQUARE_BRACKET, /* [ ] */
+    COMMENT, /* supports ';' single line comment */
+    PUNCTUATION,
+    /*
+        PAREN: ( )
+        SQUARE_BRACKET: [ ]
+        APOSTROPHE: ' such as '(1 2 3) list, or symbol such as: 'a
+        DOT: . such as '(1 . 2) pair, or decimal fraction such as: 1.456
+    */
     NUMBER,
-    STRING,
-    CHARACTER,
-    APOSTROPHE, /* ' such as '(1 2 3) list, or symbol such as: 'a */
-    DOT /* . such as '(1 . 2) pair, or decimal fraction such as: 1.456 */ 
+    STRING, /* "xxx" */
+    CHARACTER /* #\a */
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;
@@ -29,6 +32,8 @@ typedef void (*TokensMapFunction)(const Token *token, void *aux_data); // tokens
 Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the memory.
 int free_tokens(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
+
+// number parts
 
 // parser
 
