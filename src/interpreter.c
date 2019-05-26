@@ -20,6 +20,53 @@
 #define SEMICOLON 0x3b // ';'
 
 // tokenizer part.
+// number type
+static Number_Type *number_type_new()
+{
+    Number_Type *number = (Number_Type *)malloc(sizeof(Number_Type));
+    number->allocated_length = 4;
+    number->logical_length = 0;
+    number->contents = (char *)malloc(number->allocated_length * sizeof(char));
+    if (number->contents == NULL)
+    {
+        perror("Number_Type::contents malloc failed");
+        exit(EXIT_FAILURE);
+    }
+
+    return number;
+}
+
+static int number_type_free(Number_Type *number)
+{
+    // free contents
+    free(number->contents);
+    // free number itself
+    free(number);
+    return 0;
+}
+
+static int number_type_append(Number_Type *number, const char ch)
+{
+    // the ch must be a digit or '.'.
+    // expand the Number_Type::contents.
+    if (number->logical_length == number->allocated_length - 1)
+    {
+        number->allocated_length *= 2;
+        number->contents = realloc(number->contents, number->allocated_length * sizeof(char));
+        if (number->contents == NULL)
+        {
+            printf("errorno is: %d\n", errno);
+            perror("Number_Type:contents expand failed");
+            return 1;
+        }
+    }
+
+    strncpy(number->contents[number->logical_length], &ch, sizeof(char));
+    number->logical_length ++;
+
+    return 0;
+}
+
 // value must be a null-terminated string.
 static Token *token_new(Token_Type type, const char *value)
 {

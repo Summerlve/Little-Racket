@@ -73,13 +73,13 @@ static Raw_Code *raw_code_new(const char *path)
     // open racket file
     raw_code->fp = open_racket_file(raw_code->absolute_path);
     raw_code->allocated_length = 4; // init 4 lines space to store.
+    raw_code->line_number = 0;
     raw_code->contents = (char **)malloc(raw_code->allocated_length * sizeof(char *));
     if (raw_code->contents == NULL)
     {
         perror("Raw_Code::contents malloc failed");
         exit(EXIT_FAILURE);
     }
-    raw_code->line_number = 0;
 
     return raw_code;
 }
