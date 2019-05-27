@@ -61,10 +61,20 @@ static int number_type_append(Number_Type *number, const char ch)
         }
     }
 
-    strncpy(number->contents[number->logical_length], &ch, sizeof(char));
+    memcpy(&(number->contents[number->logical_length]), &ch, sizeof(char));
     number->logical_length ++;
+    number->contents[number->logical_length] = '\0';
 
     return 0;
+}
+
+// remember free the char * return from here.
+static char *get_number_type_contents(Number_Type *number)
+{
+    char *contents = (char *)malloc(number->logical_length + sizeof(char));
+    strcpy(contents, number->contents);
+    number_type_free(number);
+    return contents;
 }
 
 // value must be a null-terminated string.
@@ -220,11 +230,40 @@ static void tokenizer_helper(const char *line, void *aux_data)
         {
             cursor = i + 1;
             int dot_count = 0;
+            Number_Type *number = number_type_new();
 
             while (cursor < line_length)
             {
+
+                if (isdigit(line[cursor]))
+                {
+                    number_type_append(number, line[cursor]);
+                }
+                else if (line[cursor] == DOT)
+                {
+                    number_type_append(number, line[cursor]);
+                    dot_count ++;
+                    if (dot_count > 1)
+                    {
+                        fprintf(stderr, "A Number can not be: %s\n", number->contents);
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                else
+                {
+                    break;
+                }
+
                 cursor ++;
             }
+
+            char *contents = get_number_type_contents(number);
+            Token *token = token_new(NUMBER, contents);
+            free(contents);
+            add_token(tokens, token);
+            
+            i = cursor;
+            continue;
         }
 
         // handle string
