@@ -10,7 +10,7 @@ void print_raw_code(const char *line, void *aux_data)
 
 void print_tokens(const Token *token, void *aux_data)
 {
-    printf("%d-%s\n", token->type, token->value);
+    printf("type: %d, value: %s\n", token->type, token->value);
 }
 
 int main(int argc, char *argv[])

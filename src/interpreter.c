@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 // tokenizer part macro definitions.
 /* define ascii character here */
@@ -18,6 +19,7 @@
 #define APOSTROPHE 0x27 // '\''
 #define DOT 0x2e // '.'
 #define SEMICOLON 0x3b // ';'
+#define DOUBLE_QUOTE 0x22 // '\"'
 
 // tokenizer part.
 // number type
@@ -231,6 +233,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
             cursor = i + 1;
             int dot_count = 0;
             Number_Type *number = number_type_new();
+            number_type_append(number, line[i]);
+            bool end = false;
 
             while (cursor < line_length)
             {
@@ -238,11 +242,13 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 if (isdigit(line[cursor]))
                 {
                     number_type_append(number, line[cursor]);
+                    cursor ++;
                 }
                 else if (line[cursor] == DOT)
                 {
                     number_type_append(number, line[cursor]);
                     dot_count ++;
+                    cursor ++;
                     if (dot_count > 1)
                     {
                         fprintf(stderr, "A Number can not be: %s\n", number->contents);
@@ -253,20 +259,39 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 {
                     break;
                 }
-
-                cursor ++;
             }
 
             char *contents = get_number_type_contents(number);
             Token *token = token_new(NUMBER, contents);
             free(contents);
             add_token(tokens, token);
-            
-            i = cursor;
+
+            i = cursor - 1;
             continue;
         }
 
         // handle string
+        if (line[i] == DOUBLE_QUOTE)
+        {
+            // supports single line string now.
+            int count = 0;
+            cursor = i + 1;
+            while (cursor < line_length)
+            {
+                if (line[cursor] != DOUBLE_QUOTE)
+                {
+                    count ++;
+                    cursor ++;
+                }
+            }
+
+            char *string = (char *)malloc(count + sizeof(char));
+            strncpy(string, &line[i + 1], count + sizeof(char));
+            Token *token = token_new(STRING, string);
+            free(string);
+            add_token(tokens, token);
+            continue;
+        }
 
         // handle character
 

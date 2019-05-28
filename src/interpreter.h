@@ -23,7 +23,7 @@ typedef enum _z_token_type {
         DOT: . such as '(1 . 2) pair, or decimal fraction such as: 1.456
     */
     NUMBER,
-    STRING, /* "xxx" */
+    STRING, /* "xxx", racket supports multilines string */
     CHARACTER /* #\a */
 } Token_Type;
 typedef struct _z_token {
