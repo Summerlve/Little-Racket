@@ -251,7 +251,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
                     cursor ++;
                     if (dot_count > 1)
                     {
-                        fprintf(stderr, "A Number can not be: %s\n", number->contents);
+                        fprintf(stderr, "A number can not be: %s\n", number->contents);
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -273,9 +273,10 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle string
         if (line[i] == DOUBLE_QUOTE)
         {
-            // supports single line string now.
             int count = 0;
             cursor = i + 1;
+            bool ends = false;
+
             while (cursor < line_length)
             {
                 if (line[cursor] != DOUBLE_QUOTE)
@@ -283,13 +284,27 @@ static void tokenizer_helper(const char *line, void *aux_data)
                     count ++;
                     cursor ++;
                 }
+                else
+                {
+                    ends = true;
+                    break;
+                }
+            }
+
+            if (!ends)
+            {
+                fprintf(stderr, "A string must be in double quote: %s\n", line);
+                exit(EXIT_FAILURE);
             }
 
             char *string = (char *)malloc(count + sizeof(char));
-            strncpy(string, &line[i + 1], count + sizeof(char));
+            strncpy(string, &line[i + 1], count);
+            string[count] = '\0';
             Token *token = token_new(STRING, string);
             free(string);
             add_token(tokens, token);
+
+            i = cursor;
             continue;
         }
 
