@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <regex.h>
 
 // tokenizer part macro definitions.
 /* define ascii character here */
@@ -190,11 +191,22 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle identifier
         if(line[i])
         {
+            // use regex to recognize identifier
             const char except[] = {
                 '(', ')', '[', ']', '{', '}',
                 '\"', ',', '\'', '`', ';', '#',
                 '|', '\\', ' '
             };
+
+            const char *pattern = "";
+            regex_t reg;
+            regmatch_t match[1];
+
+            regcomp(&reg, pattern, REG_EXTENDED);
+            int status = regexec(&reg, &line[i], 1, match, 0);
+            if (status == 0)
+            regfree(&reg);
+            
         }
 
         // handle paren --- maybe some problem? ---
