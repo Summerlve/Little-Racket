@@ -191,23 +191,19 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle identifier
         // use regex to recognize identifier
         {
-            const char except[] = {
-                '(', ')', '[', ']', '{', '}',
-                '\"', ',', '\'', '`', ';', '#',
-                '|', '\\', ' '
-            };
-    
             // racket's identifier:
             // excludes: \ ( ) [ ] { } " , ' ` ; # | 
             // can not be full of number
             // excludes whitespace
-            const char *pattern = "\bdefine\b";
+            // ^[^\\\(\)\[\]\{\}",'`;#\|\s^\d{1,}$]+
+            // cant match such 1.1a or 223a
+            const char *pattern = "^[^\\\\\\(\\)\\[\\]\\{\\}\",'`;#\\|\\s^\\d{1,}$]+";
             regex_t reg;
             regmatch_t match[1];
     
-            regcomp(&reg, pattern, REG_EXTENDED);
+            regcomp(&reg, pattern, REG_ENHANCED);
             int status = regexec(&reg, &line[i], 1, match, 0);
-    
+
             if (status == REG_NOMATCH)
             {
                 // no match
