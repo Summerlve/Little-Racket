@@ -188,52 +188,6 @@ static void tokenizer_helper(const char *line, void *aux_data)
             return; // go to the next line.
         }
 
-        // handle identifier
-        // use regex to recognize identifier
-        {
-            // racket's identifier:
-            // excludes: \ ( ) [ ] { } " , ' ` ; # | 
-            // can not be full of number
-            // excludes whitespace
-            // ^[^\\\(\)\[\]\{\}",'`;#\|\s^\d{1,}$]+
-            // cant match such 1.1a or 223a
-            const char *pattern = "^[^\\\\\\(\\)\\[\\]\\{\\}\",'`;#\\|\\s^\\d{1,}$]+";
-            regex_t reg;
-            regmatch_t match[1];
-    
-            regcomp(&reg, pattern, REG_ENHANCED);
-            int status = regexec(&reg, &line[i], 1, match, 0);
-
-            if (status == REG_NOMATCH)
-            {
-                // no match
-                regfree(&reg);
-            }
-            else if (status == 0)
-            {
-                // matched
-                int start_index = match[0].rm_so + i;
-                int finish_index = match[0].rm_eo + i;
-                int identifier_len = finish_index - start_index;
-                regfree(&reg);
-
-                char *temp = malloc((identifier_len + 1) * sizeof(char));
-                memcpy(temp, &line[start_index], identifier_len);
-                temp[identifier_len] = '\0';
-                Token *token = token_new(IDENTIFIER, temp);
-                free(temp);
-                add_token(tokens, token);
-
-                i = finish_index - 1; 
-                continue;
-            }
-            else
-            {
-                perror("Regex in exceptional situations, match identifier failed");
-                exit(EXIT_FAILURE);
-            }
-        }
-
         // handle paren --- maybe some problem? ---
         if (line[i] == LEFT_PAREN)
         {
@@ -367,8 +321,59 @@ static void tokenizer_helper(const char *line, void *aux_data)
             continue;
         }
 
-        // handle ... 
+        // handle identifier
+        // use regex to recognize identifier
+        {
+            // racket's identifier:
+            // excludes: \ ( ) [ ] { } " , ' ` ; # | 
+            // can not be full of number
+            // excludes whitespace
+            // ^[^\\\(\)\[\]\{\}",'`;#\|\s^\d{1,}$]+
+            // cant match such 1.1a or 223a
+            const char *pattern = "^[^\\\\\\(\\)\\[\\]\\{\\}\",'`;#\\|\\s^\\d{1,}$]+";
+            regex_t reg;
+            regmatch_t match[1];
+    
+            int result = regcomp(&reg, pattern, REG_ENHANCED | REG_EXTENDED); 
+            if (result != 0)
+            {
+                perror("Could not compile regex");
+                exit(EXIT_FAILURE);
+            }
+            int status = regexec(&reg, &line[i], 1, match, 0);
 
+            if (status == REG_NOMATCH)
+            {
+                // no match
+                regfree(&reg);
+            }
+            else if (status == 0)
+            {
+                // matched
+                int start_index = match[0].rm_so + i;
+                int finish_index = match[0].rm_eo + i;
+                int identifier_len = finish_index - start_index;
+                regfree(&reg);
+
+                char *temp = malloc((identifier_len + 1) * sizeof(char));
+                memcpy(temp, &line[start_index], identifier_len);
+                temp[identifier_len] = '\0';
+                Token *token = token_new(IDENTIFIER, temp);
+                free(temp);
+                add_token(tokens, token);
+
+                i = finish_index - 1; 
+                continue;
+            }
+            else
+            {
+                perror("Regex in exceptional situations, match identifier failed");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // handle ...
+        
     }
 }
 
