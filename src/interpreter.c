@@ -21,6 +21,7 @@
 #define DOT 0x2e // '.'
 #define SEMICOLON 0x3b // ';'
 #define DOUBLE_QUOTE 0x22 // '\"'
+#define BACK_SLASH 0x5c // '\'
 
 // tokenizer part.
 // number type
@@ -145,13 +146,37 @@ static void tokenizer_helper(const char *line, void *aux_data)
             continue;
         }
 
-        // handle language.
+        // handle language and character
         // supports only: #lang racket
         if (line[i] == POUND)
         {
+            cursor = i + 1;
+
+            // character '#\a'
+            if (line[cursor] == BACK_SLASH)
+            {
+                // check if it is notsingle char #\aa ...
+                if (isalpha(line[cursor + 2]) != 0)
+                {
+                    fprintf(stderr, "Character must be a single char, can not be: %s\n", &line[i]);
+                    exit(EXIT_FAILURE);
+                }
+
+                const char *char_value = &line[cursor + 1];
+                char *tmp = (char *)malloc(sizeof(char) * 2);
+                memcpy(tmp, char_value, sizeof(char));
+                tmp[1] = '\0';
+                Token *token = token_new(CHARACTER, tmp);
+                free(tmp);
+                add_token(tokens, token);
+                
+                i = cursor + 1;
+                continue;
+            }
+
+            // #lang
             int cmp = -1;
 
-            cursor = i + 1;
             cmp = strncmp(&line[cursor], LANGUAGE_SIGN, strlen(LANGUAGE_SIGN));
             if (cmp != 0)
             {
@@ -328,9 +353,12 @@ static void tokenizer_helper(const char *line, void *aux_data)
             // excludes: \ ( ) [ ] { } " , ' ` ; # | 
             // can not be full of number
             // excludes whitespace
-            // ^[^\\\(\)\[\]\{\}",'`;#\|\s^\d{1,}$]+
+            // ^[^\\\(\)\[\]\{\}",'`;#\|\s]+
             // cant match such 1.1a or 223a
-            const char *pattern = "^[^\\\\\\(\\)\\[\\]\\{\\}\",'`;#\\|\\s^\\d{1,}$]+";
+            // const char *pattern = "^[^\\\\\\(\\)\\[\\]\\{\\}\",'`;#\\|\\s]+";
+            // fucked with regex T_T
+
+            const char *pattern = "^[a-zA-Z\\+-\\*/]+"; // ^[a-zA-Z\+-\*/]+
             regex_t reg;
             regmatch_t match[1];
     
@@ -394,3 +422,5 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
         map(token, aux_data);
     }
 }
+
+// parser part
