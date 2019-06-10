@@ -3,10 +3,9 @@
 
 #include "./load_racket_file.h"
 
-
 // tokenizer parts
 // number type
-typedef struct _z_Number {
+typedef struct _z_number {
     char *contents; // use a dynamic null-terminated string to store a number.
     int logical_length; // logical length.
     int allocated_length; // allocated length.
@@ -41,6 +40,13 @@ int free_tokens(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // parser
+typedef enum _z_ast_node_type {
+    Number_Literal, String_Literal, Character_Literal, Call_Expression
+} AST_Node_Type;
+typedef struct _z_ast_node {
+    AST_Node_Type type;
+    
+} AST_Node;
 
 // calculator
 
