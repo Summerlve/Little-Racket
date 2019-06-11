@@ -2,6 +2,7 @@
 #define INTERPRETER
 
 #include "./load_racket_file.h"
+#include "./vector.h"
 
 // tokenizer parts
 // number type
@@ -41,11 +42,16 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // parser
 typedef enum _z_ast_node_type {
-    Number_Literal, String_Literal, Character_Literal, Call_Expression
+    Number_Literal, String_Literal, Character_Literal,
+    Call_Expression, List_literal, Pair_Literal,
+    Program
 } AST_Node_Type;
 typedef struct _z_ast_node {
-    AST_Node_Type type;
-    
+    AST_Node_Type type; // 4 bytes
+    Vector body;
+    Vector params;
+    const char *name;
+    const char *value;
 } AST_Node;
 
 // calculator
