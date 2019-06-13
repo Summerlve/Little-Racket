@@ -40,7 +40,7 @@ Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the 
 int free_tokens(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
-// parser
+// parser parts
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     Call_Expression, List_literal, Pair_Literal,
@@ -48,11 +48,17 @@ typedef enum _z_ast_node_type {
 } AST_Node_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type; // 4 bytes
-    Vector body;
-    Vector params;
+    Vector *body;
+    Vector *params;
     const char *name;
     const char *value;
 } AST_Node;
+typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.
+typedef void (*AST_NodesMapFunction)(const AST_Node *ast_node, void *aux_data);
+typedef void (*Visitor)(void);
+AST parser(Tokens *tokens); // retrun AST.
+int free_ast(AST ast);
+void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 // calculator
 

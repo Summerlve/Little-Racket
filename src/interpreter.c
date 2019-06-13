@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <regex.h>
 
-// tokenizer part macro definitions.
+// tokenizer parts macro definitions.
 /* define ascii character here */
 #define LANGUAGE_SIGN "lang"
 #define RACKET_SIGN "racket"
@@ -23,7 +23,7 @@
 #define DOUBLE_QUOTE 0x22 // '\"'
 #define BACK_SLASH 0x5c // '\'
 
-// tokenizer part.
+// tokenizer parts.
 // number type
 static Number_Type *number_type_new()
 {
@@ -423,4 +423,4 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
     }
 }
 
-// parser part
+// parser parts

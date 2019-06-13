@@ -25,13 +25,15 @@ int main(int argc, char *argv[])
     racket_file_map(raw_code, print_raw_code, NULL);
     printf("\n");
 
-    // --- WORKING --- tokenizer 
+    // tokenizer 
     Tokens *tokens = tokenizer(raw_code); 
 
     // show the tokens.
     tokens_map(tokens, print_tokens, NULL);
 
-    // TO-DO parser
+    // --- Working on --- parser
+    AST ast = parser(tokens);
+    
     // TO-DO calculator 
 
     // release memory
