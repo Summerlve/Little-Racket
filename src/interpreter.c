@@ -91,24 +91,38 @@ static Token *token_new(Token_Type type, const char *value)
     return token;
 }
 
+static int token_free(Token *token)
+{
+    free(token->value);
+    free(token);
+    return 0;
+}
+
 static Tokens *tokens_new()
 {
     Tokens *tokens = (Tokens *)malloc(sizeof(Tokens));
     tokens->allocated_length = 4; // init 4 space to store token.
     tokens->logical_length = 0;
-    tokens->contents = (Token *)malloc(tokens->allocated_length * sizeof(Token));
+    tokens->contents = (Token **)malloc(tokens->allocated_length * sizeof(Token *));
     return tokens;
-}
-
-int free_tokens(Tokens *tokens)
-{
-    return 0;
 }
 
 static Token *tokens_nth(Tokens *tokens, int index)
 {
-    // explicit cast to (Token *) avoid gcc warning
-    return (Token *)((char *)tokens->contents + index * sizeof(Token));
+    return tokens->contents[index];
+}
+
+int tokens_free(Tokens *tokens)
+{
+    int length = tokens->logical_length;
+    for (int i = 0; i < length; i++)
+    {
+        Token *token = tokens_nth(tokens, i);
+        token_free(token);
+    }
+    free(tokens->contents);
+    free(tokens);
+    return 0;
 }
 
 static int add_token(Tokens *tokens, Token *token)
@@ -116,17 +130,17 @@ static int add_token(Tokens *tokens, Token *token)
     // expand the Tokens::contents
     if (tokens->logical_length == tokens->allocated_length)
     {
-        tokens->contents = realloc(tokens->contents, tokens->allocated_length * 2 * sizeof(Token));
+        tokens->allocated_length *= 2;
+        tokens->contents = realloc(tokens->contents, tokens->allocated_length * sizeof(Token *));
         if (tokens->contents == NULL)
         {
             printf("errorno is: %d\n", errno);
             perror("Tokens:contents expand failed");
             return 1;
         }
-        tokens->allocated_length *= 2;
     }
 
-    memcpy(&(tokens->contents[tokens->logical_length]), token, sizeof(Token));
+    memcpy(&(tokens->contents[tokens->logical_length]), &token, sizeof(Token *));
     tokens->logical_length ++;
     
     return 0;
@@ -424,3 +438,18 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 }
 
 // parser parts
+AST parser(Tokens *tokens)
+{
+    return NULL;
+}
+
+int ast_free(AST ast)
+{
+    return 0;
+}
+
+// left-sub-tree-first dfs algo. 
+void traverser(AST ast, Visitor visitor, void *aux_data)
+{
+
+} 

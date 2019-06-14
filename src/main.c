@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory.
-    Raw_Code *raw_code = load_racket_file(path);
+    Raw_Code *raw_code = racket_file_load(path);
 
     // show the raw_code in gaint single string.
     racket_file_map(raw_code, print_raw_code, NULL);
@@ -33,12 +33,12 @@ int main(int argc, char *argv[])
 
     // --- Working on --- parser
     AST ast = parser(tokens);
-    
+
     // TO-DO calculator 
 
     // release memory
-    free_racket_file(raw_code);
-    free_tokens(tokens);
+    racket_file_free(raw_code);
+    tokens_free(tokens);
     
     return 0;
 }

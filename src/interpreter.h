@@ -31,13 +31,13 @@ typedef struct _z_token {
     char *value;
 } Token;
 typedef struct _z_tokens {
-    Token *contents; // store all tokens here, Token [].
+    Token **contents; // store all tokens here, Token [].
     int logical_length; // logical length.
     int allocated_length; // allocated length.
 } Tokens;
 typedef void (*TokensMapFunction)(const Token *token, void *aux_data); // tokens map function.
 Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the memory.
-int free_tokens(Tokens *tokens);
+int tokens_free(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // parser parts
@@ -48,16 +48,18 @@ typedef enum _z_ast_node_type {
 } AST_Node_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type; // 4 bytes
-    Vector *body;
-    Vector *params;
+    union _z_combine_body_params {
+        Vector *body;
+        Vector *params;
+    } body_or_params;
     const char *name;
     const char *value;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.
 typedef void (*AST_NodesMapFunction)(const AST_Node *ast_node, void *aux_data);
-typedef void (*Visitor)(void);
+typedef void (*Visitor)(AST_Node *node, AST_Node *root, void *aux_data);
 AST parser(Tokens *tokens); // retrun AST.
-int free_ast(AST ast);
+int ast_free(AST ast);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 // calculator

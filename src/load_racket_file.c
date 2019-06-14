@@ -150,7 +150,7 @@ static int add_line(Raw_Code *raw_code, const char *line)
     return 0;
 }
 
-Raw_Code *load_racket_file(const char *path)
+Raw_Code *racket_file_load(const char *path)
 {
     // initialize Raw_Code
     Raw_Code *raw_code = raw_code_new(path);
@@ -196,7 +196,7 @@ Raw_Code *load_racket_file(const char *path)
     return raw_code;
 }
 
-int free_racket_file(Raw_Code *raw_code)
+int racket_file_free(Raw_Code *raw_code)
 {
     return raw_code_free(raw_code);
 }
