@@ -48,20 +48,21 @@ typedef enum _z_ast_node_type {
 } AST_Node_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type; // 4 bytes
-    union _z_combine_body_params {
-        Vector *body;
-        Vector *params;
-    } body_or_params;
-    const char *name;
-    const char *value;
+    union _z_ast_node_contents {
+        char *value; // literal
+        struct _z_ast_node_call_expression {
+            char *name;
+            Vector *params; // params stores AST_Node *
+        } call_expression; // call expression
+        Vector *body; // program, body stores AST_Node *
+    } contents; // 16 bytes
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.
-typedef void (*AST_NodesMapFunction)(const AST_Node *ast_node, void *aux_data);
 typedef void (*Visitor)(AST_Node *node, AST_Node *root, void *aux_data);
 AST parser(Tokens *tokens); // retrun AST.
 int ast_free(AST ast);
-void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
-// calculator
+// calculator parts
+void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 #endif

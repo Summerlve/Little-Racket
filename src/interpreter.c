@@ -1,11 +1,13 @@
 #include "./interpreter.h"
 #include "./load_racket_file.h"
+#include "./vector.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <regex.h>
+#include <stdarg.h>
 
 // tokenizer parts macro definitions.
 /* define ascii character here */
@@ -438,8 +440,68 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 }
 
 // parser parts
+// ast_node_new(Program)
+// ast_node_new(Call_Expression, name)
+// ast_node_new(xxx_Literal, value)
+static AST_Node *ast_node_new(AST_Node_Type type, ...)
+{
+    AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
+    ast_node->type = type;
+
+    // flexible args
+    va_list ap;
+    va_start(ap, type);
+
+    if (ast_node->type == Program)
+    {
+        ast_node->contents.body = VectorNew(sizeof(AST_Node *));
+        va_end(ap);
+        return ast_node;
+    }
+
+    if (ast_node->type == Call_Expression)
+    {
+        ast_node->contents.call_expression.params = VectorNew(sizeof(AST_Node *));
+        const char *name = va_arg(ap, const char *);
+        ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
+        strcpy(ast_node->contents.call_expression.name, name);
+        va_end(ap);
+        return ast_node;
+    }
+
+    // handle literal at the rest of this function.
+    const char *value = va_arg(ap, const char *);
+    ast_node->contents.value = (char *)malloc(strlen(value) + 1);
+    strcpy(ast_node->contents.value, value);
+    va_end(ap);
+    return ast_node;
+}
+
+static int ast_node_free(AST_Node *ast_node)
+{
+    if (ast_node->type == Program)
+    {
+
+    }
+
+    if (ast_node->type == Call_Expression)
+    {
+
+    }
+
+    // literal cases.
+
+    return 0;
+}
+
 AST parser(Tokens *tokens)
 {
+    AST_Node *a = ast_node_new(Program);
+    printf("type: %d\n", a->type);
+    AST_Node *b = ast_node_new(Call_Expression, "define");
+    printf("type: %d, name: %s\n", b->type, b->contents.call_expression.name);
+    AST_Node *c = ast_node_new(Number_Literal, "15666.123123");
+    printf("type: %d, value: %s\n", c->type, c->contents.value);
     return NULL;
 }
 
@@ -448,6 +510,7 @@ int ast_free(AST ast)
     return 0;
 }
 
+// calculator parts
 // left-sub-tree-first dfs algo. 
 void traverser(AST ast, Visitor visitor, void *aux_data)
 {

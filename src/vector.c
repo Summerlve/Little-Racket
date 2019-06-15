@@ -62,14 +62,14 @@ void VectorMap(Vector *v, VectorMapFunction map, void *aux_data)
     }
 }
 
-void VectorFree(Vector *v, VectorFreeFunction free_fn)
+void VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
 {
     int length = VectorLength(v);
 
     for (int i = 0; i < length; i++)
     {
         void *value_addr = VectorNth(v, i);
-        free_fn(value_addr);
+        free_fn(value_addr, aux_data);
     }
 
     free(v->elems);
