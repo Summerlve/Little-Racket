@@ -52,9 +52,9 @@ typedef struct _z_ast_node {
         char *value; // literal
         struct _z_ast_node_call_expression {
             char *name;
-            Vector *params; // params stores AST_Node *
+            Vector *params; // params is AST_Node *[]
         } call_expression; // call expression
-        Vector *body; // program, body stores AST_Node *
+        Vector *body; // program's body is AST_Node *[]
     } contents; // 16 bytes
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.

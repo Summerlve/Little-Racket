@@ -109,6 +109,11 @@ static Tokens *tokens_new()
     return tokens;
 }
 
+static int tokens_length(Tokens *tokens)
+{
+    return tokens->logical_length;
+}
+
 static Token *tokens_nth(Tokens *tokens, int index)
 {
     return tokens->contents[index];
@@ -494,15 +499,30 @@ static int ast_node_free(AST_Node *ast_node)
     return 0;
 }
 
+static AST_Node *walk(Tokens *tokens, int *current_p)
+{
+    Token *token = tokens_nth(tokens, *current_p);
+
+    if (token->type == NUMBER)
+    {
+        
+    }
+
+    return NULL;
+}
+
 AST parser(Tokens *tokens)
 {
-    AST_Node *a = ast_node_new(Program);
-    printf("type: %d\n", a->type);
-    AST_Node *b = ast_node_new(Call_Expression, "define");
-    printf("type: %d, name: %s\n", b->type, b->contents.call_expression.name);
-    AST_Node *c = ast_node_new(Number_Literal, "15666.123123");
-    printf("type: %d, value: %s\n", c->type, c->contents.value);
-    return NULL;
+    AST ast = ast_node_new(Program);
+    int current = 0;
+
+    while (current < tokens_length(tokens))
+    {
+        AST_Node *ast_node = walk(tokens, &current);
+        VectorAppend(ast->contents.body, &ast_node);
+    }
+    
+    return ast;
 }
 
 int ast_free(AST ast)
