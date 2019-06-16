@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
+    ast_free(ast);
     
     return 0;
 }

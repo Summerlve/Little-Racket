@@ -61,8 +61,8 @@ typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to
 typedef void (*Visitor)(AST_Node *node, AST_Node *root, void *aux_data);
 AST parser(Tokens *tokens); // retrun AST.
 int ast_free(AST ast);
+void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 // calculator parts
-void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 #endif

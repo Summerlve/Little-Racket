@@ -499,16 +499,56 @@ static int ast_node_free(AST_Node *ast_node)
     return 0;
 }
 
+// recursion function <walk> walk over the tokens array, and generates a ast.
 static AST_Node *walk(Tokens *tokens, int *current_p)
 {
     Token *token = tokens_nth(tokens, *current_p);
 
-    if (token->type == NUMBER)
+    if (token->type == LANGUAGE)
     {
-        
+        (*current_p)++;
+        return NULL;
+    } 
+
+    if (token->type == COMMENT)
+    {
+        (*current_p)++;
+        return NULL;
     }
 
-    return NULL;
+    if (token->type == PUNCTUATION)
+    {
+        if ((token->value)[0] == LEFT_PAREN)
+        {
+            // it's a function call here.
+            
+        }
+    }
+
+    if (token->type == NUMBER)
+    {
+        (*current_p)++;
+        AST_Node *ast_node = ast_node_new(Number_Literal, token->value);
+        return ast_node;
+    }
+
+    if (token->type == STRING)
+    {
+        (*current_p)++;
+        AST_Node *ast_node = ast_node_new(String_Literal, token->value);
+        return ast_node;
+    }
+
+    if (token->type == CHARACTER)
+    {
+        (*current_p)++;
+        AST_Node *ast_node = ast_node_new(Character_Literal, token->value);
+        return ast_node;
+    }
+
+    // when no matches any Token_Type.
+    fprintf(stderr, "walk(): no matches any Token_Type\n");
+    exit(EXIT_FAILURE);
 }
 
 AST parser(Tokens *tokens)
@@ -517,9 +557,11 @@ AST parser(Tokens *tokens)
     int current = 0;
 
     while (current < tokens_length(tokens))
+    // the value of current was changed in <walk> by current_p.
     {
         AST_Node *ast_node = walk(tokens, &current);
-        VectorAppend(ast->contents.body, &ast_node);
+        if (ast_node != NULL) VectorAppend(ast->contents.body, &ast_node);
+        else continue;
     }
     
     return ast;
@@ -530,9 +572,10 @@ int ast_free(AST ast)
     return 0;
 }
 
-// calculator parts
 // left-sub-tree-first dfs algo. 
 void traverser(AST ast, Visitor visitor, void *aux_data)
 {
 
-} 
+}
+
+// calculator parts
