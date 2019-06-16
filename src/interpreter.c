@@ -358,10 +358,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle dot
         if (line[i] == DOT)
         {
-            // check whether a number, decimal fraction such as: 1.456
-
-            // check if a identifier contains '.', such as (define a.b 1)
-
+            // TO-DO check if a identifier contains '.', such as (define a.b 1)
             Token *token = token_new(PUNCTUATION, ".");
             add_token(tokens, token);
             continue;
@@ -447,6 +444,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // parser parts
 // ast_node_new(Program)
 // ast_node_new(Call_Expression, name)
+// ast_node_new(Binding, name)
 // ast_node_new(xxx_Literal, value)
 static AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
@@ -470,6 +468,15 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.call_expression.name, name);
+        va_end(ap);
+        return ast_node;
+    }
+
+    if (ast_node->type == Binding)
+    {
+        const char *name = va_arg(ap, const char *);
+        ast_node->contents.name = (char *)malloc(strlen(name) + 1);
+        strcpy(ast_node->contents.name, name);
         va_end(ap);
         return ast_node;
     }
@@ -516,38 +523,91 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
         return NULL;
     }
 
+    if (token->type == IDENTIFIER)
+    {
+        AST_Node *ast_node = ast_node_new(Binding, token->value);
+        (*current_p)++;
+        return ast_node;
+    }
+
     if (token->type == PUNCTUATION)
     {
-        if ((token->value)[0] == LEFT_PAREN)
+        char token_value = (token->value)[0];
+
+        // '(' and ')' function call
+        if (token_value == LEFT_PAREN)
         {
-            // it's a function call here.
+            // point to the function's name.
+            (*current_p)++;
+            token = tokens_nth(tokens, *current_p); 
+
+            if (token->type != IDENTIFIER) 
+            {
+                // check identifier
+                fprintf(stderr, "Function call here, the first element of form must be a identifier\n");
+                exit(EXIT_FAILURE);
+            }
+
+            AST_Node *ast_node = ast_node_new(Call_Expression, token->value);
+            (*current_p)++; // point to the first argument.
+
+            token = tokens_nth(tokens, *current_p);
+            while ((token->type != PUNCTUATION) ||
+                   (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
+            ) 
+            {
+                AST_Node *param = walk(tokens, current_p);
+                VectorAppend(ast_node->contents.call_expression.params, &param);
+                token = tokens_nth(tokens, *current_p);
+            }
+            
+            (*current_p)++; // skip ')'
+
+            return ast_node;
+        }
+
+        // '\''
+        if (token_value == APOSTROPHE) 
+        {
+            // check '(
+            (*current_p)++;
+            token = tokens_nth(tokens, *current_p);
+            if (token->value != RIGHT_PAREN); 
+            {
+                fprintf(stderr, "List or pair literal must be starts with '( \n");
+                exit(EXIT_FAILURE);
+            }
+
             
         }
+
+        // handle ...
+
     }
 
     if (token->type == NUMBER)
     {
-        (*current_p)++;
         AST_Node *ast_node = ast_node_new(Number_Literal, token->value);
+        (*current_p)++;
         return ast_node;
     }
 
     if (token->type == STRING)
     {
-        (*current_p)++;
         AST_Node *ast_node = ast_node_new(String_Literal, token->value);
+        (*current_p)++;
         return ast_node;
     }
 
     if (token->type == CHARACTER)
     {
-        (*current_p)++;
         AST_Node *ast_node = ast_node_new(Character_Literal, token->value);
+        (*current_p)++;
         return ast_node;
     }
 
     // when no matches any Token_Type.
-    fprintf(stderr, "walk(): no matches any Token_Type\n");
+    fprintf(stderr, "walk(): no matches any Token_Type, type: %d, value: %s\n", token->type, token->value);
     exit(EXIT_FAILURE);
 }
 

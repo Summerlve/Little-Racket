@@ -19,7 +19,7 @@ typedef enum _z_token_type {
     /*
         PAREN: ( )
         SQUARE_BRACKET: [ ]
-        APOSTROPHE: ' such as '(1 2 3) list, or symbol such as: 'a
+        APOSTROPHE: ' such as '(1 2 3) list, or pair '(1 . 2) 
         DOT: . such as '(1 . 2) pair, or decimal fraction such as: 1.456
     */
     NUMBER,
@@ -43,13 +43,14 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 // parser parts
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
-    Call_Expression, List_literal, Pair_Literal,
-    Program
+    List_literal, Pair_Literal,
+    Call_Expression, Binding, Program
 } AST_Node_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type; // 4 bytes
     union _z_ast_node_contents {
         char *value; // literal
+        char *name; // binding
         struct _z_ast_node_call_expression {
             char *name;
             Vector *params; // params is AST_Node *[]
