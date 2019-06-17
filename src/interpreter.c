@@ -483,8 +483,8 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     // handle literal at the rest of this function.
     const char *value = va_arg(ap, const char *);
-    ast_node->contents.value = (char *)malloc(strlen(value) + 1);
-    strcpy(ast_node->contents.value, value);
+    ast_node->contents.literal.value = (char *)malloc(strlen(value) + 1);
+    strcpy(ast_node->contents.literal.value, value);
     va_end(ap);
     return ast_node;
 }
@@ -537,6 +537,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
         // '(' and ')' function call
         if (token_value == LEFT_PAREN)
         {
+            printf("function call\n");
             // point to the function's name.
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
@@ -549,15 +550,17 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             AST_Node *ast_node = ast_node_new(Call_Expression, token->value);
-            (*current_p)++; // point to the first argument.
 
+            // point to the first argument.
+            (*current_p)++; 
             token = tokens_nth(tokens, *current_p);
+
             while ((token->type != PUNCTUATION) ||
                    (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
             ) 
             {
                 AST_Node *param = walk(tokens, current_p);
-                VectorAppend(ast_node->contents.call_expression.params, &param);
+                if (param != NULL) VectorAppend(ast_node->contents.call_expression.params, &param);
                 token = tokens_nth(tokens, *current_p);
             }
             
@@ -566,19 +569,31 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             return ast_node;
         }
 
-        // '\''
+        // '\'', list or pair
         if (token_value == APOSTROPHE) 
         {
             // check '(
             (*current_p)++;
             token = tokens_nth(tokens, *current_p);
-            if (token->value != RIGHT_PAREN); 
+            token_value = (token->value)[0];
+            if (token_value != LEFT_PAREN)
             {
                 fprintf(stderr, "List or pair literal must be starts with '( \n");
                 exit(EXIT_FAILURE);
             }
 
-            
+            // move to first element of list or pair.
+            (*current_p)++;
+            token = tokens_nth(tokens, *current_p);
+
+            while ((token->type != PUNCTUATION) ||
+                   (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
+            )
+            {
+
+
+            }
+
         }
 
         // handle ...
@@ -607,7 +622,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     }
 
     // when no matches any Token_Type.
-    fprintf(stderr, "walk(): no matches any Token_Type, type: %d, value: %s\n", token->type, token->value);
+    fprintf(stderr, "walk(): can not handle token -> type: %d, value: %s\n", token->type, token->value);
     exit(EXIT_FAILURE);
 }
 

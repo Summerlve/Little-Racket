@@ -49,15 +49,19 @@ typedef enum _z_ast_node_type {
 typedef struct _z_ast_node {
     AST_Node_Type type; // 4 bytes
     union _z_ast_node_contents {
-        char *value; // literal
+        struct _z_ast_node_literal {
+            char *value; // literal
+            void *c_native_value;
+        } literal;
         char *name; // binding
         struct _z_ast_node_call_expression {
             char *name;
             Vector *params; // params is AST_Node *[]
+            void *c_native_function; // function poniter to any function signature.
         } call_expression; // call expression
         Vector *body; // program's body is AST_Node *[]
-    } contents; // 16 bytes
-} AST_Node;
+    } contents; // 24 bytes
+} AST_Node; // 28 bytes
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.
 typedef void (*Visitor)(AST_Node *node, AST_Node *root, void *aux_data);
 AST parser(Tokens *tokens); // retrun AST.
