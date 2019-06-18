@@ -40,7 +40,23 @@ Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the 
 int tokens_free(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
+// racket value mapping to c native value.
+#define racket_null NULL // null is equal to empty is equal to '(), both of them are list not a pair.
+#define racket_empty NULL
+typedef struct _z_racket_value_box {
+    void *value;
+    char *signature;
+    int elem_size;
+} RacketValueBox; // single value wrapper.
+typedef struct _z_racket_pair {
+    RacketValueBox car;
+    RacketValueBox cdr;
+} Racket_Pair;
+
+// racket built-in procedure mapping to c native function.
+
 // parser parts
+typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_literal, Pair_Literal,
@@ -51,13 +67,13 @@ typedef struct _z_ast_node {
     union _z_ast_node_contents {
         struct _z_ast_node_literal {
             char *value; // literal
-            void *c_native_value;
+            void *c_native_value; // convert value to c_native_value.
         } literal;
         char *name; // binding
         struct _z_ast_node_call_expression {
             char *name;
             Vector *params; // params is AST_Node *[]
-            void *c_native_function; // function poniter to any function signature.
+            Function c_native_function; // function ponits to any type of function.
         } call_expression; // call expression
         Vector *body; // program's body is AST_Node *[]
     } contents; // 24 bytes

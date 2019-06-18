@@ -441,6 +441,40 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
     }
 }
 
+// racket value/function mapping to c native value/function.
+static RacketValueBox *racket_value_box_new(const char *signature, int elem_size)
+{
+    RacketValueBox *rvb = (RacketValueBox *)malloc(sizeof(RacketValueBox));
+    rvb->elem_size = elem_size;
+    rvb->signature = (char *)malloc(strlen(signature) + 1);
+    strcpy(rvb->signature, signature);
+    rvb->value = malloc(elem_size);
+    return rvb;
+}
+
+static int racket_value_box_free(RacketValueBox *rvb)
+{
+    free(rvb->signature);
+    free(rvb->value);
+    free(rvb);
+    return 0; 
+}
+
+static void set_box_value(RacketValueBox *rvb, const void *value_addr)
+{
+    memcpy(rvb->value, value_addr, rvb->elem_size);
+}
+
+static void *get_box_value(RacketValueBox *rvb)
+{
+    return rvb->value;
+}
+
+static const char *get_box_signature(RacketValueBox *rvb)
+{
+    return rvb->signature;
+}
+
 // parser parts
 // ast_node_new(Program)
 // ast_node_new(Call_Expression, name)
