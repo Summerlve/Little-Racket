@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 
     // --- Working on --- parser
     AST ast = parser(tokens);
+    printf("Program's body's size: %d\n", VectorLength(ast->contents.body));
 
     // TO-DO calculator 
 

@@ -627,11 +627,10 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
             
             (*current_p)++; // skip ')'
-
             return ast_node;
         }
 
-        // '\'', list or pair
+        // '\'' and '.', list or pair
         if (token_value == APOSTROPHE) 
         {
             // check '(
@@ -646,7 +645,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
             // move to first element of list or pair.
             (*current_p)++;
-            token = tokens_nth(tokens, *current_p);
 
             // check list or pair '.', dont move current_p, use a tmp value instead.
             bool is_pair = false;
@@ -654,24 +652,49 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             Token *tmp = tokens_nth(tokens, cursor);
             char tmp_value = tmp->value[0];
             if (tmp_value == DOT) is_pair = true;
-            
+
+            AST_Node *ast_node = NULL;
             if (is_pair)
             {
+                ast_node = ast_node_new(Pair_Literal);
                 
-                AST_Node *ast_node = ast_node_new(Pair_Literal);
+                AST_Node *car = walk(tokens, current_p);
+                (*current_p)++; // skip '.'
+                AST_Node *cdr = walk(tokens, current_p);
+                if (car == NULL || cdr == NULL)
+                {
+                    fprintf(stderr, "Pair literal should have two values\n");
+                    exit(EXIT_FAILURE);
+                }
+                VectorAppend((Vector*)(ast_node->contents.literal.value), &car);
+                VectorAppend((Vector*)(ast_node->contents.literal.value), &cdr);
+
+                (*current_p)++; // skip ')'
+                return ast_node;
             }
             else
             {
+                ast_node = ast_node_new(List_literal);
+
                 while ((token->type != PUNCTUATION) ||
-                   (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
                 )
                 {
-
-
+                    AST_Node *element = walk(tokens, current_p);
+                    if (element != NULL) VectorAppend((Vector *)(ast_node->contents.literal.value), &element);
+                    token = tokens_nth(tokens, *current_p);
                 }
-            }
-            
 
+                (*current_p)++; // skip ')'
+                return ast_node;
+            }
+        }
+
+        // '[' and ']'  
+        if (token_value == LEFT_SQUARE_BRACKET)
+        {
+            (*current_p)++;
+            return NULL;
         }
 
         // handle PUNCTUATION ...
