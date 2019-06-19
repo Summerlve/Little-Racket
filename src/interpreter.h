@@ -43,41 +43,40 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 // racket value mapping to c native value.
 #define racket_null NULL // null is equal to empty is equal to '(), both of them are list not a pair.
 #define racket_empty NULL
-typedef struct _z_racket_value_box {
-    void *value;
-    char *signature;
-    int elem_size;
-} RacketValueBox; // single value wrapper.
-typedef struct _z_racket_pair {
-    RacketValueBox car;
-    RacketValueBox cdr;
-} Racket_Pair;
-
+typedef void (*Function)(void); // Function points to any type of function.
 // racket built-in procedure mapping to c native function.
 
 // parser parts
-typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_literal, Pair_Literal,
     Call_Expression, Binding, Program
 } AST_Node_Type;
 typedef struct _z_ast_node {
-    AST_Node_Type type; // 4 bytes
-    union _z_ast_node_contents {
-        struct _z_ast_node_literal {
-            char *value; // literal
-            void *c_native_value; // convert value to c_native_value.
+    AST_Node_Type type;
+    union {
+        struct {
+            /*  
+              value filed:
+               char * - normally literal value, such as "123.999", and set the c_native_value. 
+               Vector * - list or pair literal, store the contents into elements(AST_Node *[]), and c_native_value set to null.
+            */
+            void *value; 
+            // convert normally literal value to c_native_value, such as double: 123.999, when list or pair, set this field to null.
+            void *c_native_value; 
         } literal;
-        char *name; // binding
-        struct _z_ast_node_call_expression {
+        struct {
+            char *name; // binding's name.
+            struct _z_ast_node *value; // binding's value, pointes to a AST_Node, in parser set to null.
+        } binding;
+        struct {
             char *name;
             Vector *params; // params is AST_Node *[]
             Function c_native_function; // function ponits to any type of function.
         } call_expression; // call expression
         Vector *body; // program's body is AST_Node *[]
-    } contents; // 24 bytes
-} AST_Node; // 28 bytes
+    } contents;
+} AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.
 typedef void (*Visitor)(AST_Node *node, AST_Node *root, void *aux_data);
 AST parser(Tokens *tokens); // retrun AST.

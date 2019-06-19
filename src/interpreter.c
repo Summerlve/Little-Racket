@@ -441,44 +441,11 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
     }
 }
 
-// racket value/function mapping to c native value/function.
-static RacketValueBox *racket_value_box_new(const char *signature, int elem_size)
-{
-    RacketValueBox *rvb = (RacketValueBox *)malloc(sizeof(RacketValueBox));
-    rvb->elem_size = elem_size;
-    rvb->signature = (char *)malloc(strlen(signature) + 1);
-    strcpy(rvb->signature, signature);
-    rvb->value = malloc(elem_size);
-    return rvb;
-}
-
-static int racket_value_box_free(RacketValueBox *rvb)
-{
-    free(rvb->signature);
-    free(rvb->value);
-    free(rvb);
-    return 0; 
-}
-
-static void set_box_value(RacketValueBox *rvb, const void *value_addr)
-{
-    memcpy(rvb->value, value_addr, rvb->elem_size);
-}
-
-static void *get_box_value(RacketValueBox *rvb)
-{
-    return rvb->value;
-}
-
-static const char *get_box_signature(RacketValueBox *rvb)
-{
-    return rvb->signature;
-}
-
 // parser parts
 // ast_node_new(Program)
 // ast_node_new(Call_Expression, name)
-// ast_node_new(Binding, name)
+// ast_node_new(Binding, name, value)
+// ast_node_new(List or Pair)
 // ast_node_new(xxx_Literal, value)
 static AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
@@ -492,33 +459,74 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Program)
     {
         ast_node->contents.body = VectorNew(sizeof(AST_Node *));
-        va_end(ap);
-        return ast_node;
     }
 
     if (ast_node->type == Call_Expression)
     {
+        ast_node->contents.call_expression.c_native_function = NULL;
         ast_node->contents.call_expression.params = VectorNew(sizeof(AST_Node *));
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.call_expression.name, name);
-        va_end(ap);
-        return ast_node;
     }
 
     if (ast_node->type == Binding)
     {
         const char *name = va_arg(ap, const char *);
-        ast_node->contents.name = (char *)malloc(strlen(name) + 1);
-        strcpy(ast_node->contents.name, name);
-        va_end(ap);
-        return ast_node;
+        ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
+        strcpy(ast_node->contents.binding.name, name);
+        AST_Node *value = va_arg(ap, AST_Node *);
+        ast_node->contents.binding.value = value;
     }
 
-    // handle literal at the rest of this function.
-    const char *value = va_arg(ap, const char *);
-    ast_node->contents.literal.value = (char *)malloc(strlen(value) + 1);
-    strcpy(ast_node->contents.literal.value, value);
+    if (ast_node->type == List_literal)
+    {
+        ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.literal.c_native_value = NULL;
+    }
+
+    if (ast_node->type == Pair_Literal)
+    {
+        ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.literal.c_native_value = NULL;
+    }
+
+    if (ast_node->type == Number_Literal)
+    {
+        const char *value = va_arg(ap, const char *);
+        ast_node->contents.literal.value = malloc(strlen(value) + 1);
+        strcpy((char *)ast_node->contents.literal.value, value);
+        // check '.' to decide use int or double.
+        if (strchr(ast_node->contents.literal.value, '.') == NULL)
+        {
+            // convert string to int, cast long to int returned from strtol.
+            int c_native_value = (int)strtol(ast_node->contents.literal.value, (char **)NULL, 10);
+            ast_node->contents.literal.c_native_value = malloc(sizeof(int));
+            memcpy(ast_node->contents.literal.c_native_value, &c_native_value, sizeof(int));
+        }
+        else
+        {
+            // convert string to double.
+            double c_native_value = strtod(ast_node->contents.literal.value, (char **)NULL);
+            ast_node->contents.literal.c_native_value = malloc(sizeof(double));
+            memcpy(ast_node->contents.literal.c_native_value, &c_native_value, sizeof(double));
+        }
+    }
+
+    if (ast_node->type == String_Literal)
+    {
+        const char *value = va_arg(ap, const char *);
+        ast_node->contents.literal.value = malloc(strlen(value) + 1);
+        strcpy((char *)ast_node->contents.literal.value, value);
+    }
+
+    if (ast_node->type == Character_Literal)
+    {
+        const char *character = va_arg(ap, const char *);
+        ast_node->contents.literal.value = malloc(sizeof(char));
+        memcpy((char *)ast_node->contents.literal.value, character, sizeof(char));
+    }
+
     va_end(ap);
     return ast_node;
 }
@@ -559,7 +567,28 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
     if (token->type == IDENTIFIER)
     {
-        AST_Node *ast_node = ast_node_new(Binding, token->value);
+        AST_Node *ast_node = ast_node_new(Binding, token->value, NULL);
+        (*current_p)++;
+        return ast_node;
+    }
+
+    if (token->type == NUMBER)
+    {
+        AST_Node *ast_node = ast_node_new(Number_Literal, token->value);
+        (*current_p)++;
+        return ast_node;
+    }
+
+    if (token->type == STRING)
+    {
+        AST_Node *ast_node = ast_node_new(String_Literal, token->value);
+        (*current_p)++;
+        return ast_node;
+    }
+
+    if (token->type == CHARACTER)
+    {
+        AST_Node *ast_node = ast_node_new(Character_Literal, token->value);
         (*current_p)++;
         return ast_node;
     }
@@ -571,7 +600,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
         // '(' and ')' function call
         if (token_value == LEFT_PAREN)
         {
-            printf("function call\n");
             // point to the function's name.
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
@@ -620,41 +648,38 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             (*current_p)++;
             token = tokens_nth(tokens, *current_p);
 
-            while ((token->type != PUNCTUATION) ||
-                   (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
-            )
+            // check list or pair '.', dont move current_p, use a tmp value instead.
+            bool is_pair = false;
+            int cursor = *current_p + 1;
+            Token *tmp = tokens_nth(tokens, cursor);
+            char tmp_value = tmp->value[0];
+            if (tmp_value == DOT) is_pair = true;
+            
+            if (is_pair)
             {
-
-
+                
+                AST_Node *ast_node = ast_node_new(Pair_Literal);
             }
+            else
+            {
+                while ((token->type != PUNCTUATION) ||
+                   (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
+                )
+                {
+
+
+                }
+            }
+            
 
         }
 
-        // handle ...
+        // handle PUNCTUATION ...
 
     }
 
-    if (token->type == NUMBER)
-    {
-        AST_Node *ast_node = ast_node_new(Number_Literal, token->value);
-        (*current_p)++;
-        return ast_node;
-    }
-
-    if (token->type == STRING)
-    {
-        AST_Node *ast_node = ast_node_new(String_Literal, token->value);
-        (*current_p)++;
-        return ast_node;
-    }
-
-    if (token->type == CHARACTER)
-    {
-        AST_Node *ast_node = ast_node_new(Character_Literal, token->value);
-        (*current_p)++;
-        return ast_node;
-    }
-
+    // handle ...
+    
     // when no matches any Token_Type.
     fprintf(stderr, "walk(): can not handle token -> type: %d, value: %s\n", token->type, token->value);
     exit(EXIT_FAILURE);
