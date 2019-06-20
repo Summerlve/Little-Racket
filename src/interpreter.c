@@ -657,7 +657,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             if (is_pair)
             {
                 ast_node = ast_node_new(Pair_Literal);
-                
+
                 AST_Node *car = walk(tokens, current_p);
                 (*current_p)++; // skip '.'
                 AST_Node *cdr = walk(tokens, current_p);
@@ -727,6 +727,12 @@ AST parser(Tokens *tokens)
 int ast_free(AST ast)
 {
     return 0;
+}
+
+// traverser help function.
+static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor)
+{
+
 }
 
 // left-sub-tree-first dfs algo. 
