@@ -78,17 +78,17 @@ typedef struct _z_ast_node {
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node.
+AST parser(Tokens *tokens); // retrun AST.
+int ast_free(AST ast);
 typedef void (*VisitorFunction)(AST_Node *node, AST_Node *parent, void *aux_data);
-typedef struct _z_ast_node_type_handler {
+typedef struct _z_ast_node_handler {
     AST_Node_Type type;
     VisitorFunction enter;
     VisitorFunction exit;
-} AST_Node_Type_Handler;
-typedef struct _z_visitor {
-    Vector *handlers; // AST_Node_Type_Handler *[]
-} Visitor;
-AST parser(Tokens *tokens); // retrun AST.
-int ast_free(AST ast);
+} AST_Node_Handler;
+typedef Vector *Visitor; // AST_Node_Handler *[]
+Visitor visitor_new();
+int visitor_free(Visitor visitor);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 // calculator parts

@@ -442,6 +442,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 }
 
 // parser parts
+
 // ast_node_new(Program)
 // ast_node_new(Call_Expression, name)
 // ast_node_new(Binding, name, value)
@@ -729,10 +730,47 @@ int ast_free(AST ast)
     return 0;
 }
 
-// traverser help function.
-static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor)
+Visitor visitor_new()
 {
+    return VectorNew(sizeof(AST_Node_Handler *));
+}
 
+static AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
+{
+    AST_Node_Handler *handler = (AST_Node_Handler *)malloc(sizeof(AST_Node_Handler));
+    handler->type = type;
+    handler->enter = enter;
+    handler->exit = exit;
+    return handler;
+}
+
+static int ast_node_handler_free(AST_Node_Handler *handler)
+{
+    free(handler);
+    return 0;
+}
+
+static void visitor_free_helper(void *value_addr, void *aux_data)
+{
+    AST_Node_Handler *handler = *(AST_Node_Handler **)value_addr;
+    ast_node_handler_free(handler);
+}
+
+int visitor_free(Visitor visitor)
+{
+    VectorFree(visitor, visitor_free_helper, NULL);
+    return 0;
+}
+
+VisitorFunction find_visitor_enter_funtion(Visitor *visitor, AST_Node_Type type)
+{
+    return NULL;
+}
+
+// traverser help function.
+static void traverser_node(AST_Node *node, AST_Node *parent, Visitor *visitor)
+{
+    // VisitorFunction enter = visitor.
 }
 
 // left-sub-tree-first dfs algo. 

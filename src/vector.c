@@ -73,4 +73,5 @@ void VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
     }
 
     free(v->elems);
+    free(v);
 }
