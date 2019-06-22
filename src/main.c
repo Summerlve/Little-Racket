@@ -1,5 +1,6 @@
 #include "./load_racket_file.h"
 #include "./interpreter.h"
+#include "./custom_handler.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -31,9 +32,12 @@ int main(int argc, char *argv[])
     // show the tokens.
     tokens_map(tokens, print_tokens, NULL);
 
-    // --- Working on --- parser
+    // parser
     AST ast = parser(tokens);
-    printf("Program's body's size: %d\n", VectorLength(ast->contents.body));
+
+    // traverser
+    Visitor visitor = get_custom_visitor();
+    traverser(ast, visitor, NULL);
 
     // TO-DO calculator 
 
@@ -41,6 +45,7 @@ int main(int argc, char *argv[])
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
+    free(visitor);
     
     return 0;
 }

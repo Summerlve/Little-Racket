@@ -735,7 +735,16 @@ Visitor visitor_new()
     return VectorNew(sizeof(AST_Node_Handler *));
 }
 
-static AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
+/*
+    default visitor here.
+*/ 
+static Visitor get_default_visitor(void)
+{
+    Visitor visitor = visitor_new();
+    return visitor;
+}
+
+AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
 {
     AST_Node_Handler *handler = (AST_Node_Handler *)malloc(sizeof(AST_Node_Handler));
     handler->type = type;
@@ -744,7 +753,7 @@ static AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunctio
     return handler;
 }
 
-static int ast_node_handler_free(AST_Node_Handler *handler)
+int ast_node_handler_free(AST_Node_Handler *handler)
 {
     free(handler);
     return 0;
@@ -762,21 +771,88 @@ int visitor_free(Visitor visitor)
     return 0;
 }
 
-VisitorFunction find_visitor_enter_funtion(Visitor *visitor, AST_Node_Type type)
+int append_ast_node_handler(Visitor visitor, AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
 {
+    AST_Node_Handler *handler = ast_node_handler_new(type, enter, exit);
+    VectorAppend(visitor, &handler);
+    return 0;
+}
+
+AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type)
+{
+    int l = VectorLength(visitor);
+    for (int i = 0; i < l; i++)
+    {
+        AST_Node_Handler *handler = *(AST_Node_Handler **)VectorNth(visitor, i);
+        if (handler->type == type) return handler;
+    }
     return NULL;
 }
 
 // traverser help function.
-static void traverser_node(AST_Node *node, AST_Node *parent, Visitor *visitor)
+static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data)
 {
-    // VisitorFunction enter = visitor.
+    AST_Node_Handler *handler = find_ast_node_handler(visitor, node->type);
+
+    if (handler == NULL)
+    {
+        fprintf(stderr, "traverser_node(): can not find handler for AST_Node_Type: %d\n", node->type);
+        exit(EXIT_FAILURE);
+    }
+
+    // enter
+    if (handler->enter != NULL) handler->enter(node, parent, aux_data);
+
+    // left sub-tree first dfs algorithm.
+    if (node->type == Program)  
+    {
+        Vector *body = node->contents.body;
+        for (int i = 0; i < VectorLength(body); i++)
+        {
+            AST_Node *ast_node = *(AST_Node **)VectorNth(body, i);
+            traverser_node(ast_node, node, visitor, aux_data);
+        }
+    }
+
+    if (node->type == Call_Expression)
+    {
+        Vector *params = node->contents.call_expression.params;
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *ast_node = *(AST_Node **)VectorNth(params, i);
+            traverser_node(ast_node, node, visitor, aux_data);
+        }
+    }
+
+    if (node->type == List_literal)
+    {
+        Vector *value = (Vector *)(node->contents.literal.value);
+        for (int i = 0; i < VectorLength(value); i++)
+        {
+            AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
+            traverser_node(ast_node, node, visitor, aux_data);
+        }
+    }
+
+    if (node->type == Pair_Literal)
+    {
+        Vector *value = (Vector *)(node->contents.literal.value);
+        for (int i = 0; i < VectorLength(value); i++)
+        {
+            AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
+            traverser_node(ast_node, node, visitor, aux_data);
+        }
+    }
+
+    // exit
+    if(handler->exit != NULL) handler->exit(node, parent, aux_data);
 }
 
 // left-sub-tree-first dfs algo. 
 void traverser(AST ast, Visitor visitor, void *aux_data)
 {
-
+    if (visitor == NULL) visitor = get_default_visitor();
+    traverser_node(ast, NULL, visitor, aux_data);
 }
 
 // calculator parts

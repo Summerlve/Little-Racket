@@ -4,5 +4,6 @@ list(APPEND my_source_files
             ./src/main.c
             ./src/load_racket_file.c
             ./src/interpreter.c
-            ./src/vector.c)
+            ./src/vector.c
+            ./src/custom_handler.c)
 add_executable(Little-Racket ${my_source_files})
