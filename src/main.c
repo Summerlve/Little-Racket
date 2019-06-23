@@ -4,16 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void print_raw_code(const char *line, void *aux_data)
-{
-    printf("%s", line);
-}
-
-void print_tokens(const Token *token, void *aux_data)
-{
-    printf("type: %d, value: %s\n", token->type, token->value);
-}
-
 int main(int argc, char *argv[])
 {
     // get the path from command arg.
@@ -45,7 +35,7 @@ int main(int argc, char *argv[])
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
-    free(visitor);
+    visitor_free(visitor);
     
     return 0;
 }

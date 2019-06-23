@@ -452,6 +452,7 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
+    bool matched = false;
 
     // flexible args
     va_list ap;
@@ -459,11 +460,13 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == Program)
     {
+        matched = true;
         ast_node->contents.body = VectorNew(sizeof(AST_Node *));
     }
 
     if (ast_node->type == Call_Expression)
     {
+        matched = true;
         ast_node->contents.call_expression.c_native_function = NULL;
         ast_node->contents.call_expression.params = VectorNew(sizeof(AST_Node *));
         const char *name = va_arg(ap, const char *);
@@ -473,6 +476,7 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == Binding)
     {
+        matched = true;
         const char *name = va_arg(ap, const char *);
         ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.binding.name, name);
@@ -482,18 +486,21 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == List_literal)
     {
+        matched = true;
         ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
         ast_node->contents.literal.c_native_value = NULL;
     }
 
     if (ast_node->type == Pair_Literal)
     {
+        matched = true;
         ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
         ast_node->contents.literal.c_native_value = NULL;
     }
 
     if (ast_node->type == Number_Literal)
     {
+        matched = true;
         const char *value = va_arg(ap, const char *);
         ast_node->contents.literal.value = malloc(strlen(value) + 1);
         strcpy((char *)ast_node->contents.literal.value, value);
@@ -516,6 +523,7 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == String_Literal)
     {
+        matched = true;
         const char *value = va_arg(ap, const char *);
         ast_node->contents.literal.value = malloc(strlen(value) + 1);
         strcpy((char *)ast_node->contents.literal.value, value);
@@ -523,28 +531,116 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == Character_Literal)
     {
+        matched = true;
         const char *character = va_arg(ap, const char *);
         ast_node->contents.literal.value = malloc(sizeof(char));
         memcpy((char *)ast_node->contents.literal.value, character, sizeof(char));
     }
 
     va_end(ap);
+
+    if (!matched)
+    {
+        // when no matches any AST_Node_Type.
+        fprintf(stderr, "ast_node_new(): can not handle AST_Node_Type: %d\n", ast_node->type);
+        exit(EXIT_FAILURE);
+    }
+  
     return ast_node;
 }
 
 static int ast_node_free(AST_Node *ast_node)
 {
+    bool matched = false;
+    
     if (ast_node->type == Program)
     {
-
+        matched = true;
+        Vector *body = (Vector *)(ast_node->contents.body);
+        for (int i = 0; i < VectorLength(body); i++)
+        {
+            AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
+            ast_node_free(sub_node);
+        }
+        VectorFree(body, NULL, NULL);
+        free(ast_node);
     }
 
     if (ast_node->type == Call_Expression)
     {
-
+        matched = true;
+        Vector *params = (Vector *)(ast_node->contents.call_expression.params);
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *sub_node = *(AST_Node **)VectorNth(params, i);
+            ast_node_free(sub_node);
+        }
+        VectorFree(params, NULL, NULL);
+        free(ast_node->contents.call_expression.name);
+        free(ast_node);
     }
 
-    // literal cases.
+    if (ast_node->type == Binding)
+    {
+        matched = true;
+        free(ast_node->contents.binding.name);
+        free(ast_node);
+    }
+
+    if (ast_node->type == List_literal)
+    {
+        matched = true;
+        Vector *elements = (Vector *)(ast_node->contents.literal.value);
+        for (int i = 0; i < VectorLength(elements); i++)
+        {
+            AST_Node *element = *(AST_Node **)VectorNth(elements, i);
+            ast_node_free(element);
+        }
+        VectorFree(elements, NULL, NULL);
+        free(ast_node);
+    }
+
+    if (ast_node->type == Pair_Literal)
+    {
+        matched = true;
+        Vector *elements = (Vector *)(ast_node->contents.literal.value);
+        for (int i = 0; i < VectorLength(elements); i++)
+        {
+            AST_Node *element = *(AST_Node **)VectorNth(elements, i);
+            ast_node_free(element);
+        }
+        VectorFree(elements, NULL, NULL);
+        free(ast_node);
+    }
+
+    if (ast_node->type == Number_Literal)
+    {
+        matched = true;
+        free(ast_node->contents.literal.value);
+        free(ast_node->contents.literal.c_native_value);
+        free(ast_node);
+    }
+
+    if (ast_node->type == String_Literal)
+    {
+        matched = true;
+        free(ast_node->contents.literal.value);
+        free(ast_node);
+    }
+
+    if (ast_node->type == Character_Literal)
+    {
+        matched = true;
+        free(ast_node->contents.literal.value);
+        free(ast_node);
+    }
+
+    if (!matched)
+    {
+        // when no matches any AST_Node_Type.
+        fprintf(stderr, "ast_node_free(): can not handle AST_Node_Type: %d\n", ast_node->type);
+        exit(EXIT_FAILURE);
+    }
 
     return 0;
 }
@@ -727,6 +823,7 @@ AST parser(Tokens *tokens)
 
 int ast_free(AST ast)
 {
+    ast_node_free(ast);
     return 0;
 }
 

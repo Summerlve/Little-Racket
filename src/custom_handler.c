@@ -1,7 +1,17 @@
 #include "./custom_handler.h"
 #include "./interpreter.h"
 
-// handler function can not be static, it's referenced by AST_Node_Handler, so it's must be 'public'
+// handler function can not be static, it's referenced by AST_Node_Handler or use in other file, so it's must be 'public'
+void print_raw_code(const char *line, void *aux_data)
+{
+    printf("%s", line);
+}
+
+void print_tokens(const Token *token, void *aux_data)
+{
+    printf("type: %d, value: %s\n", token->type, token->value);
+}
+
 void program_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     printf("--- Program starts ---\n");
