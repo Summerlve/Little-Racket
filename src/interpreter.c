@@ -168,12 +168,12 @@ static void tokenizer_helper(const char *line, void *aux_data)
         }
 
         // handle language and character
-        // supports only: #lang racket
+        // language: supports only: #lang racket
         if (line[i] == POUND)
         {
             cursor = i + 1;
 
-            // character '#\a'
+            // handle character such as: '#\a'
             if (line[cursor] == BACK_SLASH)
             {
                 // check if it is notsingle char #\aa ...
@@ -234,7 +234,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             return; // go to the next line.
         }
 
-        // handle paren --- maybe some problem? ---
+        // handle paren
         if (line[i] == LEFT_PAREN)
         {
             Token *token = token_new(PUNCTUATION, "("); 
@@ -344,8 +344,6 @@ static void tokenizer_helper(const char *line, void *aux_data)
             i = cursor;
             continue;
         }
-
-        // handle character
 
         // handle apostrophe
         if (line[i] == APOSTROPHE)
@@ -694,7 +692,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     {
         char token_value = (token->value)[0];
 
-        // '(' and ')' function call
+        // '(' and ')' function call or each kind of form such as let let* if cond etc.
         if (token_value == LEFT_PAREN)
         {
             // point to the function's name.

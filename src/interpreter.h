@@ -50,7 +50,7 @@ typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_literal, Pair_Literal,
-    Call_Expression, Binding, Program
+    Call_Expression, Local_Binding_Form, Conditional_Form, Binding, Program
 } AST_Node_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type;
@@ -65,11 +65,38 @@ typedef struct _z_ast_node {
             // convert normally literal value to c_native_value, such as double: 123.999, when list or pair, set this field to null.
             void *c_native_value; 
         } literal;
+        struct { // local binding form: define, let, let*, letrec.
+            enum {
+                DEFINE, LET, LET_STAR, LETREC
+            } type;
+            union {
+                // define normally variable
+                // define procedure
+                // define procedure shortcut
+                struct { // let
+                    Vector *bindings; // AST_Node *[]
+                    Vector *body_exprs; // AST_Node *[]
+                } let;
+                // let*
+                // letrec
+            } contents;
+        } local_binding_form;
+        struct { // conditionals form: if, cond, and, or.
+            enum {
+                IF, COND, AND, OR
+            } type;
+            union {
+                // if
+                // cond
+                // and
+                // or
+            } contents;
+        } conditional_form;
         struct {
             char *name; // binding's name.
-            struct _z_ast_node *value; // binding's value, pointes to a AST_Node, in parser set to null.
+            struct _z_ast_node *value; // binding's value, pointes to a AST_Node.
         } binding;
-        struct {
+        struct { // call_expression: (+ 1 2) etc, excludes loacl bingding form or other special form, just simple function call.
             char *name;
             Vector *params; // params is AST_Node *[]
             Function c_native_function; // function ponits to any type of function.
