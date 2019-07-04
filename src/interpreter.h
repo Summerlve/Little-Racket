@@ -52,6 +52,12 @@ typedef enum _z_ast_node_type {
     List_literal, Pair_Literal,
     Call_Expression, Local_Binding_Form, Conditional_Form, Binding, Program
 } AST_Node_Type;
+typedef enum _z_local_binding_form_type {
+    DEFINE, LET, LET_STAR, LETREC
+} Local_Binding_Form_Type;
+typedef enum _z_conditional_form_type {
+    IF, COND, AND, OR
+} Conditional_Form_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type;
     union {
@@ -66,9 +72,7 @@ typedef struct _z_ast_node {
             void *c_native_value; 
         } literal;
         struct { // local binding form: define, let, let*, letrec.
-            enum {
-                DEFINE, LET, LET_STAR, LETREC
-            } type;
+            Local_Binding_Form_Type type;
             union {
                 // define normally variable
                 // define procedure
@@ -82,9 +86,7 @@ typedef struct _z_ast_node {
             } contents;
         } local_binding_form;
         struct { // conditionals form: if, cond, and, or.
-            enum {
-                IF, COND, AND, OR
-            } type;
+            Conditional_Form_Type type;
             union {
                 // if
                 // cond

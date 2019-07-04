@@ -443,7 +443,8 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 
 // ast_node_new(Program)
 // ast_node_new(Call_Expression, name)
-// ast_node_new(Binding, name, value)
+// ast_node_new(Local_Binding_Form, LET)
+// ast_node_new(Binding, name, AST_Node *value)
 // ast_node_new(List or Pair)
 // ast_node_new(xxx_Literal, value)
 static AST_Node *ast_node_new(AST_Node_Type type, ...)
@@ -470,6 +471,14 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.call_expression.name, name);
+    }
+
+    if (ast_node->type == Local_Binding_Form)
+    {
+        matched = true;
+        ast_node->contents.local_binding_form.type = va_arg(ap, Local_Binding_Form_Type);
+        ast_node->contents.local_binding_form.contents.let.bindings = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.local_binding_form.contents.let.body_exprs = VectorNew(sizeof(AST_Node *));
     }
 
     if (ast_node->type == Binding)
@@ -578,10 +587,31 @@ static int ast_node_free(AST_Node *ast_node)
         free(ast_node);
     }
 
+    if (ast_node->type == Local_Binding_Form)
+    {
+        matched = true;
+        Vector *bindings = (Vector *)(ast_node->contents.local_binding_form.contents.let.bindings);
+        Vector *body_exprs = (Vector *)(ast_node->contents.local_binding_form.contents.let.body_exprs);
+        for (int i = 0; i < VectorLength(bindings); i++)
+        {
+            AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+            ast_node_free(binding);
+        }
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+            ast_node_free(body_expr);
+        }
+        VectorFree(bindings, NULL, NULL);
+        VectorFree(body_exprs, NULL, NULL);
+        free(ast_node);
+    }
+
     if (ast_node->type == Binding)
     {
         matched = true;
         free(ast_node->contents.binding.name);
+        ast_node_free(ast_node->contents.binding.value);
         free(ast_node);
     }
 
@@ -692,17 +722,92 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     {
         char token_value = (token->value)[0];
 
-        // '(' and ')' function call or each kind of form such as let let* if cond etc.
+        // '(' and ')' normally function call or each kind of form such as let let* if cond etc.
         if (token_value == LEFT_PAREN)
         {
             // point to the function's name.
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
 
+            // check 'let' expression.
+            if (strcmp(token->value, "let") == 0)
+            {
+                AST_Node *ast_node = ast_node_new(Local_Binding_Form, LET);
+
+                // point to the bindings form starts '('
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
+                if ((token->type != PUNCTUATION) ||
+                    (token->type == PUNCTUATION && token->value[0] != LEFT_PAREN))
+                {
+                    fprintf(stderr, "walk(): let expression here, check the syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                // move to first binding. '['
+                (*current_p)++; 
+                token = tokens_nth(tokens, *current_p);
+
+                // collect bindings
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    if ((token->type != PUNCTUATION) ||
+                         (token->type == PUNCTUATION && token->value[0] != LEFT_SQUARE_BRACKET))
+                    {
+                        fprintf(stderr, "walk(): let expression here, check the syntax\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    // move to binding's name
+                    (*current_p)++; 
+
+                    AST_Node *binding = walk(tokens, current_p); 
+                    VectorAppend(ast_node->contents.local_binding_form.contents.let.bindings, &binding);
+                     
+                    AST_Node *value = walk(tokens, current_p);
+                    binding->contents.binding.value = value;
+
+                    // check ']'
+                    token = tokens_nth(tokens, *current_p);
+                    if ((token->type != PUNCTUATION) ||
+                        (token->type == PUNCTUATION && token->value[0] != RIGHT_SQUARE_BRACKET))
+                    {
+                        fprintf(stderr, "walk(): let expression here, check the syntax\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    // move to next '[' or ')' that completeing the binding form.
+                    (*current_p)++;
+                    token = tokens_nth(tokens, *current_p);
+                }
+
+                /*
+                    collect body_exprs
+                */
+                // move to next token.
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
+                
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    AST_Node *body_expr = walk(tokens, current_p);
+                    VectorAppend(ast_node->contents.local_binding_form.contents.let.body_exprs, &body_expr);
+                    token = tokens_nth(tokens, *current_p);
+                }
+
+                (*current_p)++; // skip ')' of let expression
+                return ast_node;
+            }
+
+            /*
+                normally function call below here.
+            */
+            // check identifier, it's must be a normally function name.
             if (token->type != IDENTIFIER) 
             {
-                // check identifier
-                fprintf(stderr, "Function call here, the first element of form must be a identifier\n");
+                fprintf(stderr, "walk(): Function call here, the first element of form must be a identifier\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -916,6 +1021,14 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(params, i);
             traverser_node(ast_node, node, visitor, aux_data);
+        }
+    }
+
+    if (node->type == Local_Binding_Form)
+    {
+        if (node->contents.local_binding_form.type == LET)
+        {
+            
         }
     }
 

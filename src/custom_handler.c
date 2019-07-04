@@ -96,6 +96,11 @@ void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     printf(" %s ", (char *)(node->contents.binding.name));
 }
 
+void let_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    
+}
+
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
