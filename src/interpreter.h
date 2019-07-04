@@ -94,7 +94,7 @@ typedef struct _z_ast_node {
                 // or
             } contents;
         } conditional_form;
-        struct {
+        struct { // case: let ... [a 1] 'value' field will have a value, case: a (single variable identifier) 'value' field set to null.
             char *name; // binding's name.
             struct _z_ast_node *value; // binding's value, pointes to a AST_Node.
         } binding;
@@ -122,6 +122,7 @@ AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter
 int ast_node_handler_free(AST_Node_Handler *handler);
 int append_ast_node_handler(Visitor visitor, AST_Node_Type type, VisitorFunction enter, VisitorFunction exit);
 AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type);
+Visitor get_defult_visitor(void);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 // calculator parts

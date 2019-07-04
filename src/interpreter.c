@@ -611,7 +611,8 @@ static int ast_node_free(AST_Node *ast_node)
     {
         matched = true;
         free(ast_node->contents.binding.name);
-        ast_node_free(ast_node->contents.binding.value);
+        AST_Node *value = ast_node->contents.binding.value;
+        if (value != NULL) ast_node_free(value);
         free(ast_node);
     }
 
@@ -729,7 +730,8 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
 
-            // check 'let' expression.
+            // handle Local_Binding_Form
+            // handle 'let'
             if (strcmp(token->value, "let") == 0)
             {
                 AST_Node *ast_node = ast_node_new(Local_Binding_Form, LET);
@@ -801,9 +803,12 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 return ast_node;
             }
 
-            /*
-                normally function call below here.
-            */
+            // handle let*
+
+            // handle letrec
+
+            
+            // handle normally function call
             // check identifier, it's must be a normally function name.
             if (token->type != IDENTIFIER) 
             {
@@ -1028,7 +1033,18 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
     {
         if (node->contents.local_binding_form.type == LET)
         {
-            
+            Vector *bindings = node->contents.local_binding_form.contents.let.bindings;
+            Vector *body_exprs = node->contents.local_binding_form.contents.let.body_exprs;
+            for (int i = 0; i < VectorLength(bindings); i++)            
+            {
+                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+                traverser_node(binding, node, visitor, aux_data);
+            }
+            for (int i = 0; i < VectorLength(body_exprs); i++)            
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                traverser_node(body_expr, node, visitor, aux_data);
+            }
         }
     }
 
@@ -1052,6 +1068,15 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         }
     }
 
+    if (node->type == Binding)
+    {
+        AST_Node *value = node->contents.binding.value;
+        if (value != NULL)
+        {
+            traverser_node(value, node, visitor, aux_data);
+        }
+    }
+
     // exit
     if(handler->exit != NULL) handler->exit(node, parent, aux_data);
 }
@@ -1061,6 +1086,14 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
 {
     if (visitor == NULL) visitor = get_default_visitor();
     traverser_node(ast, NULL, visitor, aux_data);
+}
+
+// defult AST_Node handler for calculator parts
+
+Visitor get_defult_visitor(void)
+{
+    Visitor visitor = visitor_new();
+    return visitor;
 }
 
 // calculator parts
