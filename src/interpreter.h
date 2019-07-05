@@ -75,14 +75,13 @@ typedef struct _z_ast_node {
             Local_Binding_Form_Type type;
             union {
                 // define normally variable
-                // define procedure
-                // define procedure shortcut
-                struct { // let
-                    Vector *bindings; // AST_Node *[]
+                struct { // let let* letrec
+                    Vector *bindings; // AST_Node *(type: Binding)[]
                     Vector *body_exprs; // AST_Node *[]
-                } let;
-                // let*
-                // letrec
+                } lets;
+                struct {
+                    
+                } define;
             } contents;
         } local_binding_form;
         struct { // conditionals form: if, cond, and, or.

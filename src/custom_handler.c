@@ -104,7 +104,7 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     {
         if (parent->contents.local_binding_form.type == LET)
         {
-            Vector *bindings = parent->contents.local_binding_form.contents.let.bindings;
+            Vector *bindings = parent->contents.local_binding_form.contents.lets.bindings;
             AST_Node *first = *(AST_Node **)VectorNth(bindings, 0);
             if (node == first) 
             {
@@ -129,7 +129,7 @@ static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)
         if (parent->contents.local_binding_form.type == LET)
         {
             printf("] ");
-            Vector *bindings = parent->contents.local_binding_form.contents.let.bindings;
+            Vector *bindings = parent->contents.local_binding_form.contents.lets.bindings;
             AST_Node *last = *(AST_Node **)VectorNth(bindings, VectorLength(bindings) - 1);
             if (node == last)
             {
