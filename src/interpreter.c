@@ -444,6 +444,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(Program)
 // ast_node_new(Call_Expression, name)
 // ast_node_new(Local_Binding_Form, LET/LET_STAR/LETREC/DEFINE)
+// ast_node_new(Local_Binding_Form, DEFINE, char *name, AST_Node *value)
 // ast_node_new(Binding, name, AST_Node *value)
 // ast_node_new(List or Pair)
 // ast_node_new(xxx_Literal, value)
@@ -489,7 +490,9 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
 
         if (local_binding_form_type == DEFINE)
         {
-
+            const char *name = va_arg(ap, const char *);
+            AST_Node *value = va_arg(ap, AST_Node *);
+            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, name, value);
         }
     }
 
@@ -497,8 +500,12 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
     {
         matched = true;
         const char *name = va_arg(ap, const char *);
-        ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
-        strcpy(ast_node->contents.binding.name, name);
+        ast_node->contents.binding.name = NULL;
+        if (name != NULL)
+        {
+            ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
+            strcpy(ast_node->contents.binding.name, name);
+        }
         AST_Node *value = va_arg(ap, AST_Node *);
         ast_node->contents.binding.value = value;
     }
@@ -627,14 +634,16 @@ static int ast_node_free(AST_Node *ast_node)
        
         if (Local_binding_form_type == DEFINE) 
         {
-
+            ast_node_free(ast_node->contents.local_binding_form.contents.define.binding);
+            free(ast_node);
         }
     }
 
     if (ast_node->type == Binding)
     {
         matched = true;
-        free(ast_node->contents.binding.name);
+        const char *name = ast_node->contents.binding.name;
+        if (name != NULL) free(name);
         AST_Node *value = ast_node->contents.binding.value;
         if (value != NULL) ast_node_free(value);
         free(ast_node);
@@ -835,7 +844,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             // handle define 
             if (strcmp(token->value, "define") == 0)
             {
-                
+
             }
 
             // handle ... 

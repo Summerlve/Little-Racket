@@ -80,7 +80,7 @@ typedef struct _z_ast_node {
                     Vector *body_exprs; // AST_Node *[]
                 } lets;
                 struct {
-                    
+                    struct _z_ast_node *binding;
                 } define;
             } contents;
         } local_binding_form;
