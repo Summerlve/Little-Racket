@@ -102,7 +102,9 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     // question here is: does it exists AST_Node:Binding with parent isnt AST_Node:Local_Binding_Form ?
     if (parent->type == Local_Binding_Form)
     {
-        if (parent->contents.local_binding_form.type == LET)
+        if (parent->contents.local_binding_form.type == LET ||
+            parent->contents.local_binding_form.type == LET_STAR ||
+            parent->contents.local_binding_form.type == LETREC)
         {
             Vector *bindings = parent->contents.local_binding_form.contents.lets.bindings;
             AST_Node *first = *(AST_Node **)VectorNth(bindings, 0);
@@ -126,7 +128,9 @@ static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (parent->type == Local_Binding_Form)
     {
-        if (parent->contents.local_binding_form.type == LET)
+        if (parent->contents.local_binding_form.type == LET ||
+            parent->contents.local_binding_form.type == LET_STAR ||
+            parent->contents.local_binding_form.type == LETREC)
         {
             printf("] ");
             Vector *bindings = parent->contents.local_binding_form.contents.lets.bindings;
@@ -144,25 +148,43 @@ static void local_binding_form_enter(AST_Node *node, AST_Node *parent, void *aux
     // let
     if (node->contents.local_binding_form.type == LET)
     {
-        printf(" (let ");
+        printf("(let ");
     }
 
     // let*
+    if (node->contents.local_binding_form.type == LET_STAR)
+    {
+        printf("(let* ");
+    }
 
-    // ...
+    // letrec
+    if (node->contents.local_binding_form.type == LETREC)
+    {
+        printf("(letrec ");
+    }
+
+    // define
+    if (node->contents.local_binding_form.type == DEFINE)
+    {
+        printf("(define ");
+    }
 }
 
 static void local_binding_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    // let
-    if (node->contents.local_binding_form.type == LET)
+    // let let* letrec
+    if (node->contents.local_binding_form.type == LET ||
+        node->contents.local_binding_form.type == LET_STAR ||
+        node->contents.local_binding_form.type == LETREC)
     {
-        printf(" )");
+        printf(") ");
     }
 
-    // let*
-
-    // ...
+    // define
+    if (node->contents.local_binding_form.type == DEFINE)
+    {
+        printf(") ");
+    }
 }
 
 Visitor get_custom_visitor(void)

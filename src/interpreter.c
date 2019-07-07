@@ -643,7 +643,7 @@ static int ast_node_free(AST_Node *ast_node)
     {
         matched = true;
         const char *name = ast_node->contents.binding.name;
-        if (name != NULL) free(name);
+        if (name != NULL) free((void *)name);
         AST_Node *value = ast_node->contents.binding.value;
         if (value != NULL) ast_node_free(value);
         free(ast_node);
@@ -764,10 +764,10 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             token = tokens_nth(tokens, *current_p); 
 
             // handle Local_Binding_Form
-            // handle 'let' 'let*' 'letrec'
+            // handle 'let' 'let*' 'letrec' contains '[' and ']'
             if ((strcmp(token->value, "let") == 0) ||
                 (strcmp(token->value, "let*") == 0) ||
-                (strcmp(token->value, "letrect") == 0))
+                (strcmp(token->value, "letrec") == 0))
             {
                 AST_Node *ast_node;
                 if (strcmp(token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, LET);
@@ -792,6 +792,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
                 {
+                    // check '['
                     if ((token->type != PUNCTUATION) ||
                          (token->type == PUNCTUATION && token->value[0] != LEFT_SQUARE_BRACKET))
                     {
@@ -841,10 +842,27 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 return ast_node;
             }
 
-            // handle define 
+            // handle 'define' 
             if (strcmp(token->value, "define") == 0)
             {
+                // move to binding's name.
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
 
+                // check token's type if or not identifier.
+                if (token->type != IDENTIFIER)
+                {
+                    fprintf(stderr, "walk(): plz: (define xxx xxx), check the syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                // move to binding's value
+                (*current_p)++;
+                AST_Node *value = walk(tokens, current_p);
+                AST_Node *ast_node = ast_node_new(Local_Binding_Form, DEFINE, token->value, value);
+
+                (*current_p)++; // skip ')' of let expression
+                return ast_node;
             }
 
             // handle ... 
@@ -934,13 +952,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (*current_p)++; // skip ')'
                 return ast_node;
             }
-        }
-
-        // '[' and ']'  
-        if (token_value == LEFT_SQUARE_BRACKET)
-        {
-            (*current_p)++;
-            return NULL;
         }
 
         // handle PUNCTUATION ...
@@ -1094,7 +1105,8 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
 
         if (local_binding_form_type == DEFINE)
         {
-
+            AST_Node *binding = node->contents.local_binding_form.contents.define.binding;
+            traverser_node(binding, node, visitor, aux_data);
         }
     }
 
