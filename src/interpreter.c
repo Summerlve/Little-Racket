@@ -1028,7 +1028,7 @@ int visitor_free(Visitor visitor)
     return 0;
 }
 
-int append_ast_node_handler(Visitor visitor, AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
+int ast_node_handler_append(Visitor visitor, AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
 {
     AST_Node_Handler *handler = ast_node_handler_new(type, enter, exit);
     VectorAppend(visitor, &handler);
@@ -1151,7 +1151,6 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
 }
 
 // defult AST_Node handler for calculator parts
-
 Visitor get_defult_visitor(void)
 {
     Visitor visitor = visitor_new();
@@ -1159,3 +1158,59 @@ Visitor get_defult_visitor(void)
 }
 
 // calculator parts
+static Scope *scope_new(AST_Node *parent)
+{
+    Scope *scope = (Scope *)malloc(sizeof(Scope));
+    scope->parent = parent;
+    scope->binding_sequence = VectorNew(sizeof(AST_Node *));
+    return scope;
+}
+
+static int scope_free(Scope *scope)
+{
+    VectorFree(scope->binding_sequence, NULL, NULL);
+    free(scope);
+    return 0;
+}
+
+static int scope_append(Scope *scope, AST_Node *binding)
+{
+    VectorAppend(scope->binding_sequence, &binding);
+    return 0;
+}
+
+static Scope_Chain scope_chain_new()
+{
+    Scope_Chain scope_chain = VectorNew(sizeof(Scope *));
+    return scope_chain;
+}
+
+static int scope_chain_free(Scope_Chain scope_chain)
+{
+    VectorFree(scope_chain, scope_free, NULL);
+    return 0;
+}
+
+static int scope_chain_append(Scope_Chain scope_chain, Scope *scope)
+{
+    VectorAppend(scope_chain, &scope);
+    return 0;
+}
+
+Scope_Chain *generate_scope_chain(AST ast)
+{
+
+}
+
+Result eval(AST_Node *ast_node, AST_Node *parent, Scope_Chain scope_chain)
+{
+    
+}
+
+Result calculator(AST ast)
+{
+    // generate scope_chain
+    // traverser_node and cal out result
+    Result result = ast_node_new(0);
+    return result;
+}

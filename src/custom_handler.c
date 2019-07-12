@@ -190,14 +190,14 @@ static void local_binding_form_exit(AST_Node *node, AST_Node *parent, void *aux_
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
-    append_ast_node_handler(visitor, Program, program_enter, program_exit);
-    append_ast_node_handler(visitor, Call_Expression, call_expression_enter, call_expression_exit);
-    append_ast_node_handler(visitor, List_literal, list_enter, list_exit);
-    append_ast_node_handler(visitor, Pair_Literal, pair_enter, pair_exit);
-    append_ast_node_handler(visitor, Number_Literal, number_enter, NULL);
-    append_ast_node_handler(visitor, Character_Literal, character_enter, NULL);
-    append_ast_node_handler(visitor, String_Literal, string_enter, NULL);
-    append_ast_node_handler(visitor, Binding, binding_enter, binding_exit);
-    append_ast_node_handler(visitor, Local_Binding_Form, local_binding_form_enter, local_binding_form_exit);
+    ast_node_handler_append(visitor, Program, program_enter, program_exit);
+    ast_node_handler_append(visitor, Call_Expression, call_expression_enter, call_expression_exit);
+    ast_node_handler_append(visitor, List_literal, list_enter, list_exit);
+    ast_node_handler_append(visitor, Pair_Literal, pair_enter, pair_exit);
+    ast_node_handler_append(visitor, Number_Literal, number_enter, NULL);
+    ast_node_handler_append(visitor, Character_Literal, character_enter, NULL);
+    ast_node_handler_append(visitor, String_Literal, string_enter, NULL);
+    ast_node_handler_append(visitor, Binding, binding_enter, binding_exit);
+    ast_node_handler_append(visitor, Local_Binding_Form, local_binding_form_enter, local_binding_form_exit);
     return visitor;
 }
