@@ -50,7 +50,8 @@ typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_literal, Pair_Literal,
-    Call_Expression, Local_Binding_Form, Conditional_Form, Binding, Program
+    Call_Expression, Local_Binding_Form, Conditional_Form,
+    Binding, Procedure, Program
 } AST_Node_Type;
 typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC
@@ -74,7 +75,6 @@ typedef struct _z_ast_node {
         struct { // local binding form: define, let, let*, letrec.
             Local_Binding_Form_Type type;
             union {
-                // define normally variable
                 struct { // let let* letrec
                     Vector *bindings; // AST_Node *(type: Binding)[]
                     Vector *body_exprs; // AST_Node *[]
@@ -97,15 +97,23 @@ typedef struct _z_ast_node {
             char *name; // binding's name.
             struct _z_ast_node *value; // binding's value, pointes to a AST_Node.
         } binding;
-        struct { // call_expression: (+ 1 2) etc, excludes loacl bingding form or other special form, just simple function call.
-            char *name;
+        struct { // call_expression: (+ 1 2) etc, excludes loacl bingding form or other special form such as let define if etc, just simple function call.
+            char *name; // search procedure by name.
             Vector *params; // params is AST_Node *[]
-            Function c_native_function; // function ponits to any type of function.
         } call_expression; // call expression
+        struct  {
+            char *name; // copy from initial binding's name.
+            int required_params_count; // only impl required-args right now.
+            Vector *required_params; // AST_Node *[] type: binding, set binding.value to null.
+            Vector *body_exprs; // AST_Node *[]
+            Function c_native_function;
+        } procedure;
         Vector *body; // program's body is AST_Node *[]
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
+AST_Node *ast_node_new(AST_Node_Type type, ...);
+int ast_node_free(AST_Node *ast_node);
 AST parser(Tokens *tokens); // retrun AST.
 int ast_free(AST ast);
 typedef Vector *Visitor; // AST_Node_Handler *[]
@@ -125,11 +133,6 @@ Visitor get_defult_visitor(void);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 
 
 // calculator parts
-typedef struct {
-    AST_Node *parent;
-    Vector *binding_sequence; // AST_Node *[] (type:Binding)
-} Scope;
-typedef Vector *Scope_Chain;
 typedef AST_Node *Result; // the result of whole racket code.
 
 #endif

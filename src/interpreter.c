@@ -1,6 +1,7 @@
 #include "./interpreter.h"
 #include "./load_racket_file.h"
 #include "./vector.h"
+#include "./racket_built_in.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -27,7 +28,7 @@
 
 // tokenizer parts.
 // number type
-static Number_Type *number_type_new()
+static Number_Type *number_type_new(void)
 {
     Number_Type *number = (Number_Type *)malloc(sizeof(Number_Type));
     number->allocated_length = 4;
@@ -54,6 +55,12 @@ static int number_type_free(Number_Type *number)
 static int number_type_append(Number_Type *number, const char ch)
 {
     // the ch must be a digit or '.'.
+    if (isdigit(ch) == 0 && ch != DOT)
+    {
+        fprintf(stderr, "number_type_append(): the ch must be a digit number or '.'.\n");
+        exit(EXIT_FAILURE);
+    }
+
     // expand the Number_Type::contents.
     if (number->logical_length == number->allocated_length - 1)
     {
@@ -448,7 +455,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(Binding, name, AST_Node *value)
 // ast_node_new(List or Pair)
 // ast_node_new(xxx_Literal, value)
-static AST_Node *ast_node_new(AST_Node_Type type, ...)
+AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
@@ -467,7 +474,6 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
-        ast_node->contents.call_expression.c_native_function = NULL;
         ast_node->contents.call_expression.params = VectorNew(sizeof(AST_Node *));
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
@@ -533,8 +539,8 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
         // check '.' to decide use int or double.
         if (strchr(ast_node->contents.literal.value, '.') == NULL)
         {
-            // convert string to int, cast long to int returned from strtol.
-            int c_native_value = (int)strtol(ast_node->contents.literal.value, (char **)NULL, 10);
+            // convert string to int.
+            int c_native_value = atoi(ast_node->contents.literal.value);
             ast_node->contents.literal.c_native_value = malloc(sizeof(int));
             memcpy(ast_node->contents.literal.c_native_value, &c_native_value, sizeof(int));
         }
@@ -575,7 +581,7 @@ static AST_Node *ast_node_new(AST_Node_Type type, ...)
     return ast_node;
 }
 
-static int ast_node_free(AST_Node *ast_node)
+int ast_node_free(AST_Node *ast_node)
 {
     bool matched = false;
     
@@ -1158,55 +1164,6 @@ Visitor get_defult_visitor(void)
 }
 
 // calculator parts
-static Scope *scope_new(AST_Node *parent)
-{
-    Scope *scope = (Scope *)malloc(sizeof(Scope));
-    scope->parent = parent;
-    scope->binding_sequence = VectorNew(sizeof(AST_Node *));
-    return scope;
-}
-
-static int scope_free(Scope *scope)
-{
-    VectorFree(scope->binding_sequence, NULL, NULL);
-    free(scope);
-    return 0;
-}
-
-static int scope_append(Scope *scope, AST_Node *binding)
-{
-    VectorAppend(scope->binding_sequence, &binding);
-    return 0;
-}
-
-static Scope_Chain scope_chain_new()
-{
-    Scope_Chain scope_chain = VectorNew(sizeof(Scope *));
-    return scope_chain;
-}
-
-static int scope_chain_free(Scope_Chain scope_chain)
-{
-    VectorFree(scope_chain, scope_free, NULL);
-    return 0;
-}
-
-static int scope_chain_append(Scope_Chain scope_chain, Scope *scope)
-{
-    VectorAppend(scope_chain, &scope);
-    return 0;
-}
-
-Scope_Chain *generate_scope_chain(AST ast)
-{
-
-}
-
-Result eval(AST_Node *ast_node, AST_Node *parent, Scope_Chain scope_chain)
-{
-    
-}
-
 Result calculator(AST ast)
 {
     // generate scope_chain
