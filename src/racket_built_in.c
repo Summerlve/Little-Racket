@@ -29,7 +29,7 @@ static int int_digit_count(int num)
     return digit_count;
 }
 
-AST_Node *racket_native_plus(int n, ...)
+AST_Node *racket_native_plus(int n, Vector *operands)
 {
     struct {
         bool is_int;
@@ -42,12 +42,9 @@ AST_Node *racket_native_plus(int n, ...)
         .value.iv = 0
     };
     
-    va_list ap;
-    va_start(ap, n);
-    
     for (int i = 0; i < n; i++)
     {
-        AST_Node *operand = va_arg(ap, AST_Node *);
+        AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
         if (strchr(operand->contents.literal.value, '.') == NULL)
         {
             int c_native_value = *(int *)(operand->contents.literal.c_native_value);
@@ -86,6 +83,17 @@ AST_Node *racket_native_plus(int n, ...)
     
     AST_Node *ast_node = ast_node_new(Number_Literal, value);
     free(value);
-    va_end(ap);
     return ast_node;
+}
+
+Vector *generate_built_in_bindings(void)
+{
+    Vector *built_in_context = VectorNew(sizeof(AST_Node *));
+    AST_Node *tmp = ast_node_new(Procedure); 
+    return built_in_context;
+}
+
+int free_built_in_bindings(Vector *built_in_bindings)
+{
+    return 0;
 }

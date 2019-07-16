@@ -2,6 +2,7 @@
 #include "./load_racket_file.h"
 #include "./vector.h"
 #include "./racket_built_in.h"
+#include "./racket_built_in.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -455,6 +456,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(Binding, name, AST_Node *value)
 // ast_node_new(List or Pair)
 // ast_node_new(xxx_Literal, value)
+// ast_node_new(Procedure, name, required_params_count, params, body_exprs, c_native_function)
 AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -468,7 +470,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Program)
     {
         matched = true;
-        ast_node->contents.body = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.program.body = VectorNew(sizeof(AST_Node *));
     }
 
     if (ast_node->type == Call_Expression)
@@ -478,6 +480,18 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.call_expression.name, name);
+    }
+
+    if (ast_node->type == Procedure)
+    {
+        matched = true;
+        const char *name = va_arg(ap, const char *);
+        ast_node->contents.procedure.name = (char *)malloc(strlen(name) + 1);
+        strcpy(ast_node->contents.procedure.name, name);
+        ast_node->contents.procedure.required_params_count = va_arg(ap, int);
+        ast_node->contents.procedure.params = va_arg(ap, Vector *);
+        ast_node->contents.procedure.body_exprs = va_arg(ap, Vector *);
+        ast_node->contents.procedure.c_native_function = va_arg(ap, Function);
     }
 
     if (ast_node->type == Local_Binding_Form)
@@ -584,11 +598,14 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 int ast_node_free(AST_Node *ast_node)
 {
     bool matched = false;
+
+    // free context itself only.
+    VectorFree(ast_node->context, NULL, NULL);
     
     if (ast_node->type == Program)
     {
         matched = true;
-        Vector *body = (Vector *)(ast_node->contents.body);
+        Vector *body = ast_node->contents.program.body;
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
@@ -601,7 +618,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
-        Vector *params = (Vector *)(ast_node->contents.call_expression.params);
+        Vector *params = ast_node->contents.call_expression.params;
         for (int i = 0; i < VectorLength(params); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(params, i);
@@ -609,6 +626,34 @@ int ast_node_free(AST_Node *ast_node)
         }
         VectorFree(params, NULL, NULL);
         free(ast_node->contents.call_expression.name);
+        free(ast_node);
+    }
+
+    if (ast_node->type == Procedure)
+    {
+        matched = true;
+        char *name = ast_node->contents.procedure.name;
+        if (name != NULL) free(ast_node->contents.procedure.name);
+        Vector *params = ast_node->contents.procedure.params;
+        if (params != NULL)
+        {
+            for (int i = 0; i < VectorLength(params); i++)
+            {
+                AST_Node *param = *(AST_Node **)VectorNth(params, i);
+                ast_node_free(param);
+            }
+            VectorFree(params, NULL, NULL);
+        }
+        Vector *body_exprs = ast_node->contents.procedure.body_exprs;
+        if (body_exprs != NULL)
+        {
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                ast_node_free(body_expr);
+            }
+            VectorFree(body_exprs, NULL, NULL);
+        }
         free(ast_node);
     }
 
@@ -621,8 +666,8 @@ int ast_node_free(AST_Node *ast_node)
             Local_binding_form_type == LET_STAR ||
             Local_binding_form_type == LETREC)
         {
-            Vector *bindings = (Vector *)(ast_node->contents.local_binding_form.contents.lets.bindings);
-            Vector *body_exprs = (Vector *)(ast_node->contents.local_binding_form.contents.lets.body_exprs);
+            Vector *bindings = ast_node->contents.local_binding_form.contents.lets.bindings;
+            Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
             for (int i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
@@ -977,10 +1022,10 @@ AST parser(Tokens *tokens)
     int current = 0;
 
     while (current < tokens_length(tokens))
-    // the value of current was changed in <walk> by current_p.
+    // the value of 'current' was changed in walk() by current_p.
     {
         AST_Node *ast_node = walk(tokens, &current);
-        if (ast_node != NULL) VectorAppend(ast->contents.body, &ast_node);
+        if (ast_node != NULL) VectorAppend(ast->contents.program.body, &ast_node);
         else continue;
     }
     
@@ -996,15 +1041,6 @@ int ast_free(AST ast)
 Visitor visitor_new()
 {
     return VectorNew(sizeof(AST_Node_Handler *));
-}
-
-/*
-    default visitor here.
-*/ 
-static Visitor get_default_visitor(void)
-{
-    Visitor visitor = visitor_new();
-    return visitor;
 }
 
 AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
@@ -1069,7 +1105,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
     // left sub-tree first dfs algorithm.
     if (node->type == Program)  
     {
-        Vector *body = node->contents.body;
+        Vector *body = node->contents.program.body;
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(body, i);
@@ -1149,13 +1185,6 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
     if(handler->exit != NULL) handler->exit(node, parent, aux_data);
 }
 
-// left-sub-tree-first dfs algo. 
-void traverser(AST ast, Visitor visitor, void *aux_data)
-{
-    if (visitor == NULL) visitor = get_default_visitor();
-    traverser_node(ast, NULL, visitor, aux_data);
-}
-
 // defult AST_Node handler for calculator parts
 Visitor get_defult_visitor(void)
 {
@@ -1163,11 +1192,61 @@ Visitor get_defult_visitor(void)
     return visitor;
 }
 
+// left-sub-tree-first dfs algo. 
+void traverser(AST ast, Visitor visitor, void *aux_data)
+{
+    if (visitor == NULL) visitor = get_defult_visitor();
+    traverser_node(ast, NULL, visitor, aux_data);
+}
+
+static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    node->parent = parent;
+    node->context = VectorNew(sizeof(AST_Node *));
+
+    if (node->type == Program)
+    {
+        // add built-in binding to Program
+        node->contents.program.built_in_bindings = generate_built_in_bindings();
+                
+        Vector *body = node->contents.program.body;
+        for (int i = 0; i < VectorLength(body); i++)
+        {
+            AST_Node *sub_node = *(AST_Node **)(VectorNth(body, i));
+            generate_context(sub_node, node, aux_data);
+        }
+    }
+
+    if (node->type == Local_Binding_Form)
+    {
+        if (node->contents.local_binding_form.type == DEFINE)
+        {
+
+        }
+
+        if (node->contents.local_binding_form.type == LET)
+        {
+
+        }
+    }
+
+    if (node->type == Call_Expression)
+    {
+
+    }
+}
+
+static AST_Node *eval(AST_Node *ast_node)
+{
+    return NULL;
+}
+
 // calculator parts
 Result calculator(AST ast)
 {
-    // generate scope_chain
-    // traverser_node and cal out result
-    Result result = ast_node_new(0);
+    // generate context 
+    generate_context(ast, NULL, NULL);
+    // eval
+    Result result = eval(ast);
     return result;
 }

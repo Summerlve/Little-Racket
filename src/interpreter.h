@@ -61,6 +61,8 @@ typedef enum _z_conditional_form_type {
 } Conditional_Form_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type;
+    struct _z_ast_node *parent;
+    Vector *context; // AST_Node *[] type: binding.
     union {
         struct {
             /*  
@@ -104,11 +106,14 @@ typedef struct _z_ast_node {
         struct  {
             char *name; // copy from initial binding's name.
             int required_params_count; // only impl required-args right now.
-            Vector *required_params; // AST_Node *[] type: binding, set binding.value to null.
+            Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name.
             Vector *body_exprs; // AST_Node *[]
             Function c_native_function;
         } procedure;
-        Vector *body; // program's body is AST_Node *[]
+        struct {
+            Vector *body; // program's body is AST_Node *[]
+            Vector *built_in_bindings; // store the built-in bindings.
+        } program;
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
