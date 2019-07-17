@@ -88,12 +88,14 @@ AST_Node *racket_native_plus(int n, Vector *operands)
 
 Vector *generate_built_in_bindings(void)
 {
-    Vector *built_in_context = VectorNew(sizeof(AST_Node *));
-    AST_Node *tmp = ast_node_new(Procedure); 
-    return built_in_context;
+    Vector *built_in_bindings = VectorNew(sizeof(AST_Node *));
+    AST_Node *tmp = NULL;
+    tmp = ast_node_new(Procedure, "+", 0, NULL, NULL, (void(*)(void))racket_native_plus); 
+    VectorAppend(built_in_bindings, &tmp);
+    return built_in_bindings;
 }
 
-int free_built_in_bindings(Vector *built_in_bindings)
+int free_built_in_bindings(Vector *built_in_bindings, VectorFreeFunction free_fn)
 {
-    return 0;
+    return VectorFree(built_in_bindings, free_fn, NULL);
 }

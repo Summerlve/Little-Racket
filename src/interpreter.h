@@ -112,7 +112,7 @@ typedef struct _z_ast_node {
         } procedure;
         struct {
             Vector *body; // program's body is AST_Node *[]
-            Vector *built_in_bindings; // store the built-in bindings.
+            Vector *built_in_bindings; // like context in AST_Node, store the built-in bindings.
         } program;
     } contents;
 } AST_Node;
@@ -139,5 +139,7 @@ void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first
 
 // calculator parts
 typedef AST_Node *Result; // the result of whole racket code.
+int result_free(Result result);
+Result calculator(AST ast);
 
 #endif

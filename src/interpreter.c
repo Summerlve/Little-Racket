@@ -2,7 +2,6 @@
 #include "./load_racket_file.h"
 #include "./vector.h"
 #include "./racket_built_in.h"
-#include "./racket_built_in.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -46,6 +45,7 @@ static Number_Type *number_type_new(void)
 
 static int number_type_free(Number_Type *number)
 {
+    if (number == NULL) return 1;
     // free contents
     free(number->contents);
     // free number itself
@@ -103,6 +103,7 @@ static Token *token_new(Token_Type type, const char *value)
 
 static int token_free(Token *token)
 {
+    if (token == NULL) return 1;
     free(token->value);
     free(token);
     return 0;
@@ -129,6 +130,7 @@ static Token *tokens_nth(Tokens *tokens, int index)
 
 int tokens_free(Tokens *tokens)
 {
+    if (tokens == NULL) return 1;
     int length = tokens->logical_length;
     for (int i = 0; i < length; i++)
     {
@@ -461,6 +463,8 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
+    ast_node->parent = NULL;
+    ast_node->context = VectorNew(sizeof(AST_Node *)); 
     bool matched = false;
 
     // flexible args
@@ -471,6 +475,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     {
         matched = true;
         ast_node->contents.program.body = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
     }
 
     if (ast_node->type == Call_Expression)
@@ -519,8 +524,8 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Binding)
     {
         matched = true;
-        const char *name = va_arg(ap, const char *);
         ast_node->contents.binding.name = NULL;
+        const char *name = va_arg(ap, const char *);
         if (name != NULL)
         {
             ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
@@ -597,6 +602,8 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 
 int ast_node_free(AST_Node *ast_node)
 {
+    if (ast_node == NULL) return 1;
+
     bool matched = false;
 
     // free context itself only.
@@ -612,6 +619,13 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(sub_node);
         }
         VectorFree(body, NULL, NULL);
+        Vector *built_in_bindings = ast_node->contents.program.built_in_bindings;
+        for (int i = 0; i < VectorLength(built_in_bindings); i++)
+        {
+            AST_Node *binding = *(AST_Node **)VectorNth(built_in_bindings, i);
+            ast_node_free(binding);
+        }
+        VectorFree(built_in_bindings, NULL, NULL);
         free(ast_node);
     }
 
@@ -1034,8 +1048,7 @@ AST parser(Tokens *tokens)
 
 int ast_free(AST ast)
 {
-    ast_node_free(ast);
-    return 0;
+    return ast_node_free(ast);
 }
 
 Visitor visitor_new()
@@ -1066,6 +1079,7 @@ static void visitor_free_helper(void *value_addr, void *aux_data)
 
 int visitor_free(Visitor visitor)
 {
+    if (visitor == NULL) return 1;
     VectorFree(visitor, visitor_free_helper, NULL);
     return 0;
 }
@@ -1202,13 +1216,16 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
 static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     node->parent = parent;
-    node->context = VectorNew(sizeof(AST_Node *));
 
     if (node->type == Program)
     {
-        // add built-in binding to Program
-        node->contents.program.built_in_bindings = generate_built_in_bindings();
-                
+        Vector *built_in_bindings = generate_built_in_bindings(); // add built-in binding to Program.
+        for (int i = 0; i < VectorLength(built_in_bindings); i++)
+        {
+            AST_Node *binding = *(AST_Node **)VectorNth(built_in_bindings, i);
+            VectorAppend(node->contents.program.built_in_bindings, &binding);
+        }
+        free_built_in_bindings(built_in_bindings, NULL); // free 'built_in_bindings' itself only.
         Vector *body = node->contents.program.body;
         for (int i = 0; i < VectorLength(body); i++)
         {
@@ -1236,7 +1253,7 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 }
 
-static AST_Node *eval(AST_Node *ast_node)
+static Result eval(AST_Node *ast_node)
 {
     return NULL;
 }
@@ -1244,9 +1261,12 @@ static AST_Node *eval(AST_Node *ast_node)
 // calculator parts
 Result calculator(AST ast)
 {
-    // generate context 
-    generate_context(ast, NULL, NULL);
-    // eval
-    Result result = eval(ast);
+    generate_context(ast, NULL, NULL); // generate context 
+    Result result = eval(ast); // eval
     return result;
+}
+
+int result_free(Result result)
+{
+    return ast_node_free(result);
 }

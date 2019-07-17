@@ -14,6 +14,6 @@ int VectorLength(Vector *v);
 void *VectorNth(Vector *v, int index);
 void VectorAppend(Vector *v, const void *value_addr);
 void VectorMap(Vector *v, VectorMapFunction map, void *aux_data);
-void VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data);
+int VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data);
 
 #endif

@@ -30,12 +30,14 @@ int main(int argc, char *argv[])
     traverser(ast, visitor, NULL);
 
     // ----- working on calculator -----
+    Result result = calculator(ast);
 
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
     visitor_free(visitor);
+    result_free(result);
     
     return 0;
 }

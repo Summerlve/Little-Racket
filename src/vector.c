@@ -62,8 +62,10 @@ void VectorMap(Vector *v, VectorMapFunction map, void *aux_data)
     }
 }
 
-void VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
+int VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
 {
+    if (v == NULL) return 1;
+    
     if (free_fn != NULL)
     {
         int length = VectorLength(v);
@@ -76,4 +78,5 @@ void VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
 
     free(v->elems);
     free(v);
+    return 0;
 }
