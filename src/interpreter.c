@@ -464,7 +464,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
     ast_node->parent = NULL;
-    ast_node->context = VectorNew(sizeof(AST_Node *)); 
+    ast_node->context = NULL; 
     bool matched = false;
 
     // flexible args
@@ -474,6 +474,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Program)
     {
         matched = true;
+        ast_node->context = VectorNew(sizeof(AST_Node *));
         ast_node->contents.program.body = VectorNew(sizeof(AST_Node *));
         ast_node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
     }
@@ -607,7 +608,8 @@ int ast_node_free(AST_Node *ast_node)
     bool matched = false;
 
     // free context itself only.
-    VectorFree(ast_node->context, NULL, NULL);
+    Vector *context = ast_node->context;
+    if (context != NULL) VectorFree(ast_node->context, NULL, NULL);
     
     if (ast_node->type == Program)
     {
@@ -1219,6 +1221,7 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Program)
     {
+        // only one Program Node in AST, so the following code will run only once.
         Vector *built_in_bindings = generate_built_in_bindings(); // add built-in binding to Program.
         for (int i = 0; i < VectorLength(built_in_bindings); i++)
         {
@@ -1238,10 +1241,34 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     {
         if (node->contents.local_binding_form.type == DEFINE)
         {
-
+            AST_Node *binding = node->contents.local_binding_form.contents.define.binding;
+            AST_Node *contextable = NULL;
+            if (node->context == NULL)
+            {
+                contextable = node->parent;
+                while (contextable->context == NULL) 
+                {
+                    contextable = contextable->parent;
+                }
+            }
+            else
+            {
+                contextable = node;
+            }
+            VectorAppend(contextable->context, &binding);
         }
 
         if (node->contents.local_binding_form.type == LET)
+        {
+
+        }
+
+        if (node->contents.local_binding_form.type == LET_STAR)
+        {
+
+        }
+
+        if (node->contents.local_binding_form.type == LETREC)
         {
 
         }
@@ -1250,6 +1277,13 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     if (node->type == Call_Expression)
     {
 
+    }
+
+    if (node->type == Number_Literal ||
+        node->type == String_Literal ||
+        node->type == Character_Literal)
+    {
+        return; // do nothing.
     }
 }
 

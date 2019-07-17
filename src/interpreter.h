@@ -62,7 +62,7 @@ typedef enum _z_conditional_form_type {
 typedef struct _z_ast_node {
     AST_Node_Type type;
     struct _z_ast_node *parent;
-    Vector *context; // AST_Node *[] type: binding.
+    Vector *context; // AST_Node *[] type: binding, if contextable AST_Node, it will have this, if not contextable, set this to null.
     union {
         struct {
             /*  
