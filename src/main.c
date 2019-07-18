@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     Visitor visitor = get_custom_visitor();
     traverser(ast, visitor, NULL);
 
-    // ----- working on calculator -----
+    // calculator
     Result result = calculator(ast);
 
     // release memory

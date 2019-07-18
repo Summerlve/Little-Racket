@@ -536,7 +536,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
         ast_node->contents.binding.value = value;
     }
 
-    if (ast_node->type == List_literal)
+    if (ast_node->type == List_Literal)
     {
         matched = true;
         ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
@@ -716,7 +716,7 @@ int ast_node_free(AST_Node *ast_node)
         free(ast_node);
     }
 
-    if (ast_node->type == List_literal)
+    if (ast_node->type == List_Literal)
     {
         matched = true;
         Vector *elements = (Vector *)(ast_node->contents.literal.value);
@@ -1005,7 +1005,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
             else
             {
-                ast_node = ast_node_new(List_literal);
+                ast_node = ast_node_new(List_Literal);
 
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
@@ -1168,7 +1168,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         }
     }
 
-    if (node->type == List_literal)
+    if (node->type == List_Literal)
     {
         Vector *value = (Vector *)(node->contents.literal.value);
         for (int i = 0; i < VectorLength(value); i++)
@@ -1215,6 +1215,25 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
     traverser_node(ast, NULL, visitor, aux_data);
 }
 
+// finally, the contextable will not be null, the top Program node always have context.
+static AST_Node *find_contextable_node(AST_Node *current_node)
+{
+    AST_Node *contextable = NULL;
+    if (current_node->context == NULL)
+    {
+        contextable = current_node->parent;
+        while (contextable->context == NULL) 
+        {
+            contextable = contextable->parent;
+        }
+    }
+    else
+    {
+        contextable = current_node;
+    }
+    return contextable;
+}
+
 static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     node->parent = parent;
@@ -1242,48 +1261,161 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         if (node->contents.local_binding_form.type == DEFINE)
         {
             AST_Node *binding = node->contents.local_binding_form.contents.define.binding;
-            AST_Node *contextable = NULL;
-            if (node->context == NULL)
-            {
-                contextable = node->parent;
-                while (contextable->context == NULL) 
-                {
-                    contextable = contextable->parent;
-                }
-            }
-            else
-            {
-                contextable = node;
-            }
+            AST_Node *contextable = find_contextable_node(node);
             VectorAppend(contextable->context, &binding);
+            generate_context(binding, node, aux_data);
         }
 
         if (node->contents.local_binding_form.type == LET)
         {
-
+            Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
+            Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
+            // append bindings to every expr in body_exprs, even a Number_Literal ast node.
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
+                if (body_expr->context == NULL)
+                {
+                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                }
+                for(int j = 0; j < VectorLength(bindings); j++)
+                {
+                    AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
+                    VectorAppend(body_expr->context, &binding);
+                }
+            }
+            for (int i = 0; i < VectorLength(bindings); i++)
+            {
+                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+                generate_context(binding, node, aux_data);
+            }
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                generate_context(body_expr, node, aux_data);
+            }
         }
 
         if (node->contents.local_binding_form.type == LET_STAR)
         {
+            Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
+            Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
 
+            int i = 0;
+            while (i + 1 < VectorLength(body_exprs))
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i + 1);
+                if (body_expr->context == NULL)
+                {
+                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                }
+                int j = i; // j = i;
+                while (j >= 0)
+                {
+                    AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
+                    VectorAppend(body_expr->context, &binding);
+                    j--;
+                }
+                i++;
+            }
+            
+            for (int i = 0; i < VectorLength(bindings); i++)
+            {
+                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+                generate_context(binding, node, aux_data);
+            }
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                generate_context(body_expr, node, aux_data);
+            }
         }
 
         if (node->contents.local_binding_form.type == LETREC)
         {
+            Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
+            Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
 
+            int i = 0;
+            while (i + 1 < VectorLength(body_exprs))
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i + 1);
+                if (body_expr->context == NULL)
+                {
+                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                }
+                int j = i + 1; // j = i + 1;
+                while (j >= 0)
+                {
+                    AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
+                    VectorAppend(body_expr->context, &binding);
+                    j--;
+                }
+                i++;
+            }
+            
+            for (int i = 0; i < VectorLength(bindings); i++)
+            {
+                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+                generate_context(binding, node, aux_data);
+            }
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                generate_context(body_expr, node, aux_data);
+            }
         }
     }
 
     if (node->type == Call_Expression)
     {
-
+        Vector *params = node->contents.call_expression.params;
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *param = *(AST_Node **)VectorNth(params, i);
+            generate_context(param, node, aux_data);
+        }
     }
 
+    if (node->type == Binding)
+    {
+        AST_Node *value = node->contents.binding.value;
+        generate_context(value, node, aux_data);
+    }
+    
+    if (node->type == Procedure)
+    {
+        return;
+    }
+    
     if (node->type == Number_Literal ||
         node->type == String_Literal ||
         node->type == Character_Literal)
     {
-        return; // do nothing.
+        return;
+    }
+
+    if (node->type == List_Literal)
+    {
+        // symbol doesnt impled right now, so '((+ 1 2)) will not be supported.
+        // only literal will appear in list literal.the 
+        Vector *elems = (Vector *)node->contents.literal.value;
+        for (int i = 0; i < VectorLength(elems); i++)
+        {
+            AST_Node *elem = *(AST_Node **)VectorNth(elems, i);
+            generate_context(elem, node, aux_data);
+        }
+    }
+
+    if (node->type == Pair_Literal)
+    {
+        // same situation with List_Literal.
+        Vector *elems = (Vector *)node->contents.literal.value;
+        for (int i = 0; i < VectorLength(elems); i++)
+        {
+            AST_Node *elem = *(AST_Node **)VectorNth(elems, i);
+            generate_context(elem, node, aux_data);
+        }
     }
 }
 

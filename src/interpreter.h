@@ -49,7 +49,7 @@ typedef void (*Function)(void); // Function points to any type of function.
 // parser parts
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
-    List_literal, Pair_Literal,
+    List_Literal, Pair_Literal,
     Call_Expression, Local_Binding_Form, Conditional_Form,
     Binding, Procedure, Program
 } AST_Node_Type;
@@ -62,7 +62,13 @@ typedef enum _z_conditional_form_type {
 typedef struct _z_ast_node {
     AST_Node_Type type;
     struct _z_ast_node *parent;
-    Vector *context; // AST_Node *[] type: binding, if contextable AST_Node, it will have this, if not contextable, set this to null.
+    /*
+        context: AST_Node *[] type: binding.
+        if contextable AST_Node, it will have this, if not contextable, set this to null.
+        initially, the AST_Node with type Program will have context, and other cases will be generated in generate_context() function.
+        such as let's body_exprs will have context, even Number_Literal.
+    */ 
+    Vector *context;
     union {
         struct {
             /*  
