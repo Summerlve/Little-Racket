@@ -1215,14 +1215,17 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
     traverser_node(ast, NULL, visitor, aux_data);
 }
 
+// find the nearly parent contextable node.
 // finally, the contextable will not be null, the top Program node always have context.
 static AST_Node *find_contextable_node(AST_Node *current_node)
 {
+    if (current_node == NULL) return NULL;
     AST_Node *contextable = NULL;
     if (current_node->context == NULL)
     {
         contextable = current_node->parent;
-        while (contextable->context == NULL) 
+        while (contextable != NULL &
+               contextable->context == NULL) 
         {
             contextable = contextable->parent;
         }
@@ -1261,8 +1264,16 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         if (node->contents.local_binding_form.type == DEFINE)
         {
             AST_Node *binding = node->contents.local_binding_form.contents.define.binding;
-            AST_Node *contextable = find_contextable_node(node);
-            VectorAppend(contextable->context, &binding);
+            AST_Node *contextable = find_contextable_node(node); // find the nearly parent contextable node.
+            if (contextable == NULL)
+            {
+                fprintf(stderr, "generate_context(): something wrong here, the contextable will not be null forever.\n");
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+                VectorAppend(contextable->context, &binding);
+            } 
             generate_context(binding, node, aux_data);
         }
 
@@ -1367,6 +1378,11 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         }
     }
 
+    if (node->type == Conditional_Form)
+    {
+        return;
+    }
+
     if (node->type == Call_Expression)
     {
         Vector *params = node->contents.call_expression.params;
@@ -1380,7 +1396,9 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     if (node->type == Binding)
     {
         AST_Node *value = node->contents.binding.value;
-        generate_context(value, node, aux_data);
+        // such call_expression (+ a b), 'a' and 'b' is binding, but dont have value.
+        // it should be search the value for 'a' in eval();
+        if (value != NULL) generate_context(value, node, aux_data); 
     }
     
     if (node->type == Procedure)
@@ -1398,7 +1416,8 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     if (node->type == List_Literal)
     {
         // symbol doesnt impled right now, so '((+ 1 2)) will not be supported.
-        // only literal will appear in list literal.the 
+        // only literal will appear in list literal. 
+        // nothing will happend for follow code.
         Vector *elems = (Vector *)node->contents.literal.value;
         for (int i = 0; i < VectorLength(elems); i++)
         {
@@ -1419,8 +1438,53 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 }
 
+static AST_Node *search_binding_value(AST_Node *binding)
+{
+    // search binding's value by 'name'
+    AST_Node *value = NULL;
+    AST_Node *contextable = find_contextable_node(binding);
+    while (contextable != NULL)
+    {
+        Vector *context = contextable->context;
+        Vector *built_in_bindings = NULL;
+        if (contextable->type == Program) built_in_bindings = contextable->contents.program.built_in_bindings;
+        for (int i = VectorLength(context) - 1; i >= 0; i--)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(context, i);
+            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
+        }
+        if (built_in_bindings != NULL)
+        {
+            for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
+                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
+            }
+        }
+        contextable = find_contextable_node(contextable->parent);
+    }
+    return value;
+}
+
 static Result eval(AST_Node *ast_node)
 {
+    if (ast_node->type == Program)
+    {
+        Result result = NULL;
+        Vector *body = ast_node->contents.program.body;
+        for (int i = 0; i < VectorLength(body); i++)
+        {
+            AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
+            result = eval(sub_node);
+        }
+        // the last sub_node's result will be returned;
+        return result;
+    }
+
+    if (ast_node->type == Binding)
+    {
+        return NULL;
+    }
     return NULL;
 }
 
