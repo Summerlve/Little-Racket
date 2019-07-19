@@ -463,6 +463,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
+    ast_node->free_type = AUTO_FREE;
     ast_node->parent = NULL;
     ast_node->context = NULL; 
     bool matched = false;
@@ -675,13 +676,13 @@ int ast_node_free(AST_Node *ast_node)
 
     if (ast_node->type == Local_Binding_Form)
     {
-        matched = true;
         Local_Binding_Form_Type Local_binding_form_type = ast_node->contents.local_binding_form.type;
 
         if (Local_binding_form_type == LET ||
             Local_binding_form_type == LET_STAR ||
             Local_binding_form_type == LETREC)
         {
+            matched = true;
             Vector *bindings = ast_node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
             for (int i = 0; i < VectorLength(bindings); i++)
@@ -701,6 +702,7 @@ int ast_node_free(AST_Node *ast_node)
        
         if (Local_binding_form_type == DEFINE) 
         {
+            matched = true;
             ast_node_free(ast_node->contents.local_binding_form.contents.define.binding);
             free(ast_node);
         }
@@ -1440,6 +1442,8 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static AST_Node *search_binding_value(AST_Node *binding)
 {
+    // if current binding node has value.
+    if (binding->contents.binding.value != NULL) return binding->contents.binding.value;
     // search binding's value by 'name'
     AST_Node *value = NULL;
     AST_Node *contextable = find_contextable_node(binding);
@@ -1466,26 +1470,149 @@ static AST_Node *search_binding_value(AST_Node *binding)
     return value;
 }
 
-static Result eval(AST_Node *ast_node)
+// return null when work out no value.
+Result eval(AST_Node *ast_node)
 {
+    if (ast_node == NULL) return NULL;
+    Result result = NULL;
+    bool matched = false;
+
     if (ast_node->type == Program)
     {
-        Result result = NULL;
+        matched = true;
         Vector *body = ast_node->contents.program.body;
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
-            result = eval(sub_node);
+            result = eval(sub_node); // the last sub_node's result will be returned;
         }
-        // the last sub_node's result will be returned;
-        return result;
+    }
+
+    if (ast_node->type == Call_Expression)
+    {
+        matched = true;
+        const char *name = ast_node->contents.call_expression.name;
+        AST_Node *binding = ast_node_new(Binding, name, NULL);
+        AST_Node *procedure = search_binding_value(binding);
+        ast_node_free(binding);
+        if (procedure == NULL)
+        {
+            fprintf(stderr, "eval(): unbound identifier: %s\n", name);
+            exit(EXIT_FAILURE);
+        }
+        if (procedure->type != Procedure)
+        {
+            fprintf(stderr, "eval(): not a procedure: %s\n", name);
+            exit(EXIT_FAILURE); 
+        }
+        Vector *params = ast_node->contents.call_expression.params;
+        Vector *operands = VectorNew(sizeof(AST_Node *));
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *param = *(AST_Node **)VectorNth(params, i);
+            AST_Node *operand = eval(param);
+            VectorAppend(operands, &operand);
+        }
+        Function c_native_function = procedure->contents.procedure.c_native_function;
+        if (c_native_function != NULL)
+        {
+            // it's a built-in procedure.
+            result = ((AST_Node *(*)(AST_Node *, Vector *))c_native_function)(procedure, operands);
+        }
+        else
+        {
+            // it's defined by programmer. 
+        }
+        VectorFree(operands, NULL, NULL);
+    }
+    
+    if (ast_node->type == Local_Binding_Form)
+    {
+        Local_Binding_Form_Type local_binding_form_type = ast_node->contents.local_binding_form.type;
+
+        if (local_binding_form_type == DEFINE)
+        {
+            // define works out no value.
+            // eval the init value of binding into a new ast_node, and instead of the init value node by new ast_node.
+            matched = true;
+            AST_Node *binding = ast_node->contents.local_binding_form.contents.define.binding;
+            AST_Node *init_value = binding->contents.binding.value;
+            binding->contents.binding.value = eval(init_value);
+            if (init_value != binding->contents.binding.value) ast_node_free(init_value);
+        }
+        
+        if (local_binding_form_type == LET ||
+            local_binding_form_type == LET_STAR ||
+            local_binding_form_type == LETREC)
+        {
+            matched = true;
+            Vector *bindings = ast_node->contents.local_binding_form.contents.lets.bindings;
+            Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
+            for (int i = 0; i < VectorLength(bindings); i++)
+            {
+                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+                AST_Node *init_value = binding->contents.binding.value;
+                binding->contents.binding.value = eval(init_value);
+                if (init_value != binding->contents.binding.value) ast_node_free(init_value);
+            }
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                result = eval(body_expr); // the last body_expr's result will be returned;
+            }
+        }
     }
 
     if (ast_node->type == Binding)
-    {
-        return NULL;
+    { 
+        // return the value of Binding.
+        matched = true;
+        AST_Node *value = ast_node->contents.binding.value;
+        if (value == NULL)
+        {
+            value = search_binding_value(ast_node);
+        }
+        result = value;
     }
-    return NULL;
+
+    // these kind of AST_Node_Type works out them self.
+    if (ast_node->type == Number_Literal ||
+        ast_node->type == String_Literal ||
+        ast_node->type == Character_Literal)
+    {
+        matched = true;
+        result = ast_node;
+    }
+
+    // List_Literal works out itself.
+    if (ast_node->type == List_Literal)
+    {
+        matched = true;
+        result = ast_node;
+    }
+
+    // Pair_Literal works out itself.
+    if (ast_node->type == Pair_Literal)
+    {
+        matched = true;
+        result = ast_node;
+    }
+
+    // Procedure works out itself.
+    if (ast_node->type == Procedure)
+    {
+        matched = true;
+        result = ast_node;
+    }
+
+    if (!matched)
+    {
+        // when no matches any AST_Node_Type.
+        fprintf(stderr, "eval(): can not eval AST_Node_Type: %d\n", ast_node->type);
+        exit(EXIT_FAILURE);
+    }
+
+    return result;
 }
 
 // calculator parts

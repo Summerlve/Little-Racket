@@ -40,13 +40,8 @@ Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the 
 int tokens_free(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
-// racket value mapping to c native value.
-#define racket_null NULL // null is equal to empty is equal to '(), both of them are list not a pair.
-#define racket_empty NULL
-typedef void (*Function)(void); // Function points to any type of function.
-// racket built-in procedure mapping to c native function.
-
 // parser parts
+typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_Literal, Pair_Literal,
@@ -59,8 +54,16 @@ typedef enum _z_local_binding_form_type {
 typedef enum _z_conditional_form_type {
     IF, COND, AND, OR
 } Conditional_Form_Type;
+typedef enum {
+    AUTO_FREE, MANUAL_FREE
+    /*
+        AUTO_FREE means ast_node in ast, free by ast_node_free().
+        MANUAL_FREE means create by some built-in procedures, need free it manually.
+    */
+} Memory_Free_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type;
+    Memory_Free_Type free_type;
     struct _z_ast_node *parent;
     /*
         context: AST_Node *[] type: binding.
@@ -145,7 +148,8 @@ void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first
 
 // calculator parts
 typedef AST_Node *Result; // the result of whole racket code.
-int result_free(Result result);
 Result calculator(AST ast);
+int result_free(Result result);
+Result eval(AST_Node *ast_node);
 
 #endif
