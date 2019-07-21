@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 
     // calculator
     Result result = calculator(ast);
+    printf("{result type: %d, value: %d}\n", result->type, *(int *)(result->contents.literal.c_native_value));
 
     // release memory
     racket_file_free(raw_code);

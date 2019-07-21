@@ -475,9 +475,8 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
     if (ast_node->type == Program)
     {
         matched = true;
-        ast_node->context = VectorNew(sizeof(AST_Node *));
         ast_node->contents.program.body = VectorNew(sizeof(AST_Node *));
-        ast_node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.program.built_in_bindings = NULL;
     }
 
     if (ast_node->type == Call_Expression)
@@ -1244,6 +1243,8 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Program)
     {
+        if (node->context == NULL) node->context = VectorNew(sizeof(AST_Node *));
+        if (node->contents.program.built_in_bindings == NULL) node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
         // only one Program Node in AST, so the following code will run only once.
         Vector *built_in_bindings = generate_built_in_bindings(); // add built-in binding to Program.
         for (int i = 0; i < VectorLength(built_in_bindings); i++)
@@ -1469,11 +1470,11 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 }
 
 // param: AST_Node *(type: Binding).
-// return: AST_Node *(type: Any), the value.
+// return: AST_Node *(type: Binding) contains value.
 static AST_Node *search_binding_value(AST_Node *binding)
 {
     // if current binding node has value.
-    if (binding->contents.binding.value != NULL) return binding->contents.binding.value;
+    if (binding->contents.binding.value != NULL) return binding;
     // search binding's value by 'name'
     AST_Node *value = NULL;
     AST_Node *contextable = find_contextable_node(binding);
@@ -1486,7 +1487,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
         {
             AST_Node *node = *(AST_Node **)VectorNth(context, i);
             printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
-            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node->contents.binding.value;
+            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
         }
         if (built_in_bindings != NULL)
         {
@@ -1494,12 +1495,18 @@ static AST_Node *search_binding_value(AST_Node *binding)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
                 printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
-                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node->contents.binding.value;
+                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
             }
         }
         contextable = find_contextable_node(contextable->parent);
     }
     return value;
+}
+
+void vector_mannual_free_helper(void *value_addr, void *aux_data)
+{
+    AST_Node *ast_node = *(AST_Node **)value_addr;
+    if (ast_node->free_type == MANUAL_FREE) ast_node_free(ast_node);
 }
 
 // return null when work out no value.
@@ -1544,7 +1551,6 @@ Result eval(AST_Node *ast_node)
         {
             AST_Node *param = *(AST_Node **)VectorNth(params, i);
             AST_Node *operand = eval(param);
-            printf("operand's type: %d\n", operand->type);
             VectorAppend(operands, &operand);
         }
         Function c_native_function = procedure->contents.procedure.c_native_function;
@@ -1557,8 +1563,7 @@ Result eval(AST_Node *ast_node)
         {
             // it's defined by programmer. 
         }
-        // ?
-        // VectorFree(operands, NULL, NULL);
+        VectorFree(operands, vector_mannual_free_helper, NULL);
     }
     
     if (ast_node->type == Local_Binding_Form)
@@ -1606,7 +1611,13 @@ Result eval(AST_Node *ast_node)
         AST_Node *value = ast_node->contents.binding.value;
         if (value == NULL)
         {
-            value = search_binding_value(ast_node);
+            AST_Node *binding_contains_value = search_binding_value(ast_node);
+            if (binding_contains_value == NULL)
+            {
+                fprintf(stderr, "eval(): unbound identifier: %s\n", ast_node->contents.binding.name);
+                exit(EXIT_FAILURE);
+            }
+            value = binding_contains_value->contents.binding.value;
         }
         result = value;
     }
@@ -1661,5 +1672,12 @@ Result calculator(AST ast)
 
 int result_free(Result result)
 {
-    return ast_node_free(result);
+    if (result->free_type == MANUAL_FREE)
+    {
+        return ast_node_free(result);
+    }
+    else
+    {
+        return 0;
+    }
 }
