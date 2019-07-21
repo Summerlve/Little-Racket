@@ -42,8 +42,7 @@ AST_Node *racket_native_plus(AST_Node *procedure, Vector *operands)
         .value.iv = 0
     };
 
-    int n = VectorLength(operands);
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < VectorLength(operands); i++)
     {
         AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
         if (operand->type != Number_Literal)
@@ -87,7 +86,7 @@ AST_Node *racket_native_plus(AST_Node *procedure, Vector *operands)
         sprintf(value, "%f", result.value.dv);
     }
     
-    AST_Node *ast_node = ast_node_new(Number_Literal, value);
+    AST_Node *ast_node = ast_node_new(Number_Literal, MANUAL_FREE, value);
     free(value);
     return ast_node;
 }
@@ -96,7 +95,7 @@ Vector *generate_built_in_bindings(void)
 {
     Vector *built_in_bindings = VectorNew(sizeof(AST_Node *));
     AST_Node *tmp = NULL;
-    tmp = ast_node_new(Procedure, "+", 0, NULL, NULL, (void(*)(void))racket_native_plus); 
+    tmp = ast_node_new(Procedure, AUTO_FREE, "+", 0, NULL, NULL, (void(*)(void))racket_native_plus); 
     VectorAppend(built_in_bindings, &tmp);
     return built_in_bindings;
 }

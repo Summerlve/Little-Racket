@@ -57,8 +57,8 @@ typedef enum _z_conditional_form_type {
 typedef enum {
     AUTO_FREE, MANUAL_FREE
     /*
-        AUTO_FREE means ast_node in ast, free by ast_node_free().
-        MANUAL_FREE means create by some built-in procedures, need free it manually.
+        AUTO_FREE means the ast_node is in ast, free by ast_node_free() or released by recursively ast_node_free() call.
+        MANUAL_FREE means created by some built-in procedures, need free it manually, the ast_node isn't in ast.
     */
 } Memory_Free_Type;
 typedef struct _z_ast_node {
@@ -126,7 +126,7 @@ typedef struct _z_ast_node {
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
-AST_Node *ast_node_new(AST_Node_Type type, ...);
+AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...);
 int ast_node_free(AST_Node *ast_node);
 AST parser(Tokens *tokens); // retrun AST.
 int ast_free(AST ast);

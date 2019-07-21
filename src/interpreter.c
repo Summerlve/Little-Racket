@@ -459,18 +459,18 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(List or Pair)
 // ast_node_new(xxx_Literal, value)
 // ast_node_new(Procedure, name, required_params_count, params, body_exprs, c_native_function)
-AST_Node *ast_node_new(AST_Node_Type type, ...)
+AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
-    ast_node->free_type = AUTO_FREE;
+    ast_node->free_type = free_type;
     ast_node->parent = NULL;
     ast_node->context = NULL; 
     bool matched = false;
 
     // flexible args
     va_list ap;
-    va_start(ap, type);
+    va_start(ap, free_type);
 
     if (ast_node->type == Program)
     {
@@ -519,7 +519,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
         {
             const char *name = va_arg(ap, const char *);
             AST_Node *value = va_arg(ap, AST_Node *);
-            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, name, value);
+            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, AUTO_FREE,name, value);
         }
     }
 
@@ -795,28 +795,28 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
     if (token->type == IDENTIFIER)
     {
-        AST_Node *ast_node = ast_node_new(Binding, token->value, NULL);
+        AST_Node *ast_node = ast_node_new(Binding, AUTO_FREE, token->value, NULL);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == NUMBER)
     {
-        AST_Node *ast_node = ast_node_new(Number_Literal, token->value);
+        AST_Node *ast_node = ast_node_new(Number_Literal, AUTO_FREE, token->value);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == STRING)
     {
-        AST_Node *ast_node = ast_node_new(String_Literal, token->value);
+        AST_Node *ast_node = ast_node_new(String_Literal, AUTO_FREE, token->value);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == CHARACTER)
     {
-        AST_Node *ast_node = ast_node_new(Character_Literal, token->value);
+        AST_Node *ast_node = ast_node_new(Character_Literal, AUTO_FREE, token->value);
         (*current_p)++;
         return ast_node;
     }
@@ -839,9 +839,9 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (strcmp(token->value, "letrec") == 0))
             {
                 AST_Node *ast_node;
-                if (strcmp(token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, LET);
-                if (strcmp(token->value, "let*") == 0) ast_node = ast_node_new(Local_Binding_Form, LET_STAR);
-                if (strcmp(token->value, "letrec") == 0) ast_node = ast_node_new(Local_Binding_Form, LETREC);
+                if (strcmp(token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, LET);
+                if (strcmp(token->value, "let*") == 0) ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, LET_STAR);
+                if (strcmp(token->value, "letrec") == 0) ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, LETREC);
 
                 // point to the bindings form starts '('
                 (*current_p)++;
@@ -928,7 +928,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 // move to binding's value
                 (*current_p)++;
                 AST_Node *value = walk(tokens, current_p);
-                AST_Node *ast_node = ast_node_new(Local_Binding_Form, DEFINE, token->value, value);
+                AST_Node *ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, DEFINE, token->value, value);
 
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
@@ -944,7 +944,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 exit(EXIT_FAILURE);
             }
 
-            AST_Node *ast_node = ast_node_new(Call_Expression, token->value);
+            AST_Node *ast_node = ast_node_new(Call_Expression, AUTO_FREE, token->value);
 
             // point to the first argument.
             (*current_p)++; 
@@ -989,7 +989,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             AST_Node *ast_node = NULL;
             if (is_pair)
             {
-                ast_node = ast_node_new(Pair_Literal);
+                ast_node = ast_node_new(Pair_Literal, AUTO_FREE, AUTO_FREE);
 
                 AST_Node *car = walk(tokens, current_p);
                 (*current_p)++; // skip '.'
@@ -1007,7 +1007,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
             else
             {
-                ast_node = ast_node_new(List_Literal);
+                ast_node = ast_node_new(List_Literal, AUTO_FREE, AUTO_FREE);
 
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
@@ -1036,7 +1036,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
 AST parser(Tokens *tokens)
 {
-    AST ast = ast_node_new(Program);
+    AST ast = ast_node_new(Program, AUTO_FREE);
     int current = 0;
 
     while (current < tokens_length(tokens))
@@ -1218,7 +1218,6 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
 }
 
 // find the nearly parent contextable node.
-// finally, the contextable will not be null, the top Program node always have context.
 static AST_Node *find_contextable_node(AST_Node *current_node)
 {
     if (current_node == NULL) return NULL;
@@ -1283,6 +1282,13 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         {
             Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
+
+            for (int i = 0; i < VectorLength(bindings); i++)
+            {
+                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
+                generate_context(binding, node, aux_data);
+            }
+
             // append bindings to every expr in body_exprs, even a Number_Literal ast node.
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
@@ -1297,11 +1303,7 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
                     VectorAppend(body_expr->context, &binding);
                 }
             }
-            for (int i = 0; i < VectorLength(bindings); i++)
-            {
-                AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
-                generate_context(binding, node, aux_data);
-            }
+
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
@@ -1313,30 +1315,43 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         {
             Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
-
-            int i = 0;
-            while (i + 1 < VectorLength(body_exprs))
+            
+            for (int i = 0; i < VectorLength(bindings) - 1; i++)
             {
-                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i + 1);
-                if (body_expr->context == NULL)
+                AST_Node *nxt_binding = *(AST_Node **)VectorNth(bindings, i + 1);
+                AST_Node *value = nxt_binding->contents.binding.value;
+                if (value->context == NULL)
                 {
-                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                    value->context = VectorNew(sizeof(AST_Node *));
                 }
-                int j = i; // j = i;
-                while (j >= 0)
+                for (int j = 0; j < i + 1; j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
-                    VectorAppend(body_expr->context, &binding);
-                    j--;
+                    VectorAppend(value->context, &binding);
                 }
-                i++;
             }
-            
+
             for (int i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 generate_context(binding, node, aux_data);
             }
+ 
+            // append bindings to every expr in body_exprs, even a Number_Literal ast node.
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
+                if (body_expr->context == NULL)
+                {
+                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                }
+                for(int j = 0; j < VectorLength(bindings); j++)
+                {
+                    AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
+                    VectorAppend(body_expr->context, &binding);
+                }
+            }
+
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
@@ -1349,29 +1364,42 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
 
-            int i = 0;
-            while (i + 1 < VectorLength(body_exprs))
+            for (int i = 0; i < VectorLength(bindings) - 1; i++)
             {
-                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i + 1);
-                if (body_expr->context == NULL)
+                AST_Node *nxt_binding = *(AST_Node **)VectorNth(bindings, i + 1);
+                AST_Node *value = nxt_binding->contents.binding.value;
+                if (value->context == NULL)
                 {
-                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                    value->context = VectorNew(sizeof(AST_Node *));
                 }
-                int j = i + 1; // j = i + 1;
-                while (j >= 0)
+                for (int j = 0; j <= i + 1; j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
-                    VectorAppend(body_expr->context, &binding);
-                    j--;
+                    VectorAppend(value->context, &binding);
                 }
-                i++;
             }
-            
+
             for (int i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 generate_context(binding, node, aux_data);
+            } 
+
+            // append bindings to every expr in body_exprs, even a Number_Literal ast node.
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
+                if (body_expr->context == NULL)
+                {
+                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                }
+                for(int j = 0; j < VectorLength(bindings); j++)
+                {
+                    AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
+                    VectorAppend(body_expr->context, &binding);
+                }
             }
+
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
@@ -1440,6 +1468,8 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 }
 
+// param: AST_Node *(type: Binding).
+// return: AST_Node *(type: Any), the value.
 static AST_Node *search_binding_value(AST_Node *binding)
 {
     // if current binding node has value.
@@ -1455,14 +1485,16 @@ static AST_Node *search_binding_value(AST_Node *binding)
         for (int i = VectorLength(context) - 1; i >= 0; i--)
         {
             AST_Node *node = *(AST_Node **)VectorNth(context, i);
-            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
+            printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
+            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node->contents.binding.value;
         }
         if (built_in_bindings != NULL)
         {
             for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
-                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
+                printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
+                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node->contents.binding.value;
             }
         }
         contextable = find_contextable_node(contextable->parent);
@@ -1492,9 +1524,10 @@ Result eval(AST_Node *ast_node)
     {
         matched = true;
         const char *name = ast_node->contents.call_expression.name;
-        AST_Node *binding = ast_node_new(Binding, name, NULL);
+        AST_Node *binding = ast_node_new(Binding, MANUAL_FREE, name, NULL);
+        binding->parent = ast_node;
         AST_Node *procedure = search_binding_value(binding);
-        ast_node_free(binding);
+        if (binding->free_type == MANUAL_FREE) ast_node_free(binding);
         if (procedure == NULL)
         {
             fprintf(stderr, "eval(): unbound identifier: %s\n", name);
@@ -1511,19 +1544,21 @@ Result eval(AST_Node *ast_node)
         {
             AST_Node *param = *(AST_Node **)VectorNth(params, i);
             AST_Node *operand = eval(param);
+            printf("operand's type: %d\n", operand->type);
             VectorAppend(operands, &operand);
         }
         Function c_native_function = procedure->contents.procedure.c_native_function;
         if (c_native_function != NULL)
         {
             // it's a built-in procedure.
-            result = ((AST_Node *(*)(AST_Node *, Vector *))c_native_function)(procedure, operands);
+            result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
         }
         else
         {
             // it's defined by programmer. 
         }
-        VectorFree(operands, NULL, NULL);
+        // ?
+        // VectorFree(operands, NULL, NULL);
     }
     
     if (ast_node->type == Local_Binding_Form)
@@ -1552,8 +1587,9 @@ Result eval(AST_Node *ast_node)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 AST_Node *init_value = binding->contents.binding.value;
-                binding->contents.binding.value = eval(init_value);
-                if (init_value != binding->contents.binding.value) ast_node_free(init_value);
+                AST_Node *eval_value = eval(init_value);
+                binding->contents.binding.value = eval_value;
+                if (eval_value->free_type == MANUAL_FREE) ast_node_free(init_value);
             }
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
