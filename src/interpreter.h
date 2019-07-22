@@ -58,7 +58,8 @@ typedef enum {
     AUTO_FREE, MANUAL_FREE
     /*
         AUTO_FREE means the ast_node is in ast, free by ast_node_free() or released by recursively ast_node_free() call.
-        MANUAL_FREE means created by some built-in procedures, need free it manually, the ast_node isn't in ast.
+        MANUAL_FREE means created by some built-in procedures, need free it manually, the ast_node isn't in ast,
+                    always made in eval() or in built-in procedures.
     */
 } Memory_Free_Type;
 typedef struct _z_ast_node {

@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     Raw_Code *raw_code = racket_file_load(path);
 
     // show the raw_code in gaint single string.
+    printf("Raw code:\n");
     racket_file_map(raw_code, print_raw_code, NULL);
     printf("\n");
 
@@ -20,6 +21,7 @@ int main(int argc, char *argv[])
     Tokens *tokens = tokenizer(raw_code); 
 
     // show the tokens.
+    printf("Tokens:\n");
     tokens_map(tokens, print_tokens, NULL);
 
     // parser
@@ -31,7 +33,7 @@ int main(int argc, char *argv[])
 
     // calculator
     Result result = calculator(ast);
-    printf("{result type: %d, value: %d}\n", result->type, *(int *)(result->contents.literal.c_native_value));
+    traverser(result, visitor, NULL);
 
     // release memory
     racket_file_free(raw_code);

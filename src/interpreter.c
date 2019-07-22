@@ -1224,7 +1224,7 @@ static AST_Node *find_contextable_node(AST_Node *current_node)
     if (current_node->context == NULL)
     {
         contextable = current_node->parent;
-        while (contextable != NULL &
+        while (contextable != NULL &&
                contextable->context == NULL) 
         {
             contextable = contextable->parent;
@@ -1469,10 +1469,15 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 }
 
-// param: AST_Node *(type: Binding).
+// param: AST_Node *(type: Binding) has just a name.
 // return: AST_Node *(type: Binding) contains value.
 static AST_Node *search_binding_value(AST_Node *binding)
 {
+    if (binding == NULL)
+    {
+        fprintf(stderr, "can not search binding value for NULL\n");
+        exit(EXIT_FAILURE);
+    }
     // if current binding node has value.
     if (binding->contents.binding.value != NULL) return binding;
     // search binding's value by 'name'
@@ -1532,7 +1537,7 @@ Result eval(AST_Node *ast_node)
         matched = true;
         const char *name = ast_node->contents.call_expression.name;
         AST_Node *binding = ast_node_new(Binding, MANUAL_FREE, name, NULL);
-        binding->parent = ast_node;
+        generate_context(binding, ast_node, NULL);
         AST_Node *procedure = search_binding_value(binding);
         if (binding->free_type == MANUAL_FREE) ast_node_free(binding);
         if (procedure == NULL)

@@ -54,7 +54,7 @@ static void pair_exit(AST_Node *node, AST_Node *parent, void *aux_data)
 static void number_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     printf(" %s ", (char *)(node->contents.literal.value));
-    if (parent->type == Pair_Literal)
+    if (parent != NULL && parent->type == Pair_Literal)
     {
         AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
         if (node == car)
@@ -67,7 +67,7 @@ static void number_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 static void character_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     printf("#\\%c ", *(char *)(node->contents.literal.value));
-    if (parent->type == Pair_Literal)
+    if (parent != NULL && parent->type == Pair_Literal)
     {
         AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
         if (node == car)
@@ -80,7 +80,7 @@ static void character_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 static void string_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     printf("\"%s\" ", (char *)(node->contents.literal.value));
-    if (parent->type == Pair_Literal)
+    if (parent != NULL && parent->type == Pair_Literal)
     {
         AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
         if (node == car)
@@ -100,7 +100,7 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 
     // question here is: does it exists AST_Node:Binding with parent isnt AST_Node:Local_Binding_Form ?
-    if (parent->type == Local_Binding_Form)
+    if (parent != NULL && parent->type == Local_Binding_Form)
     {
         if (parent->contents.local_binding_form.type == LET ||
             parent->contents.local_binding_form.type == LET_STAR ||
@@ -126,7 +126,7 @@ static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)
         return;
     }
 
-    if (parent->type == Local_Binding_Form)
+    if (parent != NULL && parent->type == Local_Binding_Form)
     {
         if (parent->contents.local_binding_form.type == LET ||
             parent->contents.local_binding_form.type == LET_STAR ||
