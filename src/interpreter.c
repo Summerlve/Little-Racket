@@ -476,7 +476,7 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
     {
         matched = true;
         ast_node->contents.program.body = VectorNew(sizeof(AST_Node *));
-        ast_node->contents.program.built_in_bindings = NULL;
+        ast_node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
     }
 
     if (ast_node->type == Call_Expression)
@@ -1243,8 +1243,10 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Program)
     {
-        if (node->context == NULL) node->context = VectorNew(sizeof(AST_Node *));
-        if (node->contents.program.built_in_bindings == NULL) node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
+        if (node->context == NULL)
+        {
+            node->context = VectorNew(sizeof(AST_Node *));
+        }
         // only one Program Node in AST, so the following code will run only once.
         Vector *built_in_bindings = generate_built_in_bindings(); // add built-in binding to Program.
         for (int i = 0; i < VectorLength(built_in_bindings); i++)
@@ -1499,7 +1501,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
             for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
-                printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
+                printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
                 if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
             }
         }
@@ -1515,6 +1517,7 @@ void vector_mannual_free_helper(void *value_addr, void *aux_data)
 }
 
 // return null when work out no value.
+// this function will make some ast_node not in ast, should be free manually.
 Result eval(AST_Node *ast_node)
 {
     if (ast_node == NULL) return NULL;
@@ -1538,13 +1541,14 @@ Result eval(AST_Node *ast_node)
         const char *name = ast_node->contents.call_expression.name;
         AST_Node *binding = ast_node_new(Binding, MANUAL_FREE, name, NULL);
         generate_context(binding, ast_node, NULL);
-        AST_Node *procedure = search_binding_value(binding);
-        if (binding->free_type == MANUAL_FREE) ast_node_free(binding);
-        if (procedure == NULL)
+        AST_Node *binding_contains_value = search_binding_value(binding);
+        if (binding->free_type == MANUAL_FREE) ast_node_free(binding); // free the tmp binding.
+        if (binding_contains_value == NULL)
         {
             fprintf(stderr, "eval(): unbound identifier: %s\n", name);
             exit(EXIT_FAILURE);
         }
+        AST_Node *procedure = binding_contains_value->contents.binding.value;
         if (procedure->type != Procedure)
         {
             fprintf(stderr, "eval(): not a procedure: %s\n", name);
@@ -1583,7 +1587,12 @@ Result eval(AST_Node *ast_node)
             AST_Node *binding = ast_node->contents.local_binding_form.contents.define.binding;
             AST_Node *init_value = binding->contents.binding.value;
             binding->contents.binding.value = eval(init_value);
-            if (init_value != binding->contents.binding.value) ast_node_free(init_value);
+            if (init_value != binding->contents.binding.value)
+            {
+                binding->contents.binding.value->free_type = AUTO_FREE;
+                generate_context(binding->contents.binding.value, binding, NULL);
+                ast_node_free(init_value);
+            }
         }
         
         if (local_binding_form_type == LET ||
@@ -1597,9 +1606,13 @@ Result eval(AST_Node *ast_node)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 AST_Node *init_value = binding->contents.binding.value;
-                AST_Node *eval_value = eval(init_value);
-                binding->contents.binding.value = eval_value;
-                if (eval_value->free_type == MANUAL_FREE) ast_node_free(init_value);
+                binding->contents.binding.value = eval(init_value);
+                if (binding->contents.binding.value->free_type == MANUAL_FREE)
+                {
+                    binding->contents.binding.value->free_type = AUTO_FREE;
+                    generate_context(binding->contents.binding.value, binding, NULL);
+                    ast_node_free(init_value);
+                }
             }
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {

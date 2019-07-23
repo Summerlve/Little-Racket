@@ -31,6 +31,12 @@ static void call_expression_exit(AST_Node *node, AST_Node *parent, void *aux_dat
     printf(") ");
 }
 
+static void procedure_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    const char *name = node->contents.procedure.name;
+    if (name != NULL) printf("#<procedure:%s>\n", name);
+}
+
 static void list_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     printf(" '(");
@@ -192,6 +198,7 @@ Visitor get_custom_visitor(void)
     Visitor visitor = visitor_new();
     ast_node_handler_append(visitor, Program, program_enter, program_exit);
     ast_node_handler_append(visitor, Call_Expression, call_expression_enter, call_expression_exit);
+    ast_node_handler_append(visitor, Procedure, procedure_enter, NULL);
     ast_node_handler_append(visitor, List_Literal, list_enter, list_exit);
     ast_node_handler_append(visitor, Pair_Literal, pair_enter, pair_exit);
     ast_node_handler_append(visitor, Number_Literal, number_enter, NULL);
