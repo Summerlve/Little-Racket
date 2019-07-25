@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 
     // calculator
     Result result = calculator(ast);
+    printf("Result:\n");
     traverser(result, visitor, NULL);
 
     // release memory

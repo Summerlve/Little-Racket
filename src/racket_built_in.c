@@ -407,6 +407,11 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
+AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
+{
+    return NULL;
+}
+
 Vector *generate_built_in_bindings(void)
 {
     Vector *built_in_bindings = VectorNew(sizeof(AST_Node *));
