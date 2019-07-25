@@ -3,4 +3,4 @@
 (define v '(#\c #\a)); comment here
 (let ([a (let ([d (+ 1 100)]) d)]
       [b (let* ([e (letrec ([f 1.5]) f)]) e)]
-      [c 3]) 1 (+ a b) (+ a (+ a b) c) (+) (- 1.58) (* 100 1.1) (- 2) (/ 0)); let expression
+      [c 3]) 1 (+ a b) (+ a (+ a b) c) (+) (- 1.58) (* 100 1.1) (- 2) (/ 100 2 3 4)); let expression

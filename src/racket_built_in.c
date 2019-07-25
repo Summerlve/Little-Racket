@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#define DOUBLE_MAX_DIGIT_LENGTH 1024
+#define DOUBLE_MAX_DIGIT_LENGTH 512 
 
 static int int_digit_count(int num)
 {
@@ -342,40 +342,31 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     
     double result = 0.0;
 
+    double dividend_value = 0.0;
     if (strchr(dividend->contents.literal.value, '.') == NULL)
     {
-        // dividend is int.
-        int c_native_value = *(int *)(dividend->contents.literal.c_native_value);
-        if (operands_count != 1)
-        {
-            result = c_native_value;
-        }
-        else
-        {
-            if (c_native_value == 0)
-            {
-                fprintf(stderr, "/: division by zero\n");
-                exit(EXIT_FAILURE); 
-            }
-            result.is_int = false;
-            double tmp = (double)c_native_value;
-            result.value.dv = 1 / tmp;
-        }
+        dividend_value = *(int *)(dividend->contents.literal.c_native_value);
     }
     else
     {
-        // dividend is double.
-        result.is_int = false;
-        double c_native_value = *(double *)(dividend->contents.literal.c_native_value);
-        if (operands_count != 1)
-        {
-            result.value.dv = c_native_value;
-        }
-        else
-        {
-            result.value.dv = -c_native_value;
-        }
+        dividend_value = *(double *)(dividend->contents.literal.c_native_value);
     }
+
+    if (operands_count == 1)
+    {
+        if (dividend_value == 0)
+        {
+            fprintf(stderr, "/: division by zero\n");
+            exit(EXIT_FAILURE); 
+        }
+
+        result = 1 / dividend_value;
+    }
+    else
+    {
+        result = dividend_value;
+    }
+    
 
     for (int i = 1; i < operands_count; i++)
     {
@@ -387,50 +378,29 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
             exit(EXIT_FAILURE); 
         }
 
-        bool cur_operand_is_int = false;
-        if (strchr(divisor->contents.literal.value, '.') == NULL) cur_operand_is_int = true;
-
-        if (cur_operand_is_int == true)
+        double c_native_value = 0.0;
+        if (strchr(divisor->contents.literal.value, '.') == NULL)
         {
-            int c_native_value = *(int *)(divisor->contents.literal.c_native_value);
-            if (result.is_int == true)
-            {
-                result.value.iv -= c_native_value;
-            }
-            else
-            {
-                result.value.dv -= c_native_value;
-            }
+            c_native_value = *(int *)(divisor->contents.literal.c_native_value);
         }
         else
         {
-            double c_native_value = *(double *)(divisor->contents.literal.c_native_value);
-            if (result.is_int == true)
-            {
-                result.is_int = false;
-                double tmp = (double)result.value.iv;
-                result.value.dv = tmp - c_native_value;
-            }
-            else
-            {
-                result.value.dv -= c_native_value;
-            }
+            c_native_value = *(double *)(divisor->contents.literal.c_native_value);
         }
+
+        if (c_native_value == 0)
+        {
+            fprintf(stderr, "/: division by zero\n");
+            exit(EXIT_FAILURE); 
+        }
+
+        result /= c_native_value;
     }
 
     char *value = NULL;
-    if (result.is_int == true)
-    {
-        // convert int to string.
-        value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%d", result.value.iv);
-    }
-    else
-    {
-        // convert double to string
-        value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf(value, "%lf", result.value.dv);
-    }
+    // convert double to string
+    value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
+    sprintf(value, "%lf", result);
     
     AST_Node *ast_node = ast_node_new(Number_Literal, MANUAL_FREE, value);
     free(value);
