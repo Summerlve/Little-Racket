@@ -177,7 +177,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             continue;
         }
 
-        // handle language and character
+        // handle language, character, boolean.
         // language: supports only: #lang racket
         if (line[i] == POUND)
         {
@@ -186,7 +186,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
             // handle character such as: '#\a'
             if (line[cursor] == BACK_SLASH)
             {
-                // check if it is notsingle char #\aa ...
+                // check if it is not single char #\aa ...
+                // !bug here #\11 will not be resolved correctly. 
                 if (isalpha(line[cursor + 2]) != 0)
                 {
                     fprintf(stderr, "Character must be a single char, can not be: %s\n", &line[i]);
@@ -202,6 +203,21 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 add_token(tokens, token);
                 
                 i = cursor + 1;
+                continue;
+            }
+
+            // #t #f
+            if (line[cursor] == 't' || line[cursor] == 'f')
+            {
+                const char *char_value = &line[cursor];
+                char *tmp = (char *)malloc(sizeof(char) * 2);
+                memcpy(tmp, char_value, sizeof(char));
+                tmp[1] = '\0';
+                Token *token = token_new(BOOLEAN, tmp);
+                free(tmp);
+                add_token(tokens, token);
+                
+                i = cursor;
                 continue;
             }
 
@@ -579,6 +595,7 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
         const char *value = va_arg(ap, const char *);
         ast_node->contents.literal.value = malloc(strlen(value) + 1);
         strcpy((char *)ast_node->contents.literal.value, value);
+        ast_node->contents.literal.c_native_value = NULL;
     }
 
     if (ast_node->type == Character_Literal)
@@ -586,7 +603,27 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
         matched = true;
         const char *character = va_arg(ap, const char *);
         ast_node->contents.literal.value = malloc(sizeof(char));
-        memcpy((char *)ast_node->contents.literal.value, character, sizeof(char));
+        memcpy(ast_node->contents.literal.value, character, sizeof(char));
+        ast_node->contents.literal.c_native_value = NULL;
+    }
+
+    if (ast_node->type == Boolean_Literal)
+    {
+        matched = true;
+        const char *value = va_arg(ap, const char *);
+
+        Boolean_Type *boolean_type = (Boolean_Type *)malloc(sizeof(Boolean_Type));
+        if (strchr(value, 't') != NULL)
+        {
+            *boolean_type = R_TRUE;
+        }
+        if (strchr(value, 'f') != NULL)
+        {
+            *boolean_type = R_FALSE;
+        }
+
+        ast_node->contents.literal.value = boolean_type;
+        ast_node->contents.literal.c_native_value = NULL;
     }
 
     va_end(ap);
@@ -765,6 +802,13 @@ int ast_node_free(AST_Node *ast_node)
         free(ast_node);
     }
 
+    if (ast_node->type == Boolean_Literal)
+    {
+        matched = true;
+        free(ast_node->contents.literal.value);
+        free(ast_node);
+    }
+
     if (!matched)
     {
         // when no matches any AST_Node_Type.
@@ -816,6 +860,13 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     if (token->type == CHARACTER)
     {
         AST_Node *ast_node = ast_node_new(Character_Literal, AUTO_FREE, token->value);
+        (*current_p)++;
+        return ast_node;
+    }
+
+    if (token->type == BOOLEAN)
+    {
+        AST_Node *ast_node = ast_node_new(Boolean_Literal, AUTO_FREE, token->value);
         (*current_p)++;
         return ast_node;
     }
@@ -1087,9 +1138,8 @@ int visitor_free(Visitor visitor)
     return 0;
 }
 
-int ast_node_handler_append(Visitor visitor, AST_Node_Type type, VisitorFunction enter, VisitorFunction exit)
+int ast_node_handler_append(Visitor visitor, AST_Node_Handler *handler)
 {
-    AST_Node_Handler *handler = ast_node_handler_new(type, enter, exit);
     VectorAppend(visitor, &handler);
     return 0;
 }
@@ -1441,7 +1491,8 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     
     if (node->type == Number_Literal ||
         node->type == String_Literal ||
-        node->type == Character_Literal)
+        node->type == Character_Literal ||
+        node->type == Boolean_Literal)
     {
         return;
     }
@@ -1643,7 +1694,8 @@ Result eval(AST_Node *ast_node)
     // these kind of AST_Node_Type works out them self.
     if (ast_node->type == Number_Literal ||
         ast_node->type == String_Literal ||
-        ast_node->type == Character_Literal)
+        ast_node->type == Character_Literal ||
+        ast_node->type == Boolean_Literal)
     {
         matched = true;
         result = ast_node;

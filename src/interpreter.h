@@ -24,7 +24,8 @@ typedef enum _z_token_type {
     */
     NUMBER,
     STRING, /* "xxx", racket supports multilines string */
-    CHARACTER /* #\a */
+    CHARACTER, /* #\a */
+    BOOLEAN /* #t #f */
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;
@@ -44,7 +45,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
-    List_Literal, Pair_Literal,
+    List_Literal, Pair_Literal, Boolean_Literal,
     Call_Expression, Local_Binding_Form, Conditional_Form,
     Binding, Procedure, Program
 } AST_Node_Type;
@@ -54,6 +55,9 @@ typedef enum _z_local_binding_form_type {
 typedef enum _z_conditional_form_type {
     IF, COND, AND, OR
 } Conditional_Form_Type;
+typedef enum _z_boolean_type {
+    R_FALSE, R_TRUE // any value other than #f counts as true.
+} Boolean_Type;
 typedef enum {
     AUTO_FREE, MANUAL_FREE
     /*
@@ -77,11 +81,12 @@ typedef struct _z_ast_node {
         struct {
             /*  
               value filed:
-               char * - normally literal value, such as "123.999", and set the c_native_value. 
+               char * - normally literal value, such as "123.999", and set the c_native_value to 123.999(double). 
+               Boolean_Type * - such as #f or #t, set c_native_value to null.
                Vector * - list or pair literal, store the contents into elements(AST_Node *[]), and c_native_value set to null.
             */
             void *value; 
-            // convert normally literal value to c_native_value, such as double: 123.999, when list or pair, set this field to null.
+            // convert normally literal value to c_native_value, such as double: 123.999, when list, pair, boolean, character, string set this field to null.
             void *c_native_value; 
         } literal;
         struct { // local binding form: define, let, let*, letrec.
@@ -142,7 +147,7 @@ Visitor visitor_new();
 int visitor_free(Visitor visitor);
 AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit);
 int ast_node_handler_free(AST_Node_Handler *handler);
-int ast_node_handler_append(Visitor visitor, AST_Node_Type type, VisitorFunction enter, VisitorFunction exit);
+int ast_node_handler_append(Visitor visitor, AST_Node_Handler *handler);
 AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type);
 Visitor get_defult_visitor(void);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 

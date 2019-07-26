@@ -193,18 +193,44 @@ static void local_binding_form_exit(AST_Node *node, AST_Node *parent, void *aux_
     }
 }
 
+static void boolean_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    Boolean_Type value = *(Boolean_Type *)(node->contents.literal.value);
+    if (value == R_TRUE)
+    {
+        printf(" #t ");
+    }
+    else if(value == R_FALSE)
+    {
+        printf(" #f ");
+    }
+}
+
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
-    ast_node_handler_append(visitor, Program, program_enter, program_exit);
-    ast_node_handler_append(visitor, Call_Expression, call_expression_enter, call_expression_exit);
-    ast_node_handler_append(visitor, Procedure, procedure_enter, NULL);
-    ast_node_handler_append(visitor, List_Literal, list_enter, list_exit);
-    ast_node_handler_append(visitor, Pair_Literal, pair_enter, pair_exit);
-    ast_node_handler_append(visitor, Number_Literal, number_enter, NULL);
-    ast_node_handler_append(visitor, Character_Literal, character_enter, NULL);
-    ast_node_handler_append(visitor, String_Literal, string_enter, NULL);
-    ast_node_handler_append(visitor, Binding, binding_enter, binding_exit);
-    ast_node_handler_append(visitor, Local_Binding_Form, local_binding_form_enter, local_binding_form_exit);
+    AST_Node_Handler *handler = NULL;
+    handler = ast_node_handler_new(Program, program_enter, program_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Call_Expression, call_expression_enter, call_expression_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Procedure, procedure_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(List_Literal, list_enter, list_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Pair_Literal, pair_enter, pair_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Number_Literal, number_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Character_Literal, character_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(String_Literal, string_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Binding, binding_enter, binding_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Local_Binding_Form, local_binding_form_enter, local_binding_form_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Boolean_Literal, boolean_enter, NULL);
+    ast_node_handler_append(visitor, handler);
     return visitor;
 }

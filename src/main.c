@@ -27,12 +27,14 @@ int main(int argc, char *argv[])
     // parser
     AST ast = parser(tokens);
 
-    // traverser
+    // show ast by traverser
     Visitor visitor = get_custom_visitor();
     traverser(ast, visitor, NULL);
 
     // calculator
     Result result = calculator(ast);
+
+    // show result by traverser
     printf("Result:\n");
     traverser(result, visitor, NULL);
 

@@ -434,6 +434,10 @@ Vector *generate_built_in_bindings(void)
     binding = ast_node_new(Binding, AUTO_FREE, "/", procedure);
     VectorAppend(built_in_bindings, &binding);
 
+    procedure = ast_node_new(Procedure, AUTO_FREE, "map", 2, NULL, NULL, (void(*)(void))racket_native_map); 
+    binding = ast_node_new(Binding, AUTO_FREE, "map", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
     return built_in_bindings;
 }
 
