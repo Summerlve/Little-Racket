@@ -2,6 +2,7 @@
 #define RACKET_BUILT_IN
 
 #include "./interpreter.h"
+
 #define racket_null NULL // null is equal to empty is equal to '(), both of them are list not a pair.
 #define racket_empty NULL
 // AST_Node *[] type: binding.

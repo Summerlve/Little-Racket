@@ -25,6 +25,7 @@
 #define SEMICOLON 0x3b // ';'
 #define DOUBLE_QUOTE 0x22 // '\"'
 #define BACK_SLASH 0x5c // '\'
+#define BAR 0x2d // '-'
 
 // tokenizer parts.
 // number type
@@ -55,10 +56,10 @@ static int number_type_free(Number_Type *number)
 
 static int number_type_append(Number_Type *number, const char ch)
 {
-    // the ch must be a digit or '.'.
-    if (isdigit(ch) == 0 && ch != DOT)
+    // the ch must be a digit or '.' or '-' when a negative number.
+    if (isdigit(ch) == 0 && ch != DOT && ch != BAR)
     {
-        fprintf(stderr, "number_type_append(): the ch must be a digit number or '.'.\n");
+        fprintf(stderr, "number_type_append(): the ch must be a digit number or '.' or '-'.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -290,28 +291,34 @@ static void tokenizer_helper(const char *line, void *aux_data)
             continue;
         }
 
-        // handle number
-        if (isdigit(line[i]))
+        // handle number or negative nubmer.
+        bool is_number = false;
+        if (isdigit(line[i]) != 0 ||
+            (line[i] == BAR && isdigit(line[i + 1]) != 0))
+        {
+            is_number = true;
+        }
+
+        if (is_number)
         {
             cursor = i + 1;
             int dot_count = 0;
             Number_Type *number = number_type_new();
             number_type_append(number, line[i]);
-            bool end = false;
 
             while (cursor < line_length)
             {
 
-                if (isdigit(line[cursor]))
+                if (isdigit(line[cursor]) != 0)
                 {
                     number_type_append(number, line[cursor]);
-                    cursor ++;
+                    cursor++;
                 }
                 else if (line[cursor] == DOT)
                 {
                     number_type_append(number, line[cursor]);
-                    dot_count ++;
-                    cursor ++;
+                    dot_count++;
+                    cursor++;
                     if (dot_count > 1)
                     {
                         fprintf(stderr, "A number can not be: %s\n", number->contents);
@@ -467,14 +474,14 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 
 // parser parts
 
-// ast_node_new(Program)
-// ast_node_new(Call_Expression, name)
-// ast_node_new(Local_Binding_Form, LET/LET_STAR/LETREC/DEFINE)
-// ast_node_new(Local_Binding_Form, DEFINE, char *name, AST_Node *value)
-// ast_node_new(Binding, name, AST_Node *value)
-// ast_node_new(List or Pair)
-// ast_node_new(xxx_Literal, value)
-// ast_node_new(Procedure, name, required_params_count, params, body_exprs, c_native_function)
+// ast_node_new(Program, free_type)
+// ast_node_new(Call_Expression, free_type, name)
+// ast_node_new(Local_Binding_Form, free_type, LET/LET_STAR/LETREC/DEFINE)
+// ast_node_new(Local_Binding_Form, free_type, DEFINE, char *name, AST_Node *value)
+// ast_node_new(Binding, free_type, name, AST_Node *value)
+// ast_node_new(List or Pair, free_type)
+// ast_node_new(xxx_Literal, free_type, value)
+// ast_node_new(Procedure, free_type, name, required_params_count, params, body_exprs, c_native_function)
 AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -980,8 +987,78 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 AST_Node *value = walk(tokens, current_p);
                 AST_Node *ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, DEFINE, token->value, value);
 
+                // if value is a porcedure, copy binding's name to procedure.
+                if (value->type == Procedure && value->contents.procedure.name == NULL)
+                {
+                    value->contents.procedure.name = malloc(strlen(token->value) +1);
+                    strcpy(value->contents.procedure.name, token->value);
+                }
+
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
+            }
+
+            // handle 'lambda'
+            if (strcmp(token->value, "lambda") == 0)
+            {
+                Vector *params = VectorNew(sizeof(AST_Node *));
+                Vector *body_exprs = VectorNew(sizeof(AST_Node *));
+                int required_params_count = 0;
+
+                // arguments list
+                // move to '('    
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
+                if ((token->value)[0] != LEFT_PAREN)
+                {
+                    fprintf(stderr, "walk(): lambda: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+                
+                // move to first arg of argument-list. 
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
+
+                // collect arguments.
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    AST_Node *param = walk(tokens, current_p);
+                    VectorAppend(params, &param);
+                    required_params_count++;
+                    token = tokens_nth(tokens, *current_p);
+                }
+                
+                // check ')' of argument-list.
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): lambda: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                // move to first body_expr.
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
+
+                // collect body expressions.
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    AST_Node *body_expr = walk(tokens, current_p);
+                    VectorAppend(body_exprs, &body_expr);
+                    token = tokens_nth(tokens, *current_p);
+                }
+
+                // check ')' of body_exprs.
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): lambda: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                (*current_p)++; // skip ')' of lambda expression. 
+                AST_Node *procedure = ast_node_new(Procedure, AUTO_FREE, NULL, required_params_count, params, body_exprs, NULL);
+                return procedure;
             }
 
             // handle ... 
@@ -1486,7 +1563,35 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     
     if (node->type == Procedure)
     {
-        return;
+        Vector *params = node->contents.procedure.params;
+        Vector *body_exprs = node->contents.procedure.body_exprs;
+
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *param = *(AST_Node **)VectorNth(params, i);
+            generate_context(param, node, aux_data);
+        }
+
+        // append param to every expr in body_exprs, even a Number_Literal ast node.
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
+            if (body_expr->context == NULL)
+            {
+                body_expr->context = VectorNew(sizeof(AST_Node *));
+            }
+            for(int j = 0; j < VectorLength(params); j++)
+            {
+                AST_Node *param = *(AST_Node **)VectorNth(params, j);
+                VectorAppend(body_expr->context, &param);
+            }
+        }
+
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+            generate_context(body_expr, node, aux_data);
+        }
     }
     
     if (node->type == Number_Literal ||

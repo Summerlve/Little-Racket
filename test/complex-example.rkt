@@ -3,4 +3,5 @@
 (define v '(#\c #\a #t #f)); comment here
 (let ([a (let ([d (/ (+ 1 100) 5)]) d)]
       [b (let* ([e (letrec ([f 1.5]) f)]) e)]
-      [c 3]) 1 (+ a b) (+ a (+ a b) c) #t); let expression
+      [c 3]) 1 (+ a b) (+ a (+ a b) c) #t (+ -11911.11 11.11)); let expression
+(define plus (lambda (x y) 1 (+ x y)))
