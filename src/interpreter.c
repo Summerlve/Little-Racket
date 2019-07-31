@@ -292,14 +292,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
         }
 
         // handle number or negative nubmer.
-        bool is_number = false;
         if (isdigit(line[i]) != 0 ||
             (line[i] == BAR && isdigit(line[i + 1]) != 0))
-        {
-            is_number = true;
-        }
-
-        if (is_number)
         {
             cursor = i + 1;
             int dot_count = 0;
@@ -514,9 +508,13 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
     if (ast_node->type == Procedure)
     {
         matched = true;
+        ast_node->contents.procedure.name = NULL;
         const char *name = va_arg(ap, const char *);
-        ast_node->contents.procedure.name = (char *)malloc(strlen(name) + 1);
-        strcpy(ast_node->contents.procedure.name, name);
+        if (name != NULL)
+        {
+            ast_node->contents.procedure.name = (char *)malloc(strlen(name) + 1);
+            strcpy(ast_node->contents.procedure.name, name);
+        }
         ast_node->contents.procedure.required_params_count = va_arg(ap, int);
         ast_node->contents.procedure.params = va_arg(ap, Vector *);
         ast_node->contents.procedure.body_exprs = va_arg(ap, Vector *);
@@ -541,7 +539,7 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
         {
             const char *name = va_arg(ap, const char *);
             AST_Node *value = va_arg(ap, AST_Node *);
-            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, AUTO_FREE,name, value);
+            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, AUTO_FREE, name, value);
         }
     }
 
@@ -1014,7 +1012,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     fprintf(stderr, "walk(): lambda: bad syntax\n");
                     exit(EXIT_FAILURE);
                 }
-                
+
                 // move to first arg of argument-list. 
                 (*current_p)++;
                 token = tokens_nth(tokens, *current_p);
@@ -1028,7 +1026,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     required_params_count++;
                     token = tokens_nth(tokens, *current_p);
                 }
-                
+
                 // check ')' of argument-list.
                 if ((token->value)[0] != RIGHT_PAREN)
                 {
@@ -1235,6 +1233,12 @@ AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type)
 // traverser help function.
 static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data)
 {
+    if (node == NULL)
+    {
+        fprintf(stdout, "work out no value\n");
+        return;
+    }
+
     AST_Node_Handler *handler = find_ast_node_handler(visitor, node->type);
 
     if (handler == NULL)
@@ -1563,6 +1567,7 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     
     if (node->type == Procedure)
     {
+        // only programmer defined procedure needs to generate context.
         Vector *params = node->contents.procedure.params;
         Vector *body_exprs = node->contents.procedure.body_exprs;
 
@@ -1666,10 +1671,14 @@ static AST_Node *search_binding_value(AST_Node *binding)
     return value;
 }
 
-void vector_mannual_free_helper(void *value_addr, void *aux_data)
+void operands_free_helper(void *value_addr, void *aux_data)
 {
     AST_Node *ast_node = *(AST_Node **)value_addr;
-    if (ast_node->free_type == MANUAL_FREE) ast_node_free(ast_node);
+    if (ast_node->free_type == MANUAL_FREE)
+    {
+        printf("needs to free the middle thing\n");
+        ast_node_free(ast_node);
+    }
 }
 
 // return null when work out no value.
@@ -1684,11 +1693,17 @@ Result eval(AST_Node *ast_node)
     {
         matched = true;
         Vector *body = ast_node->contents.program.body;
+        Vector *results = VectorNew(sizeof(AST_Node *));
+        int body_tail = VectorLength(body) - 1;
+
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
             result = eval(sub_node); // the last sub_node's result will be returned;
+            if (i != body_tail && result != NULL) VectorAppend(results, &result);
         }
+
+        // VectorFree(results, operands_free_helper, NULL);
     }
 
     if (ast_node->type == Call_Expression)
@@ -1699,36 +1714,92 @@ Result eval(AST_Node *ast_node)
         generate_context(binding, ast_node, NULL);
         AST_Node *binding_contains_value = search_binding_value(binding);
         if (binding->free_type == MANUAL_FREE) ast_node_free(binding); // free the tmp binding.
+
         if (binding_contains_value == NULL)
         {
             fprintf(stderr, "eval(): unbound identifier: %s\n", name);
             exit(EXIT_FAILURE);
         }
+
         AST_Node *procedure = binding_contains_value->contents.binding.value;
         if (procedure->type != Procedure)
         {
             fprintf(stderr, "eval(): not a procedure: %s\n", name);
             exit(EXIT_FAILURE); 
         }
-        Vector *params = ast_node->contents.call_expression.params;
-        Vector *operands = VectorNew(sizeof(AST_Node *));
-        for (int i = 0; i < VectorLength(params); i++)
+
+        // built-in procedure.
+        if (procedure->contents.procedure.c_native_function != NULL)
         {
-            AST_Node *param = *(AST_Node **)VectorNth(params, i);
-            AST_Node *operand = eval(param);
-            VectorAppend(operands, &operand);
-        }
-        Function c_native_function = procedure->contents.procedure.c_native_function;
-        if (c_native_function != NULL)
-        {
-            // it's a built-in procedure.
+            Vector *params = ast_node->contents.call_expression.params;
+            Vector *operands = VectorNew(sizeof(AST_Node *));
+            for (int i = 0; i < VectorLength(params); i++)
+            {
+                AST_Node *param = *(AST_Node **)VectorNth(params, i);
+                AST_Node *operand = eval(param);
+                VectorAppend(operands, &operand);
+            }
+            Function c_native_function = procedure->contents.procedure.c_native_function;
             result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
+            // VectorFree(operands, operands_free_helper, NULL);
         }
-        else
+
+        // programmer defined procedure.
+        if (procedure->contents.procedure.c_native_function == NULL)
         {
-            // it's defined by programmer. 
+            Vector *params = ast_node->contents.call_expression.params;
+            Vector *operands = VectorNew(sizeof(AST_Node *)); 
+            for (int i = 0; i < VectorLength(params); i++)
+            {
+                AST_Node *param = *(AST_Node **)VectorNth(params, i);
+                AST_Node *operand = eval(param);
+                VectorAppend(operands, &operand);
+            }
+
+            // check arity.
+            int required_params_count = procedure->contents.procedure.required_params_count;
+            int operands_count = VectorLength(operands);
+            if (operands_count != required_params_count)
+            {
+                fprintf(stderr, "%s: arity mismatch;\n"
+                                "the expected number of arguments does not match the given number\n"
+                                "expected: %d\n"
+                                "given: %d\n", procedure->contents.procedure.name, required_params_count, operands_count);
+                exit(EXIT_FAILURE); 
+            }
+
+            // binding virtual params to actual params.
+            Vector *virtual_params = procedure->contents.procedure.params;
+            for (int i = 0; i < VectorLength(virtual_params); i++)
+            {
+                AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
+                AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
+                virtual_param->contents.binding.value = operand;
+            }
+
+            // eval
+            Vector *body_exprs = procedure->contents.procedure.body_exprs;
+            Vector *results = VectorNew(sizeof(AST_Node *));
+            int body_expr_tail = VectorLength(body_exprs) - 1;
+
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                result = eval(body_expr);
+                if (i != body_expr_tail) VectorAppend(results, &result);
+            }
+
+            // VectorFree(results, operands_free_helper, NULL);
+            
+            // set virtual_param's value to null.
+            for (int i = 0; i < VectorLength(virtual_params); i++)
+            {
+                AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
+                virtual_param->contents.binding.value = NULL; 
+            }
+
+            // VectorFree(operands, operands_free_helper, NULL);
         }
-        VectorFree(operands, vector_mannual_free_helper, NULL);
     }
     
     if (ast_node->type == Local_Binding_Form)
@@ -1758,6 +1829,7 @@ Result eval(AST_Node *ast_node)
             matched = true;
             Vector *bindings = ast_node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
+
             for (int i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
@@ -1770,11 +1842,18 @@ Result eval(AST_Node *ast_node)
                     ast_node_free(init_value);
                 }
             }
+
+            Vector *results = VectorNew(sizeof(AST_Node *));
+            int body_expr_tail = VectorLength(body_exprs) - 1;
+
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 result = eval(body_expr); // the last body_expr's result will be returned;
+                if (i != body_expr_tail) VectorAppend(results, &result);
             }
+
+            // VectorFree(results, operands_free_helper, NULL);
         }
     }
 
@@ -1847,6 +1926,7 @@ Result calculator(AST ast)
 
 int result_free(Result result)
 {
+    if (result == NULL) return 1;
     if (result->free_type == MANUAL_FREE)
     {
         return ast_node_free(result);
