@@ -1231,11 +1231,11 @@ AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type)
 }
 
 // traverser help function.
-static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data)
+static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data)
 {
     if (node == NULL)
     {
-        fprintf(stdout, "work out no value\n");
+        fprintf(stdout, "work out no value.\n");
         return;
     }
 
@@ -1257,7 +1257,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(body, i);
-            traverser_node(ast_node, node, visitor, aux_data);
+            traverser_helper(ast_node, node, visitor, aux_data);
         }
     }
 
@@ -1267,7 +1267,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         for (int i = 0; i < VectorLength(params); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(params, i);
-            traverser_node(ast_node, node, visitor, aux_data);
+            traverser_helper(ast_node, node, visitor, aux_data);
         }
     }
 
@@ -1284,19 +1284,19 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
             for (int i = 0; i < VectorLength(bindings); i++)            
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
-                traverser_node(binding, node, visitor, aux_data);
+                traverser_helper(binding, node, visitor, aux_data);
             }
             for (int i = 0; i < VectorLength(body_exprs); i++)            
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
-                traverser_node(body_expr, node, visitor, aux_data);
+                traverser_helper(body_expr, node, visitor, aux_data);
             }
         }
 
         if (local_binding_form_type == DEFINE)
         {
             AST_Node *binding = node->contents.local_binding_form.contents.define.binding;
-            traverser_node(binding, node, visitor, aux_data);
+            traverser_helper(binding, node, visitor, aux_data);
         }
     }
 
@@ -1306,7 +1306,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         for (int i = 0; i < VectorLength(value); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
-            traverser_node(ast_node, node, visitor, aux_data);
+            traverser_helper(ast_node, node, visitor, aux_data);
         }
     }
 
@@ -1316,7 +1316,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         for (int i = 0; i < VectorLength(value); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
-            traverser_node(ast_node, node, visitor, aux_data);
+            traverser_helper(ast_node, node, visitor, aux_data);
         }
     }
 
@@ -1325,7 +1325,7 @@ static void traverser_node(AST_Node *node, AST_Node *parent, Visitor visitor, vo
         AST_Node *value = node->contents.binding.value;
         if (value != NULL)
         {
-            traverser_node(value, node, visitor, aux_data);
+            traverser_helper(value, node, visitor, aux_data);
         }
     }
 
@@ -1344,7 +1344,7 @@ Visitor get_defult_visitor(void)
 void traverser(AST ast, Visitor visitor, void *aux_data)
 {
     if (visitor == NULL) visitor = get_defult_visitor();
-    traverser_node(ast, NULL, visitor, aux_data);
+    traverser_helper(ast, NULL, visitor, aux_data);
 }
 
 // find the nearly parent contextable node.
