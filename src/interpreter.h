@@ -53,18 +53,19 @@ typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC
 } Local_Binding_Form_Type;
 typedef enum _z_conditional_form_type {
-    IF, COND, AND, OR
+    IF, COND, AND, OR, NOT
 } Conditional_Form_Type;
 typedef enum _z_boolean_type {
     R_FALSE, R_TRUE // any value other than #f counts as true.
 } Boolean_Type;
 typedef enum {
-    AUTO_FREE, MANUAL_FREE
     /*
         AUTO_FREE means the ast_node is in ast, free by ast_node_free() or released by recursively ast_node_free() call.
         MANUAL_FREE means created by some built-in procedures, need free it manually, the ast_node isn't in ast,
                     always made in eval() or in built-in procedures.
     */
+    AUTO_FREE,
+    MANUAL_FREE
 } Memory_Free_Type;
 typedef struct _z_ast_node {
     AST_Node_Type type;
@@ -105,9 +106,15 @@ typedef struct _z_ast_node {
             Conditional_Form_Type type;
             union {
                 // if
+                struct {
+                    struct _z_ast_node *test_expr;
+                    struct _z_ast_node *then_expr;
+                    struct _z_ast_node *else_expr;
+                } if_expression;
                 // cond
                 // and
                 // or
+                // not
             } contents;
         } conditional_form;
         struct { // case: let ... [a 1] 'value' field will have a value, case: a (single variable identifier) 'value' field set to null.

@@ -9,3 +9,5 @@
 (plus 1 2)
 (plus 2 (plus 1 (plus (plus 1 2) (plus c 1))))
 (define x (lambda (x y z) x))
+(x 1 2 3)
+(if #t 1 2)

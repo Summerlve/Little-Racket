@@ -887,6 +887,13 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
 
+            // check IDENTIFIER
+            if (token->type != IDENTIFIER)
+            {
+                fprintf(stderr, "walk(): function call or form syntax error\n");
+                exit(EXIT_FAILURE);
+            }
+
             // handle Local_Binding_Form
             // handle 'let' 'let*' 'letrec' contains '[' and ']'
             if ((strcmp(token->value, "let") == 0) ||
@@ -1057,6 +1064,20 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (*current_p)++; // skip ')' of lambda expression. 
                 AST_Node *procedure = ast_node_new(Procedure, AUTO_FREE, NULL, required_params_count, params, body_exprs, NULL);
                 return procedure;
+            }
+
+            // handle 'if'
+            if (strcmp(token->value, "if") == 0)
+            {
+                // move to test_expr.
+                (*current_p)++;
+
+                AST_Node *test_expr = walk(tokens, current_p);
+                AST_Node *then_expr = walk(tokens, current_p);
+                AST_Node *else_expr = walk(tokens, current_p);
+
+                // ignore the ')' of if expression.
+                (*current_p)++;
             }
 
             // handle ... 
