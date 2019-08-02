@@ -7,4 +7,4 @@
       [c 3]) 1 (+ a b) (+ a (+ a b) c) #t (+ -11911.11 11.11)); let expression
 (define plus (lambda (x y) 1 (+ x y)))
 (plus 1 2)
-(plus 2 (plus c 1))
+(plus 2 (plus 1 (plus (plus 1 2) (plus c 1))))
