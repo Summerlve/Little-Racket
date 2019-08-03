@@ -207,6 +207,32 @@ static void boolean_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 }
 
+static void conditional_form_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    if (node->contents.conditional_form.type == IF)
+    {
+        printf(" ( ");
+    }
+
+    if (node->contents.conditional_form.type == COND)
+    {
+        
+    }
+}
+
+static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    if (node->contents.conditional_form.type == IF)
+    {
+        printf(" ) ");
+    }
+
+    if (node->contents.conditional_form.type == COND)
+    {
+        
+    }
+}
+
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
@@ -232,6 +258,8 @@ Visitor get_custom_visitor(void)
     handler = ast_node_handler_new(Local_Binding_Form, local_binding_form_enter, local_binding_form_exit);
     ast_node_handler_append(visitor, handler);
     handler = ast_node_handler_new(Boolean_Literal, boolean_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Conditional_Form, conditional_form_enter, conditional_form_exit);
     ast_node_handler_append(visitor, handler);
     return visitor;
 }

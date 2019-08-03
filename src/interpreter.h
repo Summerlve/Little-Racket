@@ -53,7 +53,7 @@ typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC
 } Local_Binding_Form_Type;
 typedef enum _z_conditional_form_type {
-    IF, COND, AND, OR, NOT
+    IF, COND, AND, NOT, OR
 } Conditional_Form_Type;
 typedef enum _z_boolean_type {
     R_FALSE, R_TRUE // any value other than #f counts as true.

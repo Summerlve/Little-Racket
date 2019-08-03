@@ -405,7 +405,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             regex_t reg;
             regmatch_t match[1];
     
-            int result = regcomp(&reg, pattern, REG_ENHANCED | REG_EXTENDED); 
+            int result = regcomp(&reg, pattern, REG_EXTENDED); 
             if (result != 0)
             {
                 perror("Could not compile regex");
@@ -476,6 +476,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(List or Pair, free_type)
 // ast_node_new(xxx_Literal, free_type, value)
 // ast_node_new(Procedure, free_type, name, required_params_count, params, body_exprs, c_native_function)
+// ast_node_new(Conditional_Form, free_type, Conditional_Form_Type, test_expr, then_expr, else_expr)
 AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -540,6 +541,36 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
             const char *name = va_arg(ap, const char *);
             AST_Node *value = va_arg(ap, AST_Node *);
             ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, AUTO_FREE, name, value);
+        }
+    }
+
+    if (ast_node->type == Conditional_Form)
+    {
+        matched = true;
+        Conditional_Form_Type conditional_form_type = va_arg(ap, Conditional_Form_Type);
+        ast_node->contents.conditional_form.type = conditional_form_type;
+
+        if (conditional_form_type == IF)
+        {
+            ast_node->contents.conditional_form.contents.if_expression.test_expr = va_arg(ap, AST_Node *);
+            ast_node->contents.conditional_form.contents.if_expression.then_expr = va_arg(ap, AST_Node *);
+            ast_node->contents.conditional_form.contents.if_expression.else_expr = va_arg(ap, AST_Node *);
+        }
+
+        if (conditional_form_type == COND)
+        {
+        }
+
+        if (conditional_form_type == AND)
+        {
+        }
+
+        if (conditional_form_type == NOT)
+        {
+        }
+
+        if (conditional_form_type == OR)
+        {
         }
     }
 
@@ -747,6 +778,11 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(ast_node->contents.local_binding_form.contents.define.binding);
             free(ast_node);
         }
+    }
+
+    if (ast_node->type == Conditional_Form)
+    {
+        
     }
 
     if (ast_node->type == Binding)
@@ -1076,8 +1112,18 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 AST_Node *then_expr = walk(tokens, current_p);
                 AST_Node *else_expr = walk(tokens, current_p);
 
-                // ignore the ')' of if expression.
+                // check ')'
+                token = tokens_nth(tokens, *current_p);
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): if: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                // skip the ')' of if expression.
                 (*current_p)++;
+                AST_Node *if_expr = ast_node_new(Conditional_Form, AUTO_FREE, IF, test_expr, then_expr, else_expr);
+                return if_expr;
             }
 
             // handle ... 
@@ -1319,6 +1365,11 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
             AST_Node *binding = node->contents.local_binding_form.contents.define.binding;
             traverser_helper(binding, node, visitor, aux_data);
         }
+    }
+
+    if (node->type == Conditional_Form)
+    {
+
     }
 
     if (node->type == List_Literal)
@@ -1854,6 +1905,80 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 result = eval(body_expr, aux_data); // the last body_expr's result will be returned;
                 VectorAppend(gc, &result);
             }
+        }
+    }
+
+    if (ast_node->type == Conditional_Form)
+    {
+        Conditional_Form_Type conditional_form_type = ast_node->contents.conditional_form.type;
+
+        if (conditional_form_type == IF)
+        {
+            matched = true;
+            AST_Node *test_expr = ast_node->contents.conditional_form.contents.if_expression.test_expr;
+            AST_Node *then_expr = ast_node->contents.conditional_form.contents.if_expression.then_expr;
+            AST_Node *else_expr = ast_node->contents.conditional_form.contents.if_expression.else_expr;
+
+            AST_Node *test_val = eval(test_expr, aux_data);
+            if (test_val == NULL)
+            {
+                fprintf(stderr, "eval(): if: bad syntax\n");
+                exit(EXIT_FAILURE); 
+            }
+            VectorAppend(gc, &test_val);
+
+            Boolean_Type val = R_TRUE;
+            if (test_val->type == Boolean_Literal &&
+               *(Boolean_Type *)(test_val->contents.literal.value) == R_FALSE)
+            {
+                val = R_FALSE;
+            }
+
+            if (val == R_TRUE)
+            {
+                // excute then expr.
+                // only (define) will work out NULL, and (define) can not be in (if).
+                result = eval(then_expr, aux_data);
+                if (result == NULL)
+                {
+                    fprintf(stderr, "eval(): if: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+                VectorAppend(gc, &result);
+            }
+
+            if (val == R_FALSE)
+            {
+                // excute else expr.
+                // only (define) will work out NULL, and (define) can not be in (if).
+                result = eval(else_expr, aux_data);
+                if (result == NULL)
+                {
+                    fprintf(stderr, "eval(): if: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+                VectorAppend(gc, &result);
+            }
+        }
+
+        if (conditional_form_type == COND)
+        {
+            matched = true;
+        }
+
+        if (conditional_form_type == AND)
+        {
+            matched = true;
+        }
+
+        if (conditional_form_type == NOT)
+        {
+            matched = true;
+        }
+
+        if (conditional_form_type == OR)
+        {
+            matched = true;
         }
     }
 
