@@ -46,8 +46,8 @@ typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_Literal, Pair_Literal, Boolean_Literal,
-    Call_Expression, Local_Binding_Form, Conditional_Form,
-    Binding, Procedure, Program
+    Local_Binding_Form, Conditional_Form, Lambda_Form,
+    Call_Expression, Binding, Procedure, Program
 } AST_Node_Type;
 typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC
@@ -132,6 +132,11 @@ typedef struct _z_ast_node {
             Vector *body_exprs; // AST_Node *[]
             Function c_native_function;
         } procedure;
+        struct {
+            int required_params_count; // only impl required-args right now.
+            Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name.
+            Vector *body_exprs; // AST_Node *[]
+        } lambda_form;
         struct {
             Vector *body; // program's body is AST_Node *[]
             Vector *built_in_bindings; // like context in AST_Node, store the built-in bindings.

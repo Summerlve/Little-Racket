@@ -8,3 +8,4 @@ list(APPEND my_source_files
             ./src/custom_handler.c
             ./src/racket_built_in.c)
 add_executable(Little-Racket ${my_source_files})
+target_link_libraries(Little-Racket m)
