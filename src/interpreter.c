@@ -2,6 +2,7 @@
 #include "./load_racket_file.h"
 #include "./vector.h"
 #include "./racket_built_in.h"
+#include "./custom_handler.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -686,6 +687,7 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
 int ast_node_free(AST_Node *ast_node)
 {
     if (ast_node == NULL) return 1;
+    if (ast_node->free_type == MANUAL_FREE) return 1;
 
     bool matched = false;
 
@@ -758,7 +760,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Lambda_Form)
     {
         matched = true;
-        // params and body_exprs shared with procedure, so free them when encountes procedure case.
+        // params and body_exprs will be freed by procedure which lambda form worked out.
         free(ast_node);
     }
 
@@ -1067,13 +1069,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 AST_Node *value = walk(tokens, current_p);
                 AST_Node *ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, DEFINE, token->value, value);
 
-                // if value is a porcedure, copy binding's name to procedure.
-                if (value->type == Procedure && value->contents.procedure.name == NULL)
-                {
-                    value->contents.procedure.name = malloc(strlen(token->value) +1);
-                    strcpy(value->contents.procedure.name, token->value);
-                }
-
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
             }
@@ -1083,7 +1078,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             {
                 Vector *params = VectorNew(sizeof(AST_Node *));
                 Vector *body_exprs = VectorNew(sizeof(AST_Node *));
-                int required_params_count = 0;
 
                 // arguments list
                 // move to '('    
@@ -1105,7 +1099,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 {
                     AST_Node *param = walk(tokens, current_p);
                     VectorAppend(params, &param);
-                    required_params_count++;
                     token = tokens_nth(tokens, *current_p);
                 }
 
@@ -1377,6 +1370,22 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         }
     }
 
+    if (node->type == Lambda_Form)
+    {
+        Vector *params = node->contents.lambda_form.params;
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *ast_node = *(AST_Node **)VectorNth(params, i);
+            traverser_helper(ast_node, node, visitor, aux_data);
+        }
+        Vector *body_exprs = node->contents.lambda_form.body_exprs;
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *ast_node = *(AST_Node **)VectorNth(body_exprs, i);
+            traverser_helper(ast_node, node, visitor, aux_data);
+        }
+    }
+
     if (node->type == Local_Binding_Form)
     {
         Local_Binding_Form_Type local_binding_form_type = node->contents.local_binding_form.type;
@@ -1419,6 +1428,8 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
             traverser_helper(then_expr, node, visitor, aux_data);
             traverser_helper(else_expr, node, visitor, aux_data);
         }
+
+        // ...
     }
 
     if (node->type == List_Literal)
@@ -1694,11 +1705,11 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         if (value != NULL) generate_context(value, node, aux_data); 
     }
     
-    if (node->type == Procedure)
+    if (node->type == Lambda_Form) 
     {
         // only programmer defined procedure needs to generate context.
-        Vector *params = node->contents.procedure.params;
-        Vector *body_exprs = node->contents.procedure.body_exprs;
+        Vector *params = node->contents.lambda_form.params;
+        Vector *body_exprs = node->contents.lambda_form.body_exprs;
 
         for (int i = 0; i < VectorLength(params); i++)
         {
@@ -1818,7 +1829,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
             result = eval(sub_node, aux_data); // the last sub_node's result will be returned;
-            if (result != NULL) VectorAppend(gc, &result);
         }
     }
 
@@ -1829,7 +1839,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
         AST_Node *binding = ast_node_new(Binding, MANUAL_FREE, name, NULL);
         generate_context(binding, ast_node, NULL);
         AST_Node *binding_contains_value = search_binding_value(binding);
-        if (binding->free_type == MANUAL_FREE) ast_node_free(binding); // free the tmp binding.
+        ast_node_free(binding); // free the tmp binding.
 
         if (binding_contains_value == NULL)
         {
@@ -1853,12 +1863,12 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 AST_Node *operand = eval(param, aux_data);
-                VectorAppend(gc, &operand);
                 VectorAppend(operands, &operand);
             }
             Function c_native_function = procedure->contents.procedure.c_native_function;
             result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
-            VectorAppend(gc, &result);
+            if (result != NULL && result->free_type == MANUAL_FREE) VectorAppend(gc, &result);
+            VectorFree(operands, NULL, NULL);
         }
 
         // programmer defined procedure.
@@ -1870,7 +1880,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 AST_Node *operand = eval(param, aux_data);
-                VectorAppend(gc, &operand);
                 VectorAppend(operands, &operand);
             }
 
@@ -1901,7 +1910,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 result = eval(body_expr, aux_data);
-                VectorAppend(gc, &result);
+                if (result != NULL && result->free_type == MANUAL_FREE) VectorAppend(gc, &result);
             }
 
             // set virtual_param's value to null.
@@ -1910,6 +1919,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
                 virtual_param->contents.binding.value = NULL; 
             }
+
+            VectorFree(operands, NULL, NULL);
         }
     }
     
@@ -1927,9 +1938,14 @@ Result eval(AST_Node *ast_node, void *aux_data)
             binding->contents.binding.value = eval(init_value, aux_data);
             if (init_value != binding->contents.binding.value)
             {
-                binding->contents.binding.value->free_type = AUTO_FREE;
                 generate_context(binding->contents.binding.value, binding, NULL);
-                ast_node_free(init_value);
+                // ast_node_free(init_value);
+            }
+            if (binding->contents.binding.value->type == Procedure)
+            {
+                AST_Node *procedure = binding->contents.binding.value;
+                procedure->contents.procedure.name = malloc(strlen(binding->contents.binding.name) + 1);
+                strcpy(procedure->contents.procedure.name, binding->contents.binding.name);
             }
         }
         
@@ -1947,11 +1963,10 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 AST_Node *init_value = binding->contents.binding.value;
                 binding->contents.binding.value = eval(init_value, aux_data);
-                if (binding->contents.binding.value->free_type == MANUAL_FREE)
+                if (init_value != binding->contents.binding.value)
                 {
-                    binding->contents.binding.value->free_type = AUTO_FREE;
                     generate_context(binding->contents.binding.value, binding, NULL);
-                    ast_node_free(init_value);
+                    // ast_node_free(init_value);
                 }
             }
 
@@ -1960,7 +1975,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 result = eval(body_expr, aux_data); // the last body_expr's result will be returned;
-                VectorAppend(gc, &result);
             }
         }
     }
@@ -1982,7 +1996,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 fprintf(stderr, "eval(): if: bad syntax\n");
                 exit(EXIT_FAILURE); 
             }
-            VectorAppend(gc, &test_val);
 
             Boolean_Type val = R_TRUE;
             if (test_val->type == Boolean_Literal &&
@@ -2001,7 +2014,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
                     fprintf(stderr, "eval(): if: bad syntax\n");
                     exit(EXIT_FAILURE);
                 }
-                VectorAppend(gc, &result);
             }
 
             if (val == R_FALSE)
@@ -2014,7 +2026,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
                     fprintf(stderr, "eval(): if: bad syntax\n");
                     exit(EXIT_FAILURE);
                 }
-                VectorAppend(gc, &result);
             }
         }
 
@@ -2091,10 +2102,11 @@ Result eval(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Lambda_Form)
     {
         matched = true;
-        AST_Node *params = ast_node->contents.lambda_form.params;
-        AST_Node *body_exprs = ast_node->contents.lambda_form.body_exprs;
-        AST_Node *ast_node = ast_node_new(Procedure, AUTO_FREE, NULL, VectorLength(params), params, body_exprs, NULL);
-        return ast_node;
+        Vector *params = ast_node->contents.lambda_form.params;
+        Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
+        AST_Node *procedure = ast_node_new(Procedure, MANUAL_FREE, NULL, VectorLength(params), params, body_exprs, NULL);
+        VectorAppend(gc, &procedure);
+        return procedure;
     }
 
     if (!matched)
@@ -2132,24 +2144,23 @@ static int result_free(Result result)
 
 static void gc_free_helper(void *value_addr, int index, Vector *vector, void *aux_data)
 {
-    AST_Node *ast_node = *(AST_Node **)value_addr;
-    Vector *operands = (Vector *)vector;
-    bool is_freed = false;
+    if (value_addr == NULL) return;
 
-    if (ast_node == NULL) return;
+    AST_Node *ast_node = *(AST_Node **)value_addr;
+    if (ast_node->free_type == AUTO_FREE) return;
+
+    bool is_freed = false;
 
     for (int i = 0; i < index; i++)
     {
-        AST_Node *pre_node = *(AST_Node **)VectorNth(operands, i);
+        AST_Node *pre_node = *(AST_Node **)VectorNth(vector, i);
         if (pre_node == ast_node) is_freed = true;
     }
 
     if (is_freed == true) return;
 
-    if (ast_node->free_type == MANUAL_FREE)
-    {
-        ast_node_free(ast_node);
-    }
+    ast_node->free_type = AUTO_FREE;
+    ast_node_free(ast_node);
 }
 
 int gc_free(Vector *gc)

@@ -3,7 +3,7 @@
 
 void print_raw_code(const char *line, void *aux_data)
 {
-    printf("%s", line);
+    printf("%s\n", line);
 }
 
 void print_tokens(const Token *token, void *aux_data)
@@ -99,7 +99,7 @@ static void string_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    if (node->contents.binding.value == NULL)
+    if (parent == NULL && node->contents.binding.value == NULL)
     {
         // just single variable identifier here. print variable name only.
         printf(" %s ", (char *)(node->contents.binding.name));
@@ -122,12 +122,23 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
             printf("[ ");
         }
     }
+
+    if (parent != NULL & parent->type == Lambda_Form) 
+    {
+        Vector *params = parent->contents.lambda_form.params;
+        AST_Node *first = *(AST_Node **)VectorNth(params, 0);
+        if (node == first) 
+        {
+            printf(" (");
+        }
+    }
+
     printf(" %s ", (char *)(node->contents.binding.name));
 }
 
 static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    if (node->contents.binding.value == NULL)
+    if (parent == NULL && node->contents.binding.value == NULL)
     {
         // just single variable identifier here. do nothing here.
         return;
@@ -146,6 +157,16 @@ static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)
             {
                 printf(") ");
             }
+        }
+    }
+
+    if (parent != NULL & parent->type == Lambda_Form) 
+    {
+        Vector *params = parent->contents.lambda_form.params;
+        AST_Node *last = *(AST_Node **)VectorNth(params, VectorLength(params) - 1);
+        if (node == last)
+        {
+            printf(") ");
         }
     }
 }
@@ -233,6 +254,16 @@ static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_da
     }
 }
 
+static void lambda_form_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    printf("(lambda ");
+}
+
+static void lambda_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    printf(" ) ");
+}
+
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
@@ -260,6 +291,8 @@ Visitor get_custom_visitor(void)
     handler = ast_node_handler_new(Boolean_Literal, boolean_enter, NULL);
     ast_node_handler_append(visitor, handler);
     handler = ast_node_handler_new(Conditional_Form, conditional_form_enter, conditional_form_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Lambda_Form, lambda_form_enter, lambda_form_exit);
     ast_node_handler_append(visitor, handler);
     return visitor;
 }

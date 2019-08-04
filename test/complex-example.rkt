@@ -12,3 +12,5 @@
 (x 1 2 3)
 (define a #f)
 (if a 1 2)
+(define p (+ 1 2))
+p
