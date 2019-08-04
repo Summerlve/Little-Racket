@@ -35,6 +35,7 @@ static Number_Type *number_type_new(void)
     number->allocated_length = 4;
     number->logical_length = 0;
     number->contents = (char *)malloc(number->allocated_length * sizeof(char));
+
     if (number->contents == NULL)
     {
         perror("Number_Type::contents malloc failed");
@@ -345,8 +346,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
             {
                 if (line[cursor] != DOUBLE_QUOTE)
                 {
-                    count ++;
-                    cursor ++;
+                    count++;
+                    cursor++;
                 }
                 else
                 {
@@ -477,6 +478,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(xxx_Literal, free_type, value)
 // ast_node_new(Procedure, free_type, name, required_params_count, params, body_exprs, c_native_function)
 // ast_node_new(Conditional_Form, free_type, Conditional_Form_Type, test_expr, then_expr, else_expr)
+// ast_node_new(Lambda_Form, free_type, params, body_exprs)
 AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -520,6 +522,13 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
         ast_node->contents.procedure.params = va_arg(ap, Vector *);
         ast_node->contents.procedure.body_exprs = va_arg(ap, Vector *);
         ast_node->contents.procedure.c_native_function = va_arg(ap, Function);
+    }
+
+    if (ast_node->type == Lambda_Form)
+    {
+        matched = true;
+        ast_node->contents.lambda_form.params = va_arg(ap, Vector *);
+        ast_node->contents.lambda_form.body_exprs = va_arg(ap, Vector *);
     }
 
     if (ast_node->type == Local_Binding_Form)
@@ -746,6 +755,13 @@ int ast_node_free(AST_Node *ast_node)
         free(ast_node);
     }
 
+    if (ast_node->type == Lambda_Form)
+    {
+        matched = true;
+        // params and body_exprs shared with procedure, so free them when encountes procedure case.
+        free(ast_node);
+    }
+
     if (ast_node->type == Local_Binding_Form)
     {
         Local_Binding_Form_Type Local_binding_form_type = ast_node->contents.local_binding_form.type;
@@ -782,7 +798,30 @@ int ast_node_free(AST_Node *ast_node)
 
     if (ast_node->type == Conditional_Form)
     {
-        
+        Conditional_Form_Type conditional_form_type = ast_node->contents.conditional_form.type;
+
+        if (conditional_form_type == IF)
+        {
+            matched = true;
+            AST_Node *test_expr = ast_node->contents.conditional_form.contents.if_expression.test_expr;
+            AST_Node *then_expr = ast_node->contents.conditional_form.contents.if_expression.then_expr;
+            AST_Node *else_expr = ast_node->contents.conditional_form.contents.if_expression.else_expr;
+            ast_node_free(test_expr);
+            ast_node_free(then_expr);
+            ast_node_free(else_expr);
+        }
+
+        if (conditional_form_type == COND)
+        {
+
+        }
+
+        if (conditional_form_type == AND)
+        {
+
+        }
+
+        // ...
     }
 
     if (ast_node->type == Binding)
@@ -1098,8 +1137,8 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 }
 
                 (*current_p)++; // skip ')' of lambda expression. 
-                AST_Node *procedure = ast_node_new(Procedure, AUTO_FREE, NULL, required_params_count, params, body_exprs, NULL);
-                return procedure;
+                AST_Node *lambda = ast_node_new(Lambda_Form, AUTO_FREE, params, body_exprs);
+                return lambda;
             }
 
             // handle 'if'
@@ -1369,7 +1408,17 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
     if (node->type == Conditional_Form)
     {
-
+        Conditional_Form_Type conditional_form_type = node->contents.conditional_form.type;
+        
+        if (conditional_form_type == IF)
+        {
+            AST_Node *test_expr = node->contents.conditional_form.contents.if_expression.test_expr;
+            AST_Node *then_expr = node->contents.conditional_form.contents.if_expression.then_expr;
+            AST_Node *else_expr = node->contents.conditional_form.contents.if_expression.else_expr;
+            traverser_helper(test_expr, node, visitor, aux_data);
+            traverser_helper(then_expr, node, visitor, aux_data);
+            traverser_helper(else_expr, node, visitor, aux_data);
+        }
     }
 
     if (node->type == List_Literal)
@@ -1616,7 +1665,15 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Conditional_Form)
     {
-        return;
+        if (node->contents.conditional_form.type == IF)
+        {
+            AST_Node *test_expr = node->contents.conditional_form.contents.if_expression.test_expr;
+            AST_Node *then_expr = node->contents.conditional_form.contents.if_expression.then_expr;
+            AST_Node *else_expr = node->contents.conditional_form.contents.if_expression.else_expr;
+            generate_context(test_expr, node, aux_data);
+            generate_context(then_expr, node, aux_data);
+            generate_context(else_expr, node, aux_data);
+        }
     }
 
     if (node->type == Call_Expression)
@@ -2029,6 +2086,15 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         result = ast_node;
+    }
+
+    if (ast_node->type == Lambda_Form)
+    {
+        matched = true;
+        AST_Node *params = ast_node->contents.lambda_form.params;
+        AST_Node *body_exprs = ast_node->contents.lambda_form.body_exprs;
+        AST_Node *ast_node = ast_node_new(Procedure, AUTO_FREE, NULL, VectorLength(params), params, body_exprs, NULL);
+        return ast_node;
     }
 
     if (!matched)

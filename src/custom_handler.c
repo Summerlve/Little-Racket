@@ -211,7 +211,7 @@ static void conditional_form_enter(AST_Node *node, AST_Node *parent, void *aux_d
 {
     if (node->contents.conditional_form.type == IF)
     {
-        printf(" ( ");
+        printf(" (if ");
     }
 
     if (node->contents.conditional_form.type == COND)

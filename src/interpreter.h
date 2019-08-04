@@ -133,7 +133,6 @@ typedef struct _z_ast_node {
             Function c_native_function;
         } procedure;
         struct {
-            int required_params_count; // only impl required-args right now.
             Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name.
             Vector *body_exprs; // AST_Node *[]
         } lambda_form;
