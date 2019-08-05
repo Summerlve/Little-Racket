@@ -159,6 +159,7 @@ int visitor_free(Visitor visitor);
 AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit);
 int ast_node_handler_free(AST_Node_Handler *handler);
 int ast_node_handler_append(Visitor visitor, AST_Node_Handler *handler);
+AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data);
 AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type);
 Visitor get_defult_visitor(void);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 

@@ -687,7 +687,6 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
 int ast_node_free(AST_Node *ast_node)
 {
     if (ast_node == NULL) return 1;
-    if (ast_node->free_type == MANUAL_FREE) return 1;
 
     bool matched = false;
 
@@ -1277,6 +1276,36 @@ AST parser(Tokens *tokens)
 int ast_free(AST ast)
 {
     return ast_node_free(ast);
+}
+
+AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
+{
+    /*
+        AST_Node::parent will copy pointer address only.
+        AST_Node::context will copy the vector itself, and just AST_Node * pointer address stored in it.
+    **/
+
+    AST_Node *copy = NULL;
+    bool matched = false;
+
+    if (ast_node->type == Number_Literal)
+    {
+        copy = ast_node_new(Number_Literal, AUTO_FREE, ast_node->contents.literal.value);
+    }
+
+    if (ast_node->type == Program)
+    {
+
+    }
+
+    if (matched == false)
+    {
+        // when no matches any AST_Node_Type.
+        fprintf(stderr, "ast_node_deep_copy(): can not handle AST_Node_Type: %d\n", ast_node->type);
+        exit(EXIT_FAILURE);
+    }
+
+    return copy;
 }
 
 Visitor visitor_new()
@@ -1939,7 +1968,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
             if (init_value != binding->contents.binding.value)
             {
                 generate_context(binding->contents.binding.value, binding, NULL);
-                // ast_node_free(init_value);
+                init_value->free_type = MANUAL_FREE;
+                VectorAppend(gc, &init_value);
             }
             if (binding->contents.binding.value->type == Procedure)
             {
@@ -1966,7 +1996,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 if (init_value != binding->contents.binding.value)
                 {
                     generate_context(binding->contents.binding.value, binding, NULL);
-                    // ast_node_free(init_value);
+                    init_value->free_type = MANUAL_FREE;
+                    VectorAppend(gc, &init_value);
                 }
             }
 
@@ -2160,6 +2191,7 @@ static void gc_free_helper(void *value_addr, int index, Vector *vector, void *au
     if (is_freed == true) return;
 
     ast_node->free_type = AUTO_FREE;
+    printf("gc_free_helper(): addr(%p), value: %s\n", ast_node, ast_node->contents.literal.value);
     ast_node_free(ast_node);
 }
 
