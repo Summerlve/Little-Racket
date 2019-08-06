@@ -32,8 +32,7 @@ int main(int argc, char *argv[])
     traverser(ast, visitor, NULL);
 
     // calculator
-    Vector *gc = VectorNew(sizeof(AST_Node *)); // garbage collection
-    Result result = calculator(ast, gc);
+    Result result = calculator(ast, NULL);
 
     // show result by traverser
     printf("Result:\n");
@@ -44,7 +43,6 @@ int main(int argc, char *argv[])
     tokens_free(tokens);
     ast_free(ast);
     visitor_free(visitor);
-    gc_free(gc);
     
     return 0;
 }

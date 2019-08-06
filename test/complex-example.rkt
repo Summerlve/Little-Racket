@@ -12,5 +12,9 @@
 (x 1 2 3)
 (define a #f)
 (if a 1 2)
-(define p (+ 1 2))
-p
+(define p (- (+ 1 2.1) 0.1))
+; (+ p)
+p a
+#t
+#f
+(if "false" #t #f)

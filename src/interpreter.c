@@ -470,28 +470,28 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 
 // parser parts
 
-// ast_node_new(Program, free_type)
-// ast_node_new(Call_Expression, free_type, name)
-// ast_node_new(Local_Binding_Form, free_type, LET/LET_STAR/LETREC/DEFINE)
-// ast_node_new(Local_Binding_Form, free_type, DEFINE, char *name, AST_Node *value)
-// ast_node_new(Binding, free_type, name, AST_Node *value)
-// ast_node_new(List or Pair, free_type)
-// ast_node_new(xxx_Literal, free_type, value)
-// ast_node_new(Procedure, free_type, name, required_params_count, params, body_exprs, c_native_function)
-// ast_node_new(Conditional_Form, free_type, Conditional_Form_Type, test_expr, then_expr, else_expr)
-// ast_node_new(Lambda_Form, free_type, params, body_exprs)
-AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
+// ast_node_new(Program)
+// ast_node_new(Call_Expression, name)
+// ast_node_new(Local_Binding_Form, Local_Binding_Form_Type, ...)
+//   ast_node_new(Local_Binding_Form, DEFINE, char *name, AST_Node *value)
+//   ast_node_new(Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
+// ast_node_new(Binding, name, AST_Node *value)
+// ast_node_new(List or Pair, Vector *value/NULL)
+// ast_node_new(xxx_Literal, value)
+// ast_node_new(Procedure, name, required_params_count, params, body_exprs, c_native_function)
+// ast_node_new(Conditional_Form, Conditional_Form_Type, test_expr, then_expr, else_expr)
+// ast_node_new(Lambda_Form, params, body_exprs)
+AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
     ast_node->type = type;
-    ast_node->free_type = free_type;
     ast_node->parent = NULL;
     ast_node->context = NULL; 
     bool matched = false;
 
     // flexible args
     va_list ap;
-    va_start(ap, free_type);
+    va_start(ap, type);
 
     if (ast_node->type == Program)
     {
@@ -542,15 +542,19 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
             local_binding_form_type == LET_STAR ||
             local_binding_form_type == LETREC)
         {
-            ast_node->contents.local_binding_form.contents.lets.bindings = VectorNew(sizeof(AST_Node *));
-            ast_node->contents.local_binding_form.contents.lets.body_exprs = VectorNew(sizeof(AST_Node *));
+            Vector *bindings = va_arg(ap, Vector *);
+            if (bindings == NULL) bindings = VectorNew(sizeof(AST_Node *));
+            Vector *body_exprs = va_arg(ap, Vector *);
+            if (body_exprs == NULL) body_exprs = VectorNew(sizeof(AST_Node *));
+            ast_node->contents.local_binding_form.contents.lets.bindings = bindings;
+            ast_node->contents.local_binding_form.contents.lets.body_exprs = body_exprs;
         }
 
         if (local_binding_form_type == DEFINE)
         {
             const char *name = va_arg(ap, const char *);
             AST_Node *value = va_arg(ap, AST_Node *);
-            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, AUTO_FREE, name, value);
+            ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, name, value);
         }
     }
 
@@ -601,14 +605,18 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
     if (ast_node->type == List_Literal)
     {
         matched = true;
-        ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
+        Vector *value = va_arg(ap, Vector *);
+        if (value == NULL) value = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.literal.value = value; 
         ast_node->contents.literal.c_native_value = NULL;
     }
 
     if (ast_node->type == Pair_Literal)
     {
         matched = true;
-        ast_node->contents.literal.value = VectorNew(sizeof(AST_Node *));
+        Vector *value = va_arg(ap, Vector *);
+        if (value == NULL) value = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.literal.value = value; 
         ast_node->contents.literal.c_native_value = NULL;
     }
 
@@ -640,7 +648,7 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
         matched = true;
         const char *value = va_arg(ap, const char *);
         ast_node->contents.literal.value = malloc(strlen(value) + 1);
-        strcpy((char *)ast_node->contents.literal.value, value);
+        strcpy((char *)(ast_node->contents.literal.value), value);
         ast_node->contents.literal.c_native_value = NULL;
     }
 
@@ -656,25 +664,15 @@ AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...)
     if (ast_node->type == Boolean_Literal)
     {
         matched = true;
-        const char *value = va_arg(ap, const char *);
-
-        Boolean_Type *boolean_type = (Boolean_Type *)malloc(sizeof(Boolean_Type));
-        if (strchr(value, 't') != NULL)
-        {
-            *boolean_type = R_TRUE;
-        }
-        if (strchr(value, 'f') != NULL)
-        {
-            *boolean_type = R_FALSE;
-        }
-
-        ast_node->contents.literal.value = boolean_type;
+        const Boolean_Type *value = va_arg(ap, const Boolean_Type *);
+        ast_node->contents.literal.value = malloc(sizeof(Boolean_Type));
+        memcpy(ast_node->contents.literal.value, value, sizeof(Boolean_Type));
         ast_node->contents.literal.c_native_value = NULL;
     }
 
     va_end(ap);
 
-    if (!matched)
+    if (matched == false)
     {
         // when no matches any AST_Node_Type.
         fprintf(stderr, "ast_node_new(): can not handle AST_Node_Type: %d\n", ast_node->type);
@@ -890,7 +888,7 @@ int ast_node_free(AST_Node *ast_node)
         free(ast_node);
     }
 
-    if (!matched)
+    if (matched == false)
     {
         // when no matches any AST_Node_Type.
         fprintf(stderr, "ast_node_free(): can not handle AST_Node_Type: %d\n", ast_node->type);
@@ -919,35 +917,44 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
     if (token->type == IDENTIFIER)
     {
-        AST_Node *ast_node = ast_node_new(Binding, AUTO_FREE, token->value, NULL);
+        AST_Node *ast_node = ast_node_new(Binding, token->value, NULL);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == NUMBER)
     {
-        AST_Node *ast_node = ast_node_new(Number_Literal, AUTO_FREE, token->value);
+        AST_Node *ast_node = ast_node_new(Number_Literal, token->value);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == STRING)
     {
-        AST_Node *ast_node = ast_node_new(String_Literal, AUTO_FREE, token->value);
+        AST_Node *ast_node = ast_node_new(String_Literal, token->value);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == CHARACTER)
     {
-        AST_Node *ast_node = ast_node_new(Character_Literal, AUTO_FREE, token->value);
+        AST_Node *ast_node = ast_node_new(Character_Literal, token->value);
         (*current_p)++;
         return ast_node;
     }
 
     if (token->type == BOOLEAN)
     {
-        AST_Node *ast_node = ast_node_new(Boolean_Literal, AUTO_FREE, token->value);
+        Boolean_Type *boolean_type = malloc(sizeof(Boolean_Type));
+        if (strchr(token->value, 't') != NULL)
+        {
+            *boolean_type = R_TRUE;
+        }
+        if (strchr(token->value, 'f') != NULL)
+        {
+            *boolean_type = R_FALSE;
+        }
+        AST_Node *ast_node = ast_node_new(Boolean_Literal, boolean_type);
         (*current_p)++;
         return ast_node;
     }
@@ -976,10 +983,8 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (strcmp(token->value, "let*") == 0) ||
                 (strcmp(token->value, "letrec") == 0))
             {
-                AST_Node *ast_node;
-                if (strcmp(token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, LET);
-                if (strcmp(token->value, "let*") == 0) ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, LET_STAR);
-                if (strcmp(token->value, "letrec") == 0) ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, LETREC);
+                Vector *bindings = VectorNew(sizeof(AST_Node *));
+                Vector *body_exprs = VectorNew(sizeof(AST_Node *));
 
                 // point to the bindings form starts '('
                 (*current_p)++;
@@ -1011,7 +1016,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     (*current_p)++; 
 
                     AST_Node *binding = walk(tokens, current_p); 
-                    VectorAppend(ast_node->contents.local_binding_form.contents.lets.bindings, &binding);
+                    VectorAppend(bindings, &binding);
                      
                     AST_Node *value = walk(tokens, current_p);
                     binding->contents.binding.value = value;
@@ -1041,9 +1046,14 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
                 {
                     AST_Node *body_expr = walk(tokens, current_p);
-                    VectorAppend(ast_node->contents.local_binding_form.contents.lets.body_exprs, &body_expr);
+                    VectorAppend(body_exprs, &body_expr);
                     token = tokens_nth(tokens, *current_p);
                 }
+
+                AST_Node *ast_node = NULL;
+                if (strcmp(token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, LET, bindings, body_exprs);
+                if (strcmp(token->value, "let*") == 0) ast_node = ast_node_new(Local_Binding_Form, LET_STAR, bindings, body_exprs);
+                if (strcmp(token->value, "letrec") == 0) ast_node = ast_node_new(Local_Binding_Form, LETREC, bindings, body_exprs); 
 
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
@@ -1066,7 +1076,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 // move to binding's value
                 (*current_p)++;
                 AST_Node *value = walk(tokens, current_p);
-                AST_Node *ast_node = ast_node_new(Local_Binding_Form, AUTO_FREE, DEFINE, token->value, value);
+                AST_Node *ast_node = ast_node_new(Local_Binding_Form, DEFINE, token->value, value);
 
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
@@ -1129,7 +1139,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 }
 
                 (*current_p)++; // skip ')' of lambda expression. 
-                AST_Node *lambda = ast_node_new(Lambda_Form, AUTO_FREE, params, body_exprs);
+                AST_Node *lambda = ast_node_new(Lambda_Form, params, body_exprs);
                 return lambda;
             }
 
@@ -1153,7 +1163,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
                 // skip the ')' of if expression.
                 (*current_p)++;
-                AST_Node *if_expr = ast_node_new(Conditional_Form, AUTO_FREE, IF, test_expr, then_expr, else_expr);
+                AST_Node *if_expr = ast_node_new(Conditional_Form, IF, test_expr, then_expr, else_expr);
                 return if_expr;
             }
 
@@ -1167,7 +1177,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 exit(EXIT_FAILURE);
             }
 
-            AST_Node *ast_node = ast_node_new(Call_Expression, AUTO_FREE, token->value);
+            AST_Node *ast_node = ast_node_new(Call_Expression, token->value);
 
             // point to the first argument.
             (*current_p)++; 
@@ -1212,8 +1222,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             AST_Node *ast_node = NULL;
             if (is_pair)
             {
-                ast_node = ast_node_new(Pair_Literal, AUTO_FREE, AUTO_FREE);
-
                 AST_Node *car = walk(tokens, current_p);
                 (*current_p)++; // skip '.'
                 AST_Node *cdr = walk(tokens, current_p);
@@ -1222,28 +1230,31 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     fprintf(stderr, "Pair literal should have two values\n");
                     exit(EXIT_FAILURE);
                 }
-                VectorAppend((Vector*)(ast_node->contents.literal.value), &car);
-                VectorAppend((Vector*)(ast_node->contents.literal.value), &cdr);
 
-                (*current_p)++; // skip ')'
-                return ast_node;
+                Vector *value = VectorNew(sizeof(AST_Node *));
+                VectorAppend(value, &car);
+                VectorAppend(value, &cdr);
+
+                ast_node = ast_node_new(Pair_Literal, value);
             }
             else
             {
-                ast_node = ast_node_new(List_Literal, AUTO_FREE, AUTO_FREE);
+                Vector *value = VectorNew(sizeof(AST_Node *));
 
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
                 )
                 {
                     AST_Node *element = walk(tokens, current_p);
-                    if (element != NULL) VectorAppend((Vector *)(ast_node->contents.literal.value), &element);
+                    if (element != NULL) VectorAppend(value, &element);
                     token = tokens_nth(tokens, *current_p);
                 }
-
-                (*current_p)++; // skip ')'
-                return ast_node;
+                
+                ast_node = ast_node_new(List_Literal, value);
             }
+
+            (*current_p)++; // skip ')'
+            return ast_node;
         }
 
         // handle PUNCTUATION ...
@@ -1259,7 +1270,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
 AST parser(Tokens *tokens)
 {
-    AST ast = ast_node_new(Program, AUTO_FREE);
+    AST ast = ast_node_new(Program);
     int current = 0;
 
     while (current < tokens_length(tokens))
@@ -1290,12 +1301,119 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
 
     if (ast_node->type == Number_Literal)
     {
-        copy = ast_node_new(Number_Literal, AUTO_FREE, ast_node->contents.literal.value);
+        matched = true;
+        copy = ast_node_new(Number_Literal, ast_node->contents.literal.value);
+    }
+
+    if (ast_node->type == String_Literal)
+    {
+        matched = true;
+        copy = ast_node_new(String_Literal, ast_node->contents.literal.value);
+    }
+
+    if (ast_node->type == Character_Literal)
+    {
+        matched = true;
+        copy = ast_node_new(Character_Literal, ast_node->contents.literal.value);
+    }
+
+    if (ast_node->type == List_Literal)
+    {
+        matched = true;
+        Vector *value = ast_node->contents.literal.value;
+        Vector *value_copy = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 0; i < VectorLength(value); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(value, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(value_copy, &node_copy);
+        }
+
+        copy = ast_node_new(List_Literal, value_copy);
+    }
+
+    if (ast_node->type == Pair_Literal)
+    {
+        matched = true;
+        Vector *value = ast_node->contents.literal.value;
+        Vector *value_copy = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 0; i < VectorLength(value); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(value, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(value_copy, &node_copy);
+        }
+
+        copy = ast_node_new(Pair_Literal, value_copy);
+    }
+
+    if (ast_node->type == Boolean_Literal)
+    {
+        matched = true;
+        copy = ast_node_new(Boolean_Literal, ast_node->contents.literal.value);
+    }
+
+    if (ast_node->type == Local_Binding_Form)
+    {
+        Local_Binding_Form_Type local_binding_form_type = ast_node->contents.local_binding_form.type;
+
+        if (local_binding_form_type == DEFINE)
+        {
+            matched = true;
+            AST_Node *binding = ast_node->contents.local_binding_form.contents.define.binding;
+            char *name = binding->contents.binding.name;
+            AST_Node *value = binding->contents.binding.value;
+
+            AST_Node *value_copy = ast_node_deep_copy(value, aux_data);
+            copy = ast_node_new(Local_Binding_Form, DEFINE, name, value_copy);
+        }
+
+        if (local_binding_form_type == LET)
+        {
+            matched = true;
+        }
+
+        if (local_binding_form_type == LET_STAR)
+        {
+            matched = true;
+        }
+
+        if (local_binding_form_type == LETREC)
+        {
+            matched = true;
+        }
+    }
+
+    if (ast_node->type == Conditional_Form)
+    {
+        matched = true;
+    }
+    
+    if (ast_node->type == Lambda_Form)
+    {
+        matched = true;
+    }
+
+    if (ast_node->type == Call_Expression)
+    {
+        matched = true;
+    }
+
+    if (ast_node->type == Binding)
+    {
+        matched = true;
+    }
+
+    if (ast_node->type == Procedure)
+    {
+        matched = true;
     }
 
     if (ast_node->type == Program)
     {
-
+        matched = true;
     }
 
     if (matched == false)
@@ -1303,6 +1421,20 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         // when no matches any AST_Node_Type.
         fprintf(stderr, "ast_node_deep_copy(): can not handle AST_Node_Type: %d\n", ast_node->type);
         exit(EXIT_FAILURE);
+    }
+
+    // copy AST_Node::parent
+    copy->parent = ast_node->parent;
+    
+    // copy AST_Node::context
+    if (ast_node->context != NULL)
+    {
+        copy->context = VectorNew(sizeof(AST_Node *));
+        for (int i = 0; i < VectorLength(ast_node->context); i++)
+        {
+            AST_Node *binding = *(AST_Node **)VectorNth(ast_node->context, i);
+            VectorAppend(copy->context, &binding);
+        }
     }
 
     return copy;
@@ -1363,7 +1495,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 {
     if (node == NULL)
     {
-        fprintf(stdout, "work out no value.\n");
+        fprintf(stdout, "works out no value.\n");
         return;
     }
 
@@ -1847,7 +1979,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
     if (ast_node == NULL) return NULL;
     Result result = NULL;
     bool matched = false;
-    Vector *gc = (Vector *)aux_data;
 
     if (ast_node->type == Program)
     {
@@ -1865,7 +1996,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         const char *name = ast_node->contents.call_expression.name;
-        AST_Node *binding = ast_node_new(Binding, MANUAL_FREE, name, NULL);
+        AST_Node *binding = ast_node_new(Binding, name, NULL);
         generate_context(binding, ast_node, NULL);
         AST_Node *binding_contains_value = search_binding_value(binding);
         ast_node_free(binding); // free the tmp binding.
@@ -1896,7 +2027,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
             Function c_native_function = procedure->contents.procedure.c_native_function;
             result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
-            if (result != NULL && result->free_type == MANUAL_FREE) VectorAppend(gc, &result);
             VectorFree(operands, NULL, NULL);
         }
 
@@ -1939,7 +2069,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 result = eval(body_expr, aux_data);
-                if (result != NULL && result->free_type == MANUAL_FREE) VectorAppend(gc, &result);
             }
 
             // set virtual_param's value to null.
@@ -1965,12 +2094,12 @@ Result eval(AST_Node *ast_node, void *aux_data)
             AST_Node *binding = ast_node->contents.local_binding_form.contents.define.binding;
             AST_Node *init_value = binding->contents.binding.value;
             binding->contents.binding.value = eval(init_value, aux_data);
+
             if (init_value != binding->contents.binding.value)
             {
                 generate_context(binding->contents.binding.value, binding, NULL);
-                init_value->free_type = MANUAL_FREE;
-                VectorAppend(gc, &init_value);
             }
+
             if (binding->contents.binding.value->type == Procedure)
             {
                 AST_Node *procedure = binding->contents.binding.value;
@@ -1993,11 +2122,10 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 AST_Node *init_value = binding->contents.binding.value;
                 binding->contents.binding.value = eval(init_value, aux_data);
+
                 if (init_value != binding->contents.binding.value)
                 {
                     generate_context(binding->contents.binding.value, binding, NULL);
-                    init_value->free_type = MANUAL_FREE;
-                    VectorAppend(gc, &init_value);
                 }
             }
 
@@ -2135,12 +2263,11 @@ Result eval(AST_Node *ast_node, void *aux_data)
         matched = true;
         Vector *params = ast_node->contents.lambda_form.params;
         Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
-        AST_Node *procedure = ast_node_new(Procedure, MANUAL_FREE, NULL, VectorLength(params), params, body_exprs, NULL);
-        VectorAppend(gc, &procedure);
+        AST_Node *procedure = ast_node_new(Procedure, NULL, VectorLength(params), params, body_exprs, NULL);
         return procedure;
     }
 
-    if (!matched)
+    if (matched == false)
     {
         // when no matches any AST_Node_Type.
         fprintf(stderr, "eval(): can not eval AST_Node_Type: %d\n", ast_node->type);
@@ -2154,50 +2281,12 @@ Result eval(AST_Node *ast_node, void *aux_data)
 Result calculator(AST ast, void *aux_data)
 {
     generate_context(ast, NULL, NULL); // generate context 
-    Vector *gc = (Vector *)aux_data;
-    Result result = eval(ast, gc); // eval
+    Result result = eval(ast, NULL); // eval
     return result;
 }
 
-// legacy code.
-static int result_free(Result result)
+int result_free(Result result)
 {
     if (result == NULL) return 1;
-    if (result->free_type == MANUAL_FREE)
-    {
-        return ast_node_free(result);
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-static void gc_free_helper(void *value_addr, int index, Vector *vector, void *aux_data)
-{
-    if (value_addr == NULL) return;
-
-    AST_Node *ast_node = *(AST_Node **)value_addr;
-    if (ast_node->free_type == AUTO_FREE) return;
-
-    bool is_freed = false;
-
-    for (int i = 0; i < index; i++)
-    {
-        AST_Node *pre_node = *(AST_Node **)VectorNth(vector, i);
-        if (pre_node == ast_node) is_freed = true;
-    }
-
-    if (is_freed == true) return;
-
-    ast_node->free_type = AUTO_FREE;
-    printf("gc_free_helper(): addr(%p), value: %s\n", ast_node, ast_node->contents.literal.value);
-    ast_node_free(ast_node);
-}
-
-int gc_free(Vector *gc)
-{
-    if (gc == NULL) return 1;
-    VectorFree(gc, gc_free_helper, NULL);
-    return 0;
+    else return ast_node_free(result);
 }

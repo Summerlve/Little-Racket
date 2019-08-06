@@ -58,19 +58,9 @@ typedef enum _z_conditional_form_type {
 typedef enum _z_boolean_type {
     R_FALSE, R_TRUE // any value other than #f counts as true.
 } Boolean_Type;
-typedef enum {
-    /*
-        AUTO_FREE means the ast_node is in ast, free by ast_node_free() or released by recursively ast_node_free() call.
-        MANUAL_FREE means created by some built-in procedures, need free it manually, the ast_node isn't in ast,
-                    always made in eval() or in built-in procedures.
-    */
-    AUTO_FREE,
-    MANUAL_FREE
-} Memory_Free_Type;
 typedef struct _z_ast_node {
-    AST_Node_Type type;
-    Memory_Free_Type free_type;
     struct _z_ast_node *parent;
+    AST_Node_Type type;
     /*
         context: AST_Node *[] type: binding.
         if contextable AST_Node, it will have this, if not contextable, set this to null.
@@ -143,7 +133,7 @@ typedef struct _z_ast_node {
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
-AST_Node *ast_node_new(AST_Node_Type type, Memory_Free_Type free_type, ...);
+AST_Node *ast_node_new(AST_Node_Type type, ...);
 int ast_node_free(AST_Node *ast_node);
 AST parser(Tokens *tokens); // retrun AST.
 int ast_free(AST ast);
@@ -167,6 +157,7 @@ void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first
 // calculator parts
 typedef AST_Node *Result; // the result of whole racket code.
 Result calculator(AST ast, void *aux_data);
+int result_free(Result result);
 Result eval(AST_Node *ast_node, void *aux_data);
 int gc_free(Vector *gc);
 
