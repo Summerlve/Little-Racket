@@ -42,6 +42,10 @@ int tokens_free(Tokens *tokens);
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 
 // parser parts
+typedef enum _z_ast_node_tag{
+    IN_AST, // treated as no tag.
+    NOT_IN_AST // fresh data, not in ast.
+} AST_Node_Tag;
 typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
@@ -60,6 +64,7 @@ typedef enum _z_boolean_type {
 } Boolean_Type;
 typedef struct _z_ast_node {
     struct _z_ast_node *parent;
+    Vector *context;
     AST_Node_Type type;
     /*
         context: AST_Node *[] type: binding.
@@ -67,7 +72,7 @@ typedef struct _z_ast_node {
         initially, the AST_Node with type Program will have context, and other cases will be generated in generate_context() function.
         such as let's body_exprs will have context, even Number_Literal.
     */ 
-    Vector *context;
+    AST_Node_Tag tag;
     union {
         struct {
             /*  
@@ -135,6 +140,9 @@ typedef struct _z_ast_node {
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
 AST_Node *ast_node_new(AST_Node_Type type, ...);
 int ast_node_free(AST_Node *ast_node);
+AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data);
+void ast_node_mark_tag(AST_Node *ast_node, AST_Node_Tag tag);
+AST_Node_Tag ast_node_get_tag(AST_Node *ast_node);
 AST parser(Tokens *tokens); // retrun AST.
 int ast_free(AST ast);
 typedef Vector *Visitor; // AST_Node_Handler *[]
@@ -149,7 +157,6 @@ int visitor_free(Visitor visitor);
 AST_Node_Handler *ast_node_handler_new(AST_Node_Type type, VisitorFunction enter, VisitorFunction exit);
 int ast_node_handler_free(AST_Node_Handler *handler);
 int ast_node_handler_append(Visitor visitor, AST_Node_Handler *handler);
-AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data);
 AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type);
 Visitor get_defult_visitor(void);
 void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first dfs algo. 

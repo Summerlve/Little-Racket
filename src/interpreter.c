@@ -488,6 +488,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     ast_node->type = type;
     ast_node->parent = NULL;
     ast_node->context = NULL; 
+    ast_node->tag = IN_AST; // IN_AST is defult, use ast_node_mark_tag() and ast_node_get_tag().
     bool matched = false;
 
     // flexible args
@@ -887,6 +888,28 @@ int ast_node_free(AST_Node *ast_node)
     free(ast_node);
 
     return 0;
+}
+
+void ast_node_mark_tag(AST_Node *ast_node, AST_Node_Tag tag)
+{
+    if (ast_node == NULL)
+    {
+        fprintf(stderr, "ast_node_mark_tag(): ast_node is NULL\n");
+        exit(EXIT_FAILURE);
+    }
+
+    ast_node->tag = tag;
+}
+
+AST_Node_Tag ast_node_get_tag(AST_Node *ast_node)
+{
+    if (ast_node == NULL)
+    {
+        fprintf(stderr, "ast_node_get_tag(): ast_node is NULL\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return ast_node->tag;
 }
 
 // recursion function <walk> walk over the tokens array, and generates a ast.
@@ -2402,6 +2425,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
         exit(EXIT_FAILURE);
     }
 
+    if (result != NULL) result = ast_node_deep_copy(result, NULL);
     return result;
 }
 
