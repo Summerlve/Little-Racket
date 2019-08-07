@@ -471,7 +471,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // parser parts
 
 // ast_node_new(Program)
-// ast_node_new(Call_Expression, name)
+// ast_node_new(Call_Expression, name, params/NULL)
 // ast_node_new(Local_Binding_Form, Local_Binding_Form_Type, ...)
 //   ast_node_new(Local_Binding_Form, DEFINE, char *name, AST_Node *value)
 //   ast_node_new(Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
@@ -479,7 +479,8 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(List or Pair, Vector *value/NULL)
 // ast_node_new(xxx_Literal, value)
 // ast_node_new(Procedure, name, required_params_count, params, body_exprs, c_native_function)
-// ast_node_new(Conditional_Form, Conditional_Form_Type, test_expr, then_expr, else_expr)
+// ast_node_new(Conditional_Form, Conditional_Form_Type, ...)
+//   ast_node_new(Conditional_Form, IF, test_expr, then_expr, else_expr)
 // ast_node_new(Lambda_Form, params, body_exprs)
 AST_Node *ast_node_new(AST_Node_Type type, ...)
 {
@@ -503,10 +504,12 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
-        ast_node->contents.call_expression.params = VectorNew(sizeof(AST_Node *));
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.call_expression.name, name);
+        Vector *params = va_arg(ap, const Vector *);
+        if (params == NULL) params = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.call_expression.params = params;
     }
 
     if (ast_node->type == Procedure)
@@ -534,7 +537,6 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == Local_Binding_Form)
     {
-        matched = true;
         Local_Binding_Form_Type local_binding_form_type = va_arg(ap, Local_Binding_Form_Type);
         ast_node->contents.local_binding_form.type = local_binding_form_type;
 
@@ -542,6 +544,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
             local_binding_form_type == LET_STAR ||
             local_binding_form_type == LETREC)
         {
+            matched = true;
             Vector *bindings = va_arg(ap, Vector *);
             if (bindings == NULL) bindings = VectorNew(sizeof(AST_Node *));
             Vector *body_exprs = va_arg(ap, Vector *);
@@ -552,6 +555,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 
         if (local_binding_form_type == DEFINE)
         {
+            matched = true;
             const char *name = va_arg(ap, const char *);
             AST_Node *value = va_arg(ap, AST_Node *);
             ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(Binding, name, value);
@@ -560,12 +564,12 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
 
     if (ast_node->type == Conditional_Form)
     {
-        matched = true;
         Conditional_Form_Type conditional_form_type = va_arg(ap, Conditional_Form_Type);
         ast_node->contents.conditional_form.type = conditional_form_type;
 
         if (conditional_form_type == IF)
         {
+            matched = true;
             ast_node->contents.conditional_form.contents.if_expression.test_expr = va_arg(ap, AST_Node *);
             ast_node->contents.conditional_form.contents.if_expression.then_expr = va_arg(ap, AST_Node *);
             ast_node->contents.conditional_form.contents.if_expression.else_expr = va_arg(ap, AST_Node *);
@@ -1296,6 +1300,12 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         AST_Node::context will copy the vector itself, and just AST_Node * pointer address stored in it.
     **/
 
+    if (ast_node == NULL)
+    {
+        fprintf(stderr, "ast_node_deep_copy(): can not copy NULL\n");
+        exit(EXIT_FAILURE); 
+    }
+
     AST_Node *copy = NULL;
     bool matched = false;
 
@@ -1370,35 +1380,121 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             copy = ast_node_new(Local_Binding_Form, DEFINE, name, value_copy);
         }
 
-        if (local_binding_form_type == LET)
+        if (local_binding_form_type == LET ||
+            local_binding_form_type == LET_STAR ||
+            local_binding_form_type == LETREC)
         {
             matched = true;
-        }
+            Vector *bindings = ast_node->contents.local_binding_form.contents.lets.bindings;
+            Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
 
-        if (local_binding_form_type == LET_STAR)
-        {
-            matched = true;
-        }
+            Vector *bindings_copy = VectorNew(sizeof(AST_Node *));
+            Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
 
-        if (local_binding_form_type == LETREC)
-        {
-            matched = true;
+            for (int i = 0; i < VectorLength(bindings); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(bindings, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                VectorAppend(bindings_copy, &node_copy);
+            }
+
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                VectorAppend(body_exprs_copy, &node_copy);
+            }
+
+            if (local_binding_form_type == LET)
+                copy = ast_node_new(Local_Binding_Form, LET, bindings_copy, body_exprs_copy);
+            if (local_binding_form_type == LET_STAR)
+                copy = ast_node_new(Local_Binding_Form, LET_STAR, bindings_copy, body_exprs_copy);
+            if (local_binding_form_type == LETREC)
+                copy = ast_node_new(Local_Binding_Form, LETREC, bindings_copy, body_exprs_copy);
         }
     }
 
     if (ast_node->type == Conditional_Form)
     {
-        matched = true;
+        Conditional_Form_Type conditional_form_type = ast_node->contents.conditional_form.type;
+
+        if (conditional_form_type == IF)
+        {
+            matched = true;
+            AST_Node *test_expr = ast_node->contents.conditional_form.contents.if_expression.test_expr;
+            AST_Node *then_expr = ast_node->contents.conditional_form.contents.if_expression.then_expr;
+            AST_Node *else_expr = ast_node->contents.conditional_form.contents.if_expression.else_expr; 
+
+            AST_Node *test_expr_copy = ast_node_deep_copy(test_expr, aux_data);
+            AST_Node *then_expr_copy = ast_node_deep_copy(then_expr, aux_data);
+            AST_Node *else_expr_copy = ast_node_deep_copy(else_expr, aux_data);
+
+            copy = ast_node_new(Conditional_Form, IF, test_expr_copy, then_expr_copy, else_expr_copy);
+        }
+
+        if (conditional_form_type == COND)
+        {
+            matched = true;
+        }
+
+        if (conditional_form_type == AND)
+        {
+            matched = true;
+        }
+
+        if (conditional_form_type == NOT)
+        {
+            matched = true;
+        }
+
+        if (conditional_form_type == OR)
+        {
+            matched = true;
+        }
     }
     
     if (ast_node->type == Lambda_Form)
     {
         matched = true;
+        Vector *params = ast_node->contents.lambda_form.params;
+        Vector *body_exprs = ast_node->contents.lambda_form.body_exprs; 
+
+        Vector *params_copy = VectorNew(sizeof(AST_Node *));
+        Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(params, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(params_copy, &node_copy);
+        }
+
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(body_exprs_copy, &node_copy);
+        }
+
+        copy = ast_node_new(Lambda_Form, params_copy, body_exprs_copy);
     }
 
     if (ast_node->type == Call_Expression)
     {
         matched = true;
+        const char *name = ast_node->contents.call_expression.name;
+        Vector *params = ast_node->contents.call_expression.params;
+
+        Vector *params_copy = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(params, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(params_copy, &node_copy);
+        }
+
+        copy = ast_node_new(Call_Expression, name, params_copy);
     }
 
     if (ast_node->type == Binding)
