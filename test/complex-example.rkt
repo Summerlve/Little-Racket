@@ -13,7 +13,7 @@
 (define a #f)
 (if a 1 2)
 (define p (- (+ 1 2.1) 0.1))
-; (+ p)
+(+ p)
 p a
 #t
 #f

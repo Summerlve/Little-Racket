@@ -470,15 +470,15 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 
 // parser parts
 
-// ast_node_new(Program)
+// ast_node_new(Program, body/NULL, built_in_bindings/NULL)
 // ast_node_new(Call_Expression, name, params/NULL)
 // ast_node_new(Local_Binding_Form, Local_Binding_Form_Type, ...)
 //   ast_node_new(Local_Binding_Form, DEFINE, char *name, AST_Node *value)
 //   ast_node_new(Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
-// ast_node_new(Binding, name, AST_Node *value)
+// ast_node_new(Binding, name, AST_Node *value/NULL)
 // ast_node_new(List or Pair, Vector *value/NULL)
 // ast_node_new(xxx_Literal, value)
-// ast_node_new(Procedure, name, required_params_count, params, body_exprs, c_native_function)
+// ast_node_new(Procedure, name/NULL, required_params_count, params, body_exprs, c_native_function/NULL)
 // ast_node_new(Conditional_Form, Conditional_Form_Type, ...)
 //   ast_node_new(Conditional_Form, IF, test_expr, then_expr, else_expr)
 // ast_node_new(Lambda_Form, params, body_exprs)
@@ -497,8 +497,12 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Program)
     {
         matched = true;
-        ast_node->contents.program.body = VectorNew(sizeof(AST_Node *));
-        ast_node->contents.program.built_in_bindings = VectorNew(sizeof(AST_Node *));
+        Vector *body = va_arg(ap, Vector *);
+        if (body == NULL) body = VectorNew(sizeof(AST_Node *));
+        Vector *built_in_bindings = va_arg(ap, Vector *);
+        if (built_in_bindings == NULL) built_in_bindings = VectorNew(sizeof(AST_Node *));
+        ast_node->contents.program.body = body;
+        ast_node->contents.program.built_in_bindings = built_in_bindings;
     }
 
     if (ast_node->type == Call_Expression)
@@ -507,7 +511,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
         const char *name = va_arg(ap, const char *);
         ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
         strcpy(ast_node->contents.call_expression.name, name);
-        Vector *params = va_arg(ap, const Vector *);
+        Vector *params = va_arg(ap, Vector *);
         if (params == NULL) params = VectorNew(sizeof(AST_Node *));
         ast_node->contents.call_expression.params = params;
     }
@@ -595,15 +599,10 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Binding)
     {
         matched = true;
-        ast_node->contents.binding.name = NULL;
         const char *name = va_arg(ap, const char *);
-        if (name != NULL)
-        {
-            ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
-            strcpy(ast_node->contents.binding.name, name);
-        }
-        AST_Node *value = va_arg(ap, AST_Node *);
-        ast_node->contents.binding.value = value;
+        ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
+        strcpy(ast_node->contents.binding.name, name);
+        ast_node->contents.binding.value = va_arg(ap, AST_Node *);
     }
 
     if (ast_node->type == List_Literal)
@@ -668,9 +667,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     if (ast_node->type == Boolean_Literal)
     {
         matched = true;
-        const Boolean_Type *value = va_arg(ap, const Boolean_Type *);
-        ast_node->contents.literal.value = malloc(sizeof(Boolean_Type));
-        memcpy(ast_node->contents.literal.value, value, sizeof(Boolean_Type));
+        ast_node->contents.literal.value = va_arg(ap, Boolean_Type *);
         ast_node->contents.literal.c_native_value = NULL;
     }
 
@@ -713,7 +710,6 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(binding);
         }
         VectorFree(built_in_bindings, NULL, NULL);
-        free(ast_node);
     }
 
     if (ast_node->type == Call_Expression)
@@ -727,7 +723,6 @@ int ast_node_free(AST_Node *ast_node)
         }
         VectorFree(params, NULL, NULL);
         free(ast_node->contents.call_expression.name);
-        free(ast_node);
     }
 
     if (ast_node->type == Procedure)
@@ -755,14 +750,12 @@ int ast_node_free(AST_Node *ast_node)
             }
             VectorFree(body_exprs, NULL, NULL);
         }
-        free(ast_node);
     }
 
     if (ast_node->type == Lambda_Form)
     {
         matched = true;
         // params and body_exprs will be freed by procedure which lambda form worked out.
-        free(ast_node);
     }
 
     if (ast_node->type == Local_Binding_Form)
@@ -788,14 +781,12 @@ int ast_node_free(AST_Node *ast_node)
             }
             VectorFree(bindings, NULL, NULL);
             VectorFree(body_exprs, NULL, NULL);
-            free(ast_node);
         }
        
         if (Local_binding_form_type == DEFINE) 
         {
             matched = true;
             ast_node_free(ast_node->contents.local_binding_form.contents.define.binding);
-            free(ast_node);
         }
     }
 
@@ -834,7 +825,6 @@ int ast_node_free(AST_Node *ast_node)
         if (name != NULL) free((void *)name);
         AST_Node *value = ast_node->contents.binding.value;
         if (value != NULL) ast_node_free(value);
-        free(ast_node);
     }
 
     if (ast_node->type == List_Literal)
@@ -847,7 +837,6 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(element);
         }
         VectorFree(elements, NULL, NULL);
-        free(ast_node);
     }
 
     if (ast_node->type == Pair_Literal)
@@ -860,7 +849,6 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(element);
         }
         VectorFree(elements, NULL, NULL);
-        free(ast_node);
     }
 
     if (ast_node->type == Number_Literal)
@@ -868,28 +856,24 @@ int ast_node_free(AST_Node *ast_node)
         matched = true;
         free(ast_node->contents.literal.value);
         free(ast_node->contents.literal.c_native_value);
-        free(ast_node);
     }
 
     if (ast_node->type == String_Literal)
     {
         matched = true;
         free(ast_node->contents.literal.value);
-        free(ast_node);
     }
 
     if (ast_node->type == Character_Literal)
     {
         matched = true;
         free(ast_node->contents.literal.value);
-        free(ast_node);
     }
 
     if (ast_node->type == Boolean_Literal)
     {
         matched = true;
         free(ast_node->contents.literal.value);
-        free(ast_node);
     }
 
     if (matched == false)
@@ -898,6 +882,9 @@ int ast_node_free(AST_Node *ast_node)
         fprintf(stderr, "ast_node_free(): can not handle AST_Node_Type: %d\n", ast_node->type);
         exit(EXIT_FAILURE);
     }
+
+    // free ast_node itself.
+    free(ast_node);
 
     return 0;
 }
@@ -987,6 +974,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (strcmp(token->value, "let*") == 0) ||
                 (strcmp(token->value, "letrec") == 0))
             {
+                Token *name_token = token;
                 Vector *bindings = VectorNew(sizeof(AST_Node *));
                 Vector *body_exprs = VectorNew(sizeof(AST_Node *));
 
@@ -1055,10 +1043,9 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 }
 
                 AST_Node *ast_node = NULL;
-                if (strcmp(token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, LET, bindings, body_exprs);
-                if (strcmp(token->value, "let*") == 0) ast_node = ast_node_new(Local_Binding_Form, LET_STAR, bindings, body_exprs);
-                if (strcmp(token->value, "letrec") == 0) ast_node = ast_node_new(Local_Binding_Form, LETREC, bindings, body_exprs); 
-
+                if (strcmp(name_token->value, "let") == 0) ast_node = ast_node_new(Local_Binding_Form, LET, bindings, body_exprs);
+                if (strcmp(name_token->value, "let*") == 0) ast_node = ast_node_new(Local_Binding_Form, LET_STAR, bindings, body_exprs);
+                if (strcmp(name_token->value, "letrec") == 0) ast_node = ast_node_new(Local_Binding_Form, LETREC, bindings, body_exprs); 
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
             }
@@ -1080,8 +1067,8 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 // move to binding's value
                 (*current_p)++;
                 AST_Node *value = walk(tokens, current_p);
-                AST_Node *ast_node = ast_node_new(Local_Binding_Form, DEFINE, token->value, value);
 
+                AST_Node *ast_node = ast_node_new(Local_Binding_Form, DEFINE, token->value, value);
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
             }
@@ -1142,8 +1129,8 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     exit(EXIT_FAILURE);
                 }
 
-                (*current_p)++; // skip ')' of lambda expression. 
                 AST_Node *lambda = ast_node_new(Lambda_Form, params, body_exprs);
+                (*current_p)++; // skip ')' of lambda expression. 
                 return lambda;
             }
 
@@ -1165,23 +1152,16 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     exit(EXIT_FAILURE);
                 }
 
-                // skip the ')' of if expression.
-                (*current_p)++;
                 AST_Node *if_expr = ast_node_new(Conditional_Form, IF, test_expr, then_expr, else_expr);
+                (*current_p)++; // skip the ')' of if expression.;
                 return if_expr;
             }
 
             // handle ... 
             
             // handle normally function call
-            // check identifier, it's must be a normally function name.
-            if (token->type != IDENTIFIER) 
-            {
-                fprintf(stderr, "walk(): Function call here, the first element of form must be a identifier\n");
-                exit(EXIT_FAILURE);
-            }
-
-            AST_Node *ast_node = ast_node_new(Call_Expression, token->value);
+            Token *name_token = token;
+            Vector *params = VectorNew(sizeof(AST_Node *));
 
             // point to the first argument.
             (*current_p)++; 
@@ -1192,10 +1172,11 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             ) 
             {
                 AST_Node *param = walk(tokens, current_p);
-                if (param != NULL) VectorAppend(ast_node->contents.call_expression.params, &param);
+                if (param != NULL) VectorAppend(params, &param);
                 token = tokens_nth(tokens, *current_p);
             }
             
+            AST_Node *ast_node = ast_node_new(Call_Expression, name_token->value, params);
             (*current_p)++; // skip ')'
             return ast_node;
         }
@@ -1274,7 +1255,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
 AST parser(Tokens *tokens)
 {
-    AST ast = ast_node_new(Program);
+    AST ast = ast_node_new(Program, NULL, NULL);
     int current = 0;
 
     while (current < tokens_length(tokens))
@@ -1500,22 +1481,73 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Binding)
     {
         matched = true;
+        char *name = ast_node->contents.binding.name;
+        AST_Node *value = ast_node->contents.binding.value;
+        AST_Node *value_copy = NULL;
+        if (value != NULL) value_copy = ast_node_deep_copy(value, aux_data);
+
+        copy = ast_node_new(Binding, name, value_copy);
     }
 
     if (ast_node->type == Procedure)
     {
         matched = true;
+        char *name = ast_node->contents.procedure.name;
+        int required_params_count = ast_node->contents.procedure.required_params_count; 
+        Vector *params = ast_node->contents.procedure.params; 
+        Vector *body_exprs = ast_node->contents.procedure.body_exprs; 
+        Function c_native_function = ast_node->contents.procedure.c_native_function;
+
+        Vector *params_copy = VectorNew(sizeof(AST_Node *));
+        Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
+        
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(params, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(params_copy, &node_copy);
+        }
+
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(body_exprs_copy, &node_copy);
+        }
+
+        copy = ast_node_new(Procedure, name, required_params_count, params_copy, body_exprs_copy, c_native_function);
     }
 
     if (ast_node->type == Program)
     {
         matched = true;
+        Vector *body = ast_node->contents.program.body;
+        Vector *built_in_bindings = ast_node->contents.program.built_in_bindings;
+
+        Vector *body_copy = VectorNew(sizeof(AST_Node *));
+        Vector *built_in_bindings_copy = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 0; i < VectorLength(body); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(body, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(body_copy, &node_copy);
+        }
+
+        for (int i = 0; i < VectorLength(built_in_bindings); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            VectorAppend(built_in_bindings_copy, &node_copy);
+        }
+
+        copy = ast_node_new(Program, body_copy, built_in_bindings_copy);
     }
 
     if (matched == false)
     {
         // when no matches any AST_Node_Type.
-        fprintf(stderr, "ast_node_deep_copy(): can not handle AST_Node_Type: %d\n", ast_node->type);
+        fprintf(stderr, "ast_node_deep_copy(): can not copy AST_Node_Type: %d\n", ast_node->type);
         exit(EXIT_FAILURE);
     }
 
