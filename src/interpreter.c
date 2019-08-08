@@ -488,7 +488,7 @@ AST_Node *ast_node_new(AST_Node_Type type, ...)
     ast_node->type = type;
     ast_node->parent = NULL;
     ast_node->context = NULL; 
-    ast_node->tag = IN_AST; // IN_AST is defult, use ast_node_mark_tag() and ast_node_get_tag().
+    ast_node->tag = IN_AST; // IN_AST is defult, use ast_node_set_tag() and ast_node_get_tag() to change or get it.
     bool matched = false;
 
     // flexible args
@@ -890,7 +890,7 @@ int ast_node_free(AST_Node *ast_node)
     return 0;
 }
 
-void ast_node_mark_tag(AST_Node *ast_node, AST_Node_Tag tag)
+void ast_node_set_tag(AST_Node *ast_node, AST_Node_Tag tag)
 {
     if (ast_node == NULL)
     {
@@ -2106,7 +2106,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
         for (int i = VectorLength(context) - 1; i >= 0; i--)
         {
             AST_Node *node = *(AST_Node **)VectorNth(context, i);
-            printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
+            // printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
             if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
         }
         if (built_in_bindings != NULL)
@@ -2114,7 +2114,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
             for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
-                printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
+                // printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
                 if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
             }
         }
@@ -2135,11 +2135,16 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         Vector *body = ast_node->contents.program.body;
+        int last_index = VectorLength(body) - 1;
 
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
             result = eval(sub_node, aux_data); // the last sub_node's result will be returned;
+            if (i != last_index && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
+            {
+                ast_node_free(result);
+            }
         }
     }
 
@@ -2425,7 +2430,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
         exit(EXIT_FAILURE);
     }
 
-    if (result != NULL) result = ast_node_deep_copy(result, NULL);
     return result;
 }
 
@@ -2439,6 +2443,10 @@ Result calculator(AST ast, void *aux_data)
 
 int result_free(Result result)
 {
-    if (result == NULL) return 1;
-    else return ast_node_free(result);
+    if (result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
+    {
+        return ast_node_free(result);
+    }
+
+    return 1;
 }

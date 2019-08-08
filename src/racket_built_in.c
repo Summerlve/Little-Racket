@@ -110,6 +110,7 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
     }
     
     AST_Node *ast_node = ast_node_new(Number_Literal, value);
+    ast_node_set_tag(ast_node, NOT_IN_AST);
     free(value);
     return ast_node;
 }
@@ -230,6 +231,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
     }
     
     AST_Node *ast_node = ast_node_new(Number_Literal, value);
+    ast_node_set_tag(ast_node, NOT_IN_AST);
     free(value);
     return ast_node;
 }
@@ -315,6 +317,7 @@ AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
     }
     
     AST_Node *ast_node = ast_node_new(Number_Literal, value);
+    ast_node_set_tag(ast_node, NOT_IN_AST);
     free(value);
     return ast_node;
 }
@@ -403,6 +406,7 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     sprintf(value, "%lf", result);
     
     AST_Node *ast_node = ast_node_new(Number_Literal, value);
+    ast_node_set_tag(ast_node, NOT_IN_AST);
     free(value);
     return ast_node;
 }

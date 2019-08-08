@@ -28,21 +28,23 @@ int main(int argc, char *argv[])
     AST ast = parser(tokens);
 
     // show ast by traverser
-    Visitor visitor = get_custom_visitor();
-    traverser(ast, visitor, NULL);
+    Visitor custom_visitor = get_custom_visitor();
+    traverser(ast, custom_visitor, NULL);
 
     // calculator
     Result result = calculator(ast, NULL);
+    printf("result('s tag : %d\n", ast_node_get_tag(result));
 
     // show result by traverser
     printf("Result:\n");
-    traverser(result, visitor, NULL);
+    traverser(result, custom_visitor, NULL);
 
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
-    visitor_free(visitor);
+    result_free(result);
+    visitor_free(custom_visitor);
     
     return 0;
 }
