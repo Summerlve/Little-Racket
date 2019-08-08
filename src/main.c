@@ -33,7 +33,6 @@ int main(int argc, char *argv[])
 
     // calculator
     Result result = calculator(ast, NULL);
-    printf("result('s tag : %d\n", ast_node_get_tag(result));
 
     // show result by traverser
     printf("Result:\n");
