@@ -1560,8 +1560,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         for (int i = 0; i < VectorLength(built_in_bindings); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
-            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
-            VectorAppend(built_in_bindings_copy, &node_copy);
+            VectorAppend(built_in_bindings_copy, &node);
         }
 
         copy = ast_node_new(Program, body_copy, built_in_bindings_copy);
@@ -2141,10 +2140,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
             result = eval(sub_node, aux_data); // the last sub_node's result will be returned;
-            if (i != last_index && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
-            {
-                ast_node_free(result);
-            }
         }
     }
 
@@ -2437,7 +2432,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
 Result calculator(AST ast, void *aux_data)
 {
     generate_context(ast, NULL, NULL); // generate context 
-    Result result = eval(ast, NULL); // eval
+    AST ast_copy = ast_node_deep_copy(ast, NULL);
+    Result result = eval(ast_copy, NULL); // eval
     return result;
 }
 

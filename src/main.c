@@ -31,8 +31,14 @@ int main(int argc, char *argv[])
     Visitor custom_visitor = get_custom_visitor();
     traverser(ast, custom_visitor, NULL);
 
+    // ast copy
+    AST ast_copy = ast_node_deep_copy(ast, NULL);
+    printf("--- ast copy starts ---\n");
+    traverser(ast_copy, custom_visitor, NULL);
+    printf("--- ast copy ends ---\n");
+
     // calculator
-    Result result = calculator(ast, NULL);
+    Result result = calculator(ast_copy, NULL);
 
     // show result by traverser
     printf("Result:\n");
