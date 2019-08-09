@@ -33,12 +33,10 @@ int main(int argc, char *argv[])
 
     // ast copy
     AST ast_copy = ast_node_deep_copy(ast, NULL);
-    printf("--- ast copy starts ---\n");
     traverser(ast_copy, custom_visitor, NULL);
-    printf("--- ast copy ends ---\n");
 
     // calculator
-    Result result = calculator(ast_copy, NULL);
+    Result result = calculator(ast, NULL);
 
     // show result by traverser
     printf("Result:\n");

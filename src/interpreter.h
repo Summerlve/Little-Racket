@@ -44,7 +44,9 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data);
 // parser parts
 typedef enum _z_ast_node_tag{
     IN_AST, // this kind of ast_node will be freed in ast_free() in main.c.
-    NOT_IN_AST // fresh data, not in ast.
+    NOT_IN_AST, // fresh data, not in ast.
+    BUILT_IN_PROCEDURE, // built-in procedure.
+    BUILT_IN_BINDING // built-in binding.
 } AST_Node_Tag;
 typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
@@ -138,7 +140,7 @@ typedef struct _z_ast_node {
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
-AST_Node *ast_node_new(AST_Node_Type type, ...);
+AST_Node *ast_node_new(AST_Node_Type type, AST_Node_Tag tag, ...);
 int ast_node_free(AST_Node *ast_node);
 AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data);
 void ast_node_set_tag(AST_Node *ast_node, AST_Node_Tag tag);
