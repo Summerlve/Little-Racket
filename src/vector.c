@@ -58,8 +58,23 @@ void VectorMap(Vector *v, VectorMapFunction map, void *aux_data)
     for (int i = 0; i < length; i++)
     {
         void *value_addr = VectorNth(v, i);
-        map(i, value_addr, aux_data);
+        map(value_addr, i, v, aux_data);
     }
+}
+
+Vector *VectorCopy(Vector *v, VectorCopyFunction copy_fn, void *aux_data)
+{
+    Vector *new_vector = VectorNew(v->elem_size);
+    int length = VectorLength(v);
+
+    for (int i = 0; i < length; i++)
+    {
+        void *value_addr = VectorNth(v, i);
+        void *copy_val_addr = copy_fn(value_addr, i, v, new_vector, aux_data);
+        VectorAppend(new_vector, copy_val_addr);
+    }
+
+    return new_vector;
 }
 
 int VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)

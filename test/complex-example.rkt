@@ -10,12 +10,15 @@
 (plus 2 (plus 1 (plus (plus 1 2) (plus c 1))))
 (define x (lambda (x y z) x))
 (x 1 2 3)
-(define a #f)
 (if a 1 2)
 (define p (- (+ 1 2.1) 0.1))
 (+ p)
-p a
+p
 #t
 #f
 (if (if a 1 2) (+ 1 2.0) #f)
 (+ 1 2)
+1
+(if (+ 1 2) #\a #\b)
+(define closure (lambda (x) x a))
+(closure 1)

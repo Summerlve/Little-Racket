@@ -27,10 +27,8 @@
    3. (letrec ...)
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
-6. Built-in procdures: (list), (cons), (list?), (pair?), (map), (filter), (car), (cdr)
+6. Built-in procdures: (list), (cons), (list?), (pair?), (map), (filter), (car), (cdr), (=) for Number
 7. Conditional Form: (if), (cond), (and), (or)
----
-## Racket-Lexical-Scope implementation using JavaScript-Like-Scope-Chain. ##
 ---
 ## Using cmake to build this project. ##
 

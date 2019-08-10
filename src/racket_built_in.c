@@ -109,7 +109,7 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
         sprintf(value, "%lf", result.value.dv);
     }
     
-    AST_Node *ast_node = ast_node_new(Number_Literal, NOT_IN_AST, value);
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
     free(value);
     return ast_node;
 }
@@ -229,7 +229,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
         sprintf(value, "%lf", result.value.dv);
     }
     
-    AST_Node *ast_node = ast_node_new(Number_Literal, NOT_IN_AST, value);
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
     free(value);
     return ast_node;
 }
@@ -314,7 +314,7 @@ AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
         sprintf(value, "%lf", result.value.dv);
     }
     
-    AST_Node *ast_node = ast_node_new(Number_Literal, NOT_IN_AST, value);
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
     free(value);
     return ast_node;
 }
@@ -402,7 +402,7 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
     sprintf(value, "%lf", result);
     
-    AST_Node *ast_node = ast_node_new(Number_Literal, NOT_IN_AST, value);
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
     free(value);
     return ast_node;
 }
@@ -418,24 +418,24 @@ Vector *generate_built_in_bindings(void)
     AST_Node *binding = NULL;
     AST_Node *procedure = NULL;
 
-    procedure = ast_node_new(Procedure, BUILT_IN_PROCEDURE, "+", 0, NULL, NULL, (void(*)(void))racket_native_addition); 
-    binding = ast_node_new(Binding, BUILT_IN_BINDING, "+", procedure);
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "+", 0, NULL, NULL, (void(*)(void))racket_native_addition); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "+", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(Procedure, BUILT_IN_PROCEDURE, "-", 1, NULL, NULL, (void(*)(void))racket_native_subtraction); 
-    binding = ast_node_new(Binding, BUILT_IN_BINDING, "-", procedure);
+    procedure = ast_node_new(BUILT_IN_PROCEDURE,Procedure,  "-", 1, NULL, NULL, (void(*)(void))racket_native_subtraction); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "-", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(Procedure, BUILT_IN_PROCEDURE, "*", 0, NULL, NULL, (void(*)(void))racket_native_multiplication); 
-    binding = ast_node_new(Binding, BUILT_IN_BINDING, "*", procedure);
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "*", 0, NULL, NULL, (void(*)(void))racket_native_multiplication); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "*", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(Procedure, BUILT_IN_PROCEDURE, "/", 1, NULL, NULL, (void(*)(void))racket_native_division); 
-    binding = ast_node_new(Binding, BUILT_IN_BINDING, "/", procedure);
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "/", 1, NULL, NULL, (void(*)(void))racket_native_division); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "/", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(Procedure, BUILT_IN_PROCEDURE, "map", 2, NULL, NULL, (void(*)(void))racket_native_map); 
-    binding = ast_node_new(Binding, BUILT_IN_BINDING, "map", procedure);
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "map", 2, NULL, NULL, (void(*)(void))racket_native_map); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "map", procedure);
     VectorAppend(built_in_bindings, &binding);
 
     return built_in_bindings;
