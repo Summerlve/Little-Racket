@@ -2012,7 +2012,7 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         // so the sub_node of lambda, their parent must be set as lambda's parent.
 
         // only programmer defined procedure needs to generate context.
-        
+
         Vector *params = node->contents.lambda_form.params;
         Vector *body_exprs = node->contents.lambda_form.body_exprs;
 
@@ -2138,12 +2138,16 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         Vector *body = ast_node->contents.program.body;
-        int last_index = VectorLength(body) - 1;
+        int last = VectorLength(body) - 1;
 
         for (int i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
             result = eval(sub_node, aux_data); // the last sub_node's result will be returned;
+            if (i != last && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
+            {
+                ast_node_free(result);
+            }
         }
     }
 
@@ -2174,14 +2178,18 @@ Result eval(AST_Node *ast_node, void *aux_data)
         {
             Vector *params = ast_node->contents.call_expression.params;
             Vector *operands = VectorNew(sizeof(AST_Node *));
+
+            // eval out operands.
             for (int i = 0; i < VectorLength(params); i++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 AST_Node *operand = eval(param, aux_data);
                 VectorAppend(operands, &operand);
             }
+
             Function c_native_function = procedure->contents.procedure.c_native_function;
             result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
+
             VectorFree(operands, NULL, NULL);
         }
 
@@ -2190,6 +2198,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         {
             Vector *params = ast_node->contents.call_expression.params;
             Vector *operands = VectorNew(sizeof(AST_Node *)); 
+
+            // eval out operands.
             for (int i = 0; i < VectorLength(params); i++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
@@ -2220,10 +2230,15 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
             // eval
             Vector *body_exprs = procedure->contents.procedure.body_exprs;
+            int last = VectorLength(body_exprs) - 1;
             for (int i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 result = eval(body_expr, aux_data);
+                if (i != last && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
+                {
+                    ast_node_free(result);
+                }
             }
 
             // set virtual_param's value to null.
@@ -2456,8 +2471,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
         Vector *params = ast_node->contents.lambda_form.params;
         Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
 
-        AST_Node *procedure = ast_node_new(NOT_IN_AST, Procedure, NULL, VectorLength(params), params, body_exprs, NULL);
-        return procedure;
+        result = ast_node_new(NOT_IN_AST, Procedure, NULL, VectorLength(params), params, body_exprs, NULL);
     }
 
     if (matched == false)
@@ -2487,5 +2501,9 @@ Result calculator(AST ast, void *aux_data)
 int result_free(Result result)
 {
     if (result == NULL) return 1;
-    else return ast_node_free(result);
+    if (ast_node_get_tag(result) == IN_AST) return 1;
+    if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);
+
+    fprintf(stderr, "result_free(): confused with a ast_node not either IN_AST and NOT_IN_AST\n");
+    exit(EXIT_FAILURE);  
 }

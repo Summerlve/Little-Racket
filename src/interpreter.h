@@ -168,6 +168,5 @@ typedef AST_Node *Result; // the result of whole racket code.
 Result calculator(AST ast, void *aux_data);
 int result_free(Result result);
 Result eval(AST_Node *ast_node, void *aux_data);
-int gc_free(Vector *gc);
 
 #endif
