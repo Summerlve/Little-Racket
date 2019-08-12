@@ -14,5 +14,6 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands); // +
 AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands); // -
 AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands); // *
 AST_Node *racket_native_division(AST_Node *procedure, Vector *operands); // / 
+AST_Node *racket_native_number_euqal(AST_Node *procedure, Vector *operands); // =
 
 #endif

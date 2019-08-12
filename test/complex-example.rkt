@@ -23,3 +23,13 @@ p
 (define closure (lambda (x) x a))
 (closure 1)
 (+ 1 (+ 1 2))
+(= 1 1.0 1.0000) 
+(= 1 2 3)
+(= 1 2)
+(= (+ 1) (+ 1.2))
+(define fact 
+      (lambda (val)
+            (if (= val 1) 1
+                  (* val (fact (- val 1))))))
+                  
+      ; (fact 5)

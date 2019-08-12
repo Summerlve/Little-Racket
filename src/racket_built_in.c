@@ -407,6 +407,101 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
+AST_Node *racket_native_number_euqal(AST_Node *procedure, Vector *operands)
+{
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count < arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: at least %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    const AST_Node *pre_number = *(AST_Node **)VectorNth(operands, 0); 
+    if (pre_number->type != Number_Literal)
+    {
+        fprintf(stderr, "#<procedure:%s>: operands must be number\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    struct {
+        union {
+            int int_val;
+            double double_val;
+        } contents;
+        bool is_int;
+    } pre, cur;
+    
+    if (strchr(pre_number->contents.literal.value, '.') == NULL)
+    {
+        pre.contents.int_val = *(int *)(pre_number->contents.literal.c_native_value);
+        pre.is_int = true;
+    }
+    else
+    {
+        pre.contents.double_val = *(double *)(pre_number->contents.literal.c_native_value);
+        pre.is_int = false;
+    }
+
+    Boolean_Type *result = malloc(sizeof(Boolean_Type));
+    *result = R_TRUE; // true by default.
+
+    for (int i = 1; i < VectorLength(operands); i++)
+    {
+        AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
+
+        if (cur_number->type != Number_Literal)
+        {
+            fprintf(stderr, "#<procedure:%s>: operands must be number\n", procedure->contents.procedure.name);
+            exit(EXIT_FAILURE); 
+        }
+
+        if (strchr(cur_number->contents.literal.value, '.') == NULL)
+        {
+            cur.contents.int_val = *(int *)(cur_number->contents.literal.c_native_value);
+            cur.is_int = true;
+        }
+        else
+        {
+            cur.contents.double_val = *(double *)(cur_number->contents.literal.c_native_value);
+            cur.is_int = false;
+        }
+
+        if (cur.is_int == true && pre.is_int == true)
+        {
+            if (cur.contents.int_val != pre.contents.int_val) *result = R_FALSE;
+            // printf("pre: %d, cur: %d\n", pre.contents.int_val, cur.contents.int_val);
+            pre.contents.int_val = cur.contents.int_val;
+        }
+        else if (cur.is_int == true && pre.is_int == false)
+        {
+            if (cur.contents.int_val != pre.contents.double_val) *result = R_FALSE;
+            // printf("pre: %f, cur: %d\n", pre.contents.double_val, cur.contents.int_val);
+            pre.contents.int_val = cur.contents.int_val;
+        }
+        else if (cur.is_int == false && pre.is_int == true)
+        {
+            if (cur.contents.double_val != pre.contents.int_val) *result = R_FALSE;
+            // printf("pre: %d, cur: %f\n", pre.contents.int_val, cur.contents.double_val);
+            pre.contents.double_val = cur.contents.double_val;
+        }
+        else if (cur.is_int == false && pre.is_int == false)
+        {
+            if (cur.contents.double_val != pre.contents.double_val) *result = R_FALSE;
+            // printf("pre: %f, cur: %f\n", pre.contents.double_val, cur.contents.double_val);
+            pre.contents.double_val = cur.contents.double_val;
+        }
+        pre.is_int = cur.is_int;
+    }
+
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, result);
+    return ast_node;
+}
+
 AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 {
     return NULL;
@@ -432,6 +527,10 @@ Vector *generate_built_in_bindings(void)
 
     procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "/", 1, NULL, NULL, (void(*)(void))racket_native_division); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "/", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "=", 1, NULL, NULL, (void(*)(void))racket_native_number_euqal); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "=", procedure);
     VectorAppend(built_in_bindings, &binding);
 
     procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "map", 2, NULL, NULL, (void(*)(void))racket_native_map); 

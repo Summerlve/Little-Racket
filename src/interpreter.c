@@ -2501,9 +2501,6 @@ Result calculator(AST ast, void *aux_data)
 int result_free(Result result)
 {
     if (result == NULL) return 1;
-    if (ast_node_get_tag(result) == IN_AST) return 1;
     if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);
-
-    fprintf(stderr, "result_free(): confused with a ast_node not either IN_AST and NOT_IN_AST\n");
-    exit(EXIT_FAILURE);  
+    return 1;
 }
