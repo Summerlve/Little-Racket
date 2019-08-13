@@ -2358,16 +2358,16 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 exit(EXIT_FAILURE); 
             }
 
-            if (ast_node_get_tag(test_val) == NOT_IN_AST)
-            {
-                ast_node_free(test_val);
-            }
-
-            Boolean_Type val = R_TRUE;
+            Boolean_Type val = R_TRUE; // true by default.
             if (test_val->type == Boolean_Literal &&
                *(Boolean_Type *)(test_val->contents.literal.value) == R_FALSE)
             {
                 val = R_FALSE;
+            }
+
+            if (ast_node_get_tag(test_val) == NOT_IN_AST)
+            {
+                ast_node_free(test_val);
             }
 
             if (val == R_TRUE)
