@@ -32,4 +32,7 @@ p
             (if (= val 1) 1
                   (* val (fact (- val 1))))))
                   
-      ; (fact 5)
+; (fact 5)
+(define is-one 
+      (lambda (val) (if (= val 1) #t #f)))
+(is-one 1.1)

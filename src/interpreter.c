@@ -2268,11 +2268,11 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
             if (eval_value != init_value)
             {
-                if (ast_node_get_tag(eval_value) == IN_AST)
+                if (eval_value != NULL && ast_node_get_tag(eval_value) == IN_AST)
                 {
                     binding->contents.binding.value = ast_node_deep_copy(eval_value, NULL);
                 }
-                else if (ast_node_get_tag(eval_value) == NOT_IN_AST)
+                else if (eval_value != NULL && ast_node_get_tag(eval_value) == NOT_IN_AST)
                 {
                     ast_node_set_tag(binding->contents.binding.value, IN_AST);
                 }
@@ -2306,11 +2306,11 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
                 if (eval_value != init_value)
                 {
-                    if (ast_node_get_tag(eval_value) == IN_AST)
+                    if (eval_value != NULL && ast_node_get_tag(eval_value) == IN_AST)
                     {
                         binding->contents.binding.value = ast_node_deep_copy(eval_value, NULL);
                     }
-                    else if (ast_node_get_tag(eval_value) == NOT_IN_AST)
+                    else if (eval_value != NULL && ast_node_get_tag(eval_value) == NOT_IN_AST)
                     {
                         ast_node_set_tag(binding->contents.binding.value, IN_AST);
                     }
@@ -2334,7 +2334,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 result = eval(body_expr, aux_data); // the last body_expr's result will be returned;
                 if (i != last) 
                 {
-                    if (ast_node_get_tag(result) == NOT_IN_AST) ast_node_free(result);
+                    if (result != NULL && ast_node_get_tag(result) == NOT_IN_AST) ast_node_free(result);
                 }
             }
         }
@@ -2491,7 +2491,7 @@ Result calculator(AST ast, void *aux_data)
 
     Result result = eval(ast, NULL); // eval
     
-    if (ast_node_get_tag(result) == IN_AST)
+    if (result != NULL && ast_node_get_tag(result) == IN_AST)
     {
         result = ast_node_deep_copy(result, NULL);
     }

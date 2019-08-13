@@ -49,5 +49,15 @@ int main(int argc, char *argv[])
     result_free(result);
     visitor_free(custom_visitor);
     
+    #ifdef TEST_MODE 
+    printf("\nin test mode !!!\n");
+    #endif
+    #ifdef RELEASE_MODE 
+    printf("\nin release mode !!!\n");
+    #endif
+    #ifdef DEBUG_MODE 
+    printf("\nin debug mode !!!\n");
+    #endif
+    
     return 0;
 }

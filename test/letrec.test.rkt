@@ -1,0 +1,1 @@
+(letrec ([fact (lambda (x) fact)]) fact)
