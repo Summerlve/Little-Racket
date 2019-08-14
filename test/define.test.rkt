@@ -1,3 +1,3 @@
 #lang racket
-(define a 1)
+(define a 101)
 a

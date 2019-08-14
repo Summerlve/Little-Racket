@@ -43,6 +43,10 @@ int main(int argc, char *argv[])
     printf("\n");
     #endif
 
+    #ifdef TEST_MODE
+    Visitor custom_visitor = get_custom_visitor();
+    #endif
+
     // calculator
     Result result = calculator(ast, NULL);
 
@@ -53,6 +57,10 @@ int main(int argc, char *argv[])
     printf("\n");
     #endif
 
+    #ifdef TEST_MODE
+    traverser(result, custom_visitor, NULL);
+    #endif
+
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
@@ -61,6 +69,9 @@ int main(int argc, char *argv[])
     #ifdef DEBUG_MODE
     visitor_free(custom_visitor);
     #endif 
+    #ifdef TEST_MODE
+    visitor_free(custom_visitor);
+    #endif
     
     return 0;
 }
