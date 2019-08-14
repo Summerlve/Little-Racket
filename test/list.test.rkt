@@ -1,2 +1,3 @@
 #lang racket
-(define a '(1 2.2 3 "list" #t #f))
+(define x '(1 2.2 3 "list" #t #f))
+x

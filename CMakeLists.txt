@@ -29,17 +29,17 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     add_test(let-test Little-Racket ../test/let.test.rkt)
     set_tests_properties (let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
 
-    add_test(let-test Little-Racket ../test/let.test.rkt)
-    set_tests_properties (let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
+    add_test(let*-test Little-Racket ../test/let*.test.rkt)
+    set_tests_properties (let*-test PROPERTIES PASS_REGULAR_EXPRESSION "3")
     
-    add_test(let-test Little-Racket ../test/let.test.rkt)
-    set_tests_properties (let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
+    add_test(letrec-test Little-Racket ../test/letrec.test.rkt)
+    set_tests_properties (letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:fact>")
     
-    add_test(let-test Little-Racket ../test/let.test.rkt)
-    set_tests_properties (let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
+    # add_test(list-test Little-Racket ../test/list.test.rkt)
+    # set_tests_properties (list-test PROPERTIES PASS_REGULAR_EXPRESSION " '( 1  2.2  3 "list"  #t  #f )")
     
-    add_test(let-test Little-Racket ../test/let.test.rkt)
-    set_tests_properties (let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
+    # add_test(pair-test Little-Racket ../test/pair.test.rkt)
+    # set_tests_properties (pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'( 1  .  2.2 )")
 endif()
 
 list(APPEND my_source_files 
