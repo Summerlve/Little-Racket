@@ -2430,7 +2430,9 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 exit(EXIT_FAILURE);
             }
             value = binding_contains_value->contents.binding.value;
+            printf("name: %s\n", binding_contains_value->contents.binding.name);
         }
+        printf("binding (%p)\n", value);
         result = value;
     }
 
