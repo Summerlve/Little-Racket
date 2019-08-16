@@ -1,2 +1,2 @@
 #lang racket
-(letrec ([fact (lambda () fact)]) fact)
+(letrec ([fact (lambda () fact)]) (fact))

@@ -28,7 +28,7 @@
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
 6. Built-in procdures: (list), (cons), (list?), (pair?), (map), (filter), (car), (cdr), (=) for Number
-7. Conditional Form: (if), (cond), (and), (or)
+7. Conditional Form: (if), (cond), (and), (or), (not)
 ---
 ## Using cmake to build this project. ##
 
