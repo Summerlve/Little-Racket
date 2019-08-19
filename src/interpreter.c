@@ -1576,6 +1576,8 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
 
     // copy AST_Node::parent after matched, if not matched, will not copy this field.
     copy->parent = ast_node->parent;
+    // copy AST_Node::tag
+    copy->tag = ast_node->tag;
     
     return copy;
 }
@@ -2046,6 +2048,7 @@ static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Procedure)
     {
+        // the context of procedure will be created by generate context for lambda_form.
         return;
     }
     
@@ -2091,11 +2094,14 @@ static AST_Node *search_binding_value(AST_Node *binding)
         fprintf(stderr, "can not search binding value for NULL\n");
         exit(EXIT_FAILURE);
     }
+
     // if current binding node has value.
     if (binding->contents.binding.value != NULL) return binding;
+
     // search binding's value by 'name'
-    AST_Node *value = NULL;
+    AST_Node *binding_contains_value = NULL;
     AST_Node *contextable = find_contextable_node(binding);
+
     while (contextable != NULL)
     {
         Vector *context = contextable->context;
@@ -2105,24 +2111,55 @@ static AST_Node *search_binding_value(AST_Node *binding)
         {
             AST_Node *node = *(AST_Node **)VectorNth(context, i);
             // printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
-            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
+            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0)
+            {
+                binding_contains_value = node;
+
+                // check value
+                AST_Node *value = binding_contains_value->contents.binding.value;
+                if (value == NULL)
+                {
+                    fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding_contains_value->contents.binding.name);
+                    exit(EXIT_FAILURE);
+                }
+
+                goto found;
+            }
         }
+
         if (built_in_bindings != NULL)
         {
             for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
                 // printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
-                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0) return node;
+                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0)
+                {
+                    binding_contains_value = node;
+
+                    // check value
+                    AST_Node *value = binding_contains_value->contents.binding.value;
+                    if (value == NULL)
+                    {
+                        fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding_contains_value->contents.binding.name);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    goto found;
+                }
             }
         }
+        
         contextable = find_contextable_node(contextable->parent);
     }
-    return value;
+
+    found: return binding_contains_value;
 }
 
-void *context_copy(void *value_addr, int index, Vector *original_vector, Vector *new_vector, void *aux_data)
+void *context_copy_helper(void *value_addr, int index, Vector *original_vector, Vector *new_vector, void *aux_data)
 {
+    AST_Node *binding = *(AST_Node **)value_addr;
+    printf("copy binding: %s\n", binding->contents.binding.name);
     return value_addr;
 }
 
@@ -2134,22 +2171,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
     Result result = NULL;
     bool matched = false;
 
-    if (ast_node->type == Program)
-    {
-        matched = true;
-        Vector *body = ast_node->contents.program.body;
-        int last = VectorLength(body) - 1;
-
-        for (int i = 0; i < VectorLength(body); i++)
-        {
-            AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
-            result = eval(sub_node, aux_data); // the last sub_node's result will be returned;
-            if (i != last && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
-            {
-                ast_node_free(result);
-            }
-        }
-    }
+   
 
     if (ast_node->type == Call_Expression)
     {
@@ -2221,6 +2243,14 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
             // binding virtual params to actual params.
             Vector *virtual_params = procedure->contents.procedure.params;
+            // Vector *params_copy = VectorNew(sizeof(AST_Node *));
+            
+            // for (int i = 0; i < VectorLength(params); i++)
+            // {
+            //     AST_Node *binding = *(AST_Node **)VectorNth(params, i);
+            //     AST_Node *binding_copy = ast_node_deep_copy(binding, NULL);
+            //     VectorAppend(params_copy, &binding_copy);                
+            // }
             for (int i = 0; i < VectorLength(virtual_params); i++)
             {
                 AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
@@ -2249,6 +2279,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             VectorFree(operands, NULL, NULL);
+            // free params_copy.
         }
     }
     
@@ -2430,9 +2461,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 exit(EXIT_FAILURE);
             }
             value = binding_contains_value->contents.binding.value;
-            printf("name: %s\n", binding_contains_value->contents.binding.name);
         }
-        printf("binding (%p)\n", value);
         result = value;
     }
 
@@ -2473,7 +2502,40 @@ Result eval(AST_Node *ast_node, void *aux_data)
         Vector *params = ast_node->contents.lambda_form.params;
         Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
 
-        result = ast_node_new(NOT_IN_AST, Procedure, NULL, VectorLength(params), params, body_exprs, NULL);
+        Vector *params_copy = VectorNew(sizeof(AST_Node *));
+        Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(params, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            if (node->context != NULL)
+            {
+                printf("eval() lambda copy param's context\n");
+                Vector *context_copy = VectorCopy(node->context, context_copy_helper, NULL);
+                node_copy->context = context_copy;
+            }
+            VectorAppend(params_copy, &node_copy);
+        }
+
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            printf("eval() lambda copy body context\n");
+            AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+            if (node_copy->context == NULL)
+            {
+                node_copy->context = VectorNew(sizeof(AST_Node *));
+            }
+            for(int j = 0; j < VectorLength(params_copy); j++)
+            {
+                AST_Node *param_copy = *(AST_Node **)VectorNth(params_copy, j);
+                VectorAppend(node_copy->context, &param_copy);
+            }
+            VectorAppend(body_exprs_copy, &node_copy);
+        }
+
+        result = ast_node_new(NOT_IN_AST, Procedure, NULL, VectorLength(params_copy), params_copy, body_exprs_copy, NULL);
     }
 
     if (matched == false)
@@ -2487,20 +2549,47 @@ Result eval(AST_Node *ast_node, void *aux_data)
 }
 
 // calculator parts
-Result calculator(AST ast, void *aux_data)
+// return: Vector *(Result)
+Vector *calculator(AST ast, void *aux_data)
 {
     generate_context(ast, NULL, NULL); // generate context 
 
-    Result result = eval(ast, NULL); // eval
-    
-    if (result != NULL && ast_node_get_tag(result) == IN_AST)
+    Vector *body = ast->contents.program.body;
+    Vector *results = VectorNew(sizeof(AST_Node *));
+
+    for (int i = 0; i < VectorLength(body); i++)
     {
-        result = ast_node_deep_copy(result, NULL);
+        AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
+        Result result = eval(sub_node, aux_data);
+        if (result != NULL)
+        {
+            if (ast_node_get_tag(result) == IN_AST)
+            {
+                result = ast_node_deep_copy(result, NULL);
+                result->tag = NOT_IN_AST;
+            }
+            VectorAppend(results, &result);
+        }
     }
-    return result;
+
+    return results;
 }
 
-int result_free(Result result)
+static int result_free(Result result);
+int results_free(Vector *results)
+{
+    int error = 0;
+
+    for (int i = 0; i < VectorLength(results); i++)
+    {
+        AST_Node *result = VectorNth(results, i);
+        error = error | result_free(result);
+    }
+
+    return error;
+}
+
+static int result_free(Result result)
 {
     if (result == NULL) return 1;
     if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);

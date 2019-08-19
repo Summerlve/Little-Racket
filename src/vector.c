@@ -1,4 +1,5 @@
 #include "./vector.h"
+#include "./interpreter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,13 +68,27 @@ Vector *VectorCopy(Vector *v, VectorCopyFunction copy_fn, void *aux_data)
     Vector *new_vector = VectorNew(v->elem_size);
     int length = VectorLength(v);
 
-    for (int i = 0; i < length; i++)
+    if (copy_fn != NULL)
     {
-        void *value_addr = VectorNth(v, i);
-        void *copy_val_addr = copy_fn(value_addr, i, v, new_vector, aux_data);
-        VectorAppend(new_vector, copy_val_addr);
+        for (int i = 0; i < length; i++)
+        {
+            void *value_addr = VectorNth(v, i);
+            AST_Node *binding = *(AST_Node **)value_addr;
+               printf("copy binding: %p\n", binding);
+            void *copy_val_addr = copy_fn(value_addr, i, v, new_vector, aux_data);
+            // you can return null to ignore some value.
+            if (copy_val_addr != NULL) VectorAppend(new_vector, copy_val_addr);
+        }
     }
-
+    else if (copy_fn == NULL)
+    {
+        memcpy(new_vector, v, sizeof(Vector));
+        int elems_size = v->allocated_length * v->elem_size;
+        void *elems = malloc(elems_size);
+        memcpy(elems, v->elems, elems_size);
+        new_vector->elems = elems;
+    }
+   
     return new_vector;
 }
 

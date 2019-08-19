@@ -16,12 +16,11 @@ int main(int argc, char *argv[])
     // parser
     AST ast = parser(tokens);
     // calculator
-    Result result = calculator(ast, NULL);
+    Vector *results = calculator(ast, NULL);
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
-    result_free(result);
     #endif
 
     #ifdef TEST_MODE 
@@ -35,13 +34,17 @@ int main(int argc, char *argv[])
     AST ast = parser(tokens);
     Visitor custom_visitor = get_custom_visitor();
     // calculator
-    Result result = calculator(ast, NULL);
-    traverser(result, custom_visitor, NULL);
+    Vector *results = calculator(ast, NULL);
+    for (int i = 0; i < VectorLength(results); i++)
+    {
+        Result result = *(AST_Node **)VectorNth(results, i);
+        traverser(result, custom_visitor, NULL);
+    }
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
-    result_free(result);
+    results_free(results);
     visitor_free(custom_visitor);
     #endif
 
@@ -71,19 +74,21 @@ int main(int argc, char *argv[])
     AST ast_copy = ast_node_deep_copy(ast, NULL);
     traverser(ast_copy, custom_visitor, NULL);
     printf("\n");
-
     // calculator
-    Result result = calculator(ast, NULL);
+    Vector *results = calculator(ast, NULL);
     // show result by traverser
     printf("Result:\n");
-    traverser(result, custom_visitor, NULL);
-    printf("\n");
-    
+    for (int i = 0; i < VectorLength(results); i++)
+    {
+        Result result = *(AST_Node **)VectorNth(results, i);
+        traverser(result, custom_visitor, NULL);
+        printf("\n");
+    }
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
-    result_free(result);
+    results_free(results);
     visitor_free(custom_visitor);
     #endif
 
