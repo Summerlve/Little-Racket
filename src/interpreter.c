@@ -756,7 +756,23 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Lambda_Form)
     {
         matched = true;
-        // params and body_exprs will be freed by procedure which lambda form worked out.
+
+        Vector *params = ast_node->contents.lambda_form.params;
+        Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
+
+        for (int i = 0; i < VectorLength(params); i++)
+        {
+            AST_Node *param = *(AST_Node **)VectorNth(params, i);
+            ast_node_free(param);
+        }
+        VectorFree(params, NULL, NULL);
+
+        for (int i = 0; i < VectorLength(body_exprs); i++)
+        {
+            AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+            ast_node_free(body_expr);
+        }
+        VectorFree(body_exprs, NULL, NULL);
     }
 
     if (ast_node->type == Local_Binding_Form)
@@ -1300,8 +1316,8 @@ int ast_free(AST ast)
 AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
 {
     /*
-        AST_Node::parent: will copy pointer address only.
-        AST_Node::context: can not copy, you should use generate_context() to generate context for ast copy.
+        AST_Node::parent: can not copy, you should use generate_context() to generate context for a ast copy.
+        AST_Node::context: can not copy, you should use generate_context() to generate context for a ast copy.
         AST_Node::tag: copy tag
     **/
 
@@ -1574,8 +1590,6 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         exit(EXIT_FAILURE);
     }
 
-    // copy AST_Node::parent after matched, if not matched, will not copy this field.
-    copy->parent = ast_node->parent;
     // copy AST_Node::tag
     copy->tag = ast_node->tag;
     
@@ -2098,19 +2112,23 @@ static AST_Node *search_binding_value(AST_Node *binding)
     // if current binding node has value.
     if (binding->contents.binding.value != NULL) return binding;
 
-    // search binding's value by 'name'
     AST_Node *binding_contains_value = NULL;
     AST_Node *contextable = find_contextable_node(binding);
 
+    // search binding's value by 'name'
     while (contextable != NULL)
     {
         Vector *context = contextable->context;
         Vector *built_in_bindings = NULL;
+
         if (contextable->type == Program) built_in_bindings = contextable->contents.program.built_in_bindings;
+        
         for (int i = VectorLength(context) - 1; i >= 0; i--)
         {
             AST_Node *node = *(AST_Node **)VectorNth(context, i);
-            // printf("searching for name: %s, cur node's name: %s\n",binding->contents.binding.name, node->contents.binding.name);
+            #ifdef DEBUG_MODE
+            printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
+            #endif
             if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0)
             {
                 binding_contains_value = node;
@@ -2119,7 +2137,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
                 AST_Node *value = binding_contains_value->contents.binding.value;
                 if (value == NULL)
                 {
-                    fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding_contains_value->contents.binding.name);
+                    fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding->contents.binding.name);
                     exit(EXIT_FAILURE);
                 }
 
@@ -2132,7 +2150,9 @@ static AST_Node *search_binding_value(AST_Node *binding)
             for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
-                // printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
+                #ifdef DEBUG_MODE
+                printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
+                #endif
                 if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0)
                 {
                     binding_contains_value = node;
@@ -2141,7 +2161,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
                     AST_Node *value = binding_contains_value->contents.binding.value;
                     if (value == NULL)
                     {
-                        fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding_contains_value->contents.binding.name);
+                        fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding->contents.binding.name);
                         exit(EXIT_FAILURE);
                     }
 
@@ -2151,6 +2171,12 @@ static AST_Node *search_binding_value(AST_Node *binding)
         }
         
         contextable = find_contextable_node(contextable->parent);
+    }
+
+    if (binding_contains_value == NULL)
+    {
+        fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding->contents.binding.name);
+        exit(EXIT_FAILURE);
     }
 
     found: return binding_contains_value;
@@ -2170,8 +2196,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
     if (ast_node == NULL) return NULL;
     Result result = NULL;
     bool matched = false;
-
-   
 
     if (ast_node->type == Call_Expression)
     {
@@ -2241,45 +2265,89 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 exit(EXIT_FAILURE); 
             }
 
-            // binding virtual params to actual params.
+            // generate a environment for every function call.
             Vector *virtual_params = procedure->contents.procedure.params;
-            // Vector *params_copy = VectorNew(sizeof(AST_Node *));
+            Vector *body_exprs = procedure->contents.procedure.body_exprs;
+
+            Vector *virtual_params_copy = VectorNew(sizeof(AST_Node *));
+            Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
             
-            // for (int i = 0; i < VectorLength(params); i++)
-            // {
-            //     AST_Node *binding = *(AST_Node **)VectorNth(params, i);
-            //     AST_Node *binding_copy = ast_node_deep_copy(binding, NULL);
-            //     VectorAppend(params_copy, &binding_copy);                
-            // }
             for (int i = 0; i < VectorLength(virtual_params); i++)
             {
-                AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
+                AST_Node *node = *(AST_Node **)VectorNth(virtual_params, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                if (node->context != NULL)
+                {
+                    Vector *context_copy = VectorCopy(node->context, context_copy_helper, NULL);
+                    node_copy->context = context_copy;
+                }
+                generate_context(node_copy, node->parent, NULL);
+                VectorAppend(virtual_params_copy, &node_copy);
+            }
+
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                if (node_copy->context == NULL)
+                {
+                    node_copy->context = VectorNew(sizeof(AST_Node *));
+                }
+                for(int j = 0; j < VectorLength(virtual_params_copy); j++)
+                {
+                    AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, j);
+                    VectorAppend(node_copy->context, &virtual_param_copy);
+                }
+                generate_context(node_copy, node->parent, NULL);
+                VectorAppend(body_exprs_copy, &node_copy);
+            }
+
+            // binding virtual params copy to actual params.
+            for (int i = 0; i < VectorLength(virtual_params_copy); i++)
+            {
+                AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
                 AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
-                virtual_param->contents.binding.value = operand;
+                virtual_param_copy->contents.binding.value = operand;
             }
 
             // eval
-            Vector *body_exprs = procedure->contents.procedure.body_exprs;
-            int last = VectorLength(body_exprs) - 1;
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            int last = VectorLength(body_exprs_copy) - 1;
+            for (int i = 0; i < VectorLength(body_exprs_copy); i++)
             {
-                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
-                result = eval(body_expr, aux_data);
+                AST_Node *body_expr_copy = *(AST_Node **)VectorNth(body_exprs_copy, i);
+                result = eval(body_expr_copy, aux_data);
                 if (i != last && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
                 {
                     ast_node_free(result);
                 }
             }
 
-            // set virtual_param's value to null.
-            for (int i = 0; i < VectorLength(virtual_params); i++)
+            // set virtual_param_copy's value to null.
+            for (int i = 0; i < VectorLength(virtual_params_copy); i++)
             {
-                AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
-                virtual_param->contents.binding.value = NULL; 
+                AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
+                virtual_param_copy->contents.binding.value = NULL; 
             }
 
+            // free operands
             VectorFree(operands, NULL, NULL);
-            // free params_copy.
+
+            // free virtual_params_copy.
+            for (int i = 0; i < VectorLength(virtual_params_copy); i++)
+            {
+                AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
+                ast_node_free(virtual_param_copy);
+            }
+            VectorFree(virtual_params_copy, NULL, NULL);
+
+            // free body_exprs_copy
+            // TO-DO solve problem here !
+            // for (int i = 0; i < VectorLength(body_exprs_copy); i++)
+            // {
+            //     AST_Node *body_expr_copy = *(AST_Node **)VectorNth(body_exprs_copy, i);
+            //     ast_node_free(body_expr_copy);
+            // }
+            VectorFree(body_exprs_copy, NULL, NULL);
         }
     }
     
@@ -2511,16 +2579,15 @@ Result eval(AST_Node *ast_node, void *aux_data)
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
             if (node->context != NULL)
             {
-                printf("eval() lambda copy param's context\n");
                 Vector *context_copy = VectorCopy(node->context, context_copy_helper, NULL);
                 node_copy->context = context_copy;
             }
+            node_copy->parent = ast_node->parent;
             VectorAppend(params_copy, &node_copy);
         }
 
         for (int i = 0; i < VectorLength(body_exprs); i++)
         {
-            printf("eval() lambda copy body context\n");
             AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
             if (node_copy->context == NULL)
@@ -2532,6 +2599,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 AST_Node *param_copy = *(AST_Node **)VectorNth(params_copy, j);
                 VectorAppend(node_copy->context, &param_copy);
             }
+            node_copy->parent = ast_node->parent;
             VectorAppend(body_exprs_copy, &node_copy);
         }
 

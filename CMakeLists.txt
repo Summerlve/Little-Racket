@@ -30,7 +30,10 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     include(CTest)
 
     add_test(factorial-test Little-Racket ../test/fact.test.rkt)
-    set_tests_properties (factorial-test PROPERTIES PASS_REGULAR_EXPRESSION "5040")
+    set_tests_properties (factorial-test PROPERTIES PASS_REGULAR_EXPRESSION "479001600")
+
+    add_test(fibonacci-test Little-Racket ../test/fib.test.rkt)
+    set_tests_properties (fibonacci-test PROPERTIES PASS_REGULAR_EXPRESSION "21")
 
     add_test(calling-test Little-Racket ../test/calling.test.rkt)
     set_tests_properties (calling-test PROPERTIES PASS_REGULAR_EXPRESSION "1")
@@ -50,11 +53,11 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     add_test(letrec-test Little-Racket ../test/letrec.test.rkt)
     set_tests_properties (letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:fact>")
     
-    # add_test(list-test Little-Racket ../test/list.test.rkt)
-    # set_tests_properties (list-test PROPERTIES PASS_REGULAR_EXPRESSION " '( 1  2.2  3 "list"  #t  #f )")
+    add_test(list-test Little-Racket ../test/list.test.rkt)
+    set_tests_properties (list-test PROPERTIES PASS_REGULAR_EXPRESSION " '( 1  2.2  3 \"list\"  #t  #f ) ")
     
-    # add_test(pair-test Little-Racket ../test/pair.test.rkt)
-    # set_tests_properties (pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'( 1  .  2.2 )")
+    add_test(pair-test Little-Racket ../test/pair.test.rkt)
+    set_tests_properties (pair-test PROPERTIES PASS_REGULAR_EXPRESSION " '( 1  .  2.2 ) ")
 endif()
 
 list(APPEND my_source_files 
