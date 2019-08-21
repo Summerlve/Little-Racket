@@ -51,7 +51,7 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     set_tests_properties (let*-test PROPERTIES PASS_REGULAR_EXPRESSION "3")
     
     add_test(letrec-test Little-Racket ../test/letrec.test.rkt)
-    set_tests_properties (letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:fact>")
+    set_tests_properties (letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:access-binding-itself>")
     
     add_test(list-test Little-Racket ../test/list.test.rkt)
     set_tests_properties (list-test PROPERTIES PASS_REGULAR_EXPRESSION " '( 1  2.2  3 \"list\"  #t  #f ) ")
