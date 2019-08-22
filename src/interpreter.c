@@ -1817,7 +1817,7 @@ static AST_Node *find_contextable_node(AST_Node *current_node)
     return contextable;
 }
 
-static void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
+void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     node->parent = parent;
 

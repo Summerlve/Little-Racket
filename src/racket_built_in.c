@@ -474,25 +474,33 @@ AST_Node *racket_native_number_euqal(AST_Node *procedure, Vector *operands)
         if (cur.is_int == true && pre.is_int == true)
         {
             if (cur.contents.int_val != pre.contents.int_val) *result = R_FALSE;
+            #ifdef DEBUG_MODE
             // printf("pre: %d, cur: %d\n", pre.contents.int_val, cur.contents.int_val);
+            #endif
             pre.contents.int_val = cur.contents.int_val;
         }
         else if (cur.is_int == true && pre.is_int == false)
         {
             if (cur.contents.int_val != pre.contents.double_val) *result = R_FALSE;
+            #ifdef DEBUG_MODE
             // printf("pre: %f, cur: %d\n", pre.contents.double_val, cur.contents.int_val);
+            #endif
             pre.contents.int_val = cur.contents.int_val;
         }
         else if (cur.is_int == false && pre.is_int == true)
         {
             if (cur.contents.double_val != pre.contents.int_val) *result = R_FALSE;
+            #ifdef DEBUG_MODE
             // printf("pre: %d, cur: %f\n", pre.contents.int_val, cur.contents.double_val);
+            #endif
             pre.contents.double_val = cur.contents.double_val;
         }
         else if (cur.is_int == false && pre.is_int == false)
         {
             if (cur.contents.double_val != pre.contents.double_val) *result = R_FALSE;
+            #ifdef DEBUG_MODE
             // printf("pre: %f, cur: %f\n", pre.contents.double_val, cur.contents.double_val);
+            #endif
             pre.contents.double_val = cur.contents.double_val;
         }
         pre.is_int = cur.is_int;
@@ -502,9 +510,88 @@ AST_Node *racket_native_number_euqal(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
+// (map fn list ...)
 AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 {
-    return NULL;
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count < arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: at least %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    // check procedure
+    AST_Node *fn = *(AST_Node **)VectorNth(operands, 0);
+    if (fn->type != Procedure)
+    {
+        fprintf(stderr, "%s: parameter's type is incorrecly\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    // the rest of operands must be list
+    AST_Node *first_list = *(AST_Node **)VectorNth(operands, 1); 
+    if (first_list->type != List_Literal)
+    {
+        fprintf(stderr, "%s: parameter's type is incorrecly\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    int list_length = VectorLength((Vector *)(first_list->contents.literal.value));
+
+    for (int i = 1; i < VectorLength(operands); i++)
+    {
+        // check list
+        AST_Node *list = *(AST_Node **)VectorNth(operands, i);
+        if (list->type != List_Literal)
+        {
+            fprintf(stderr, "%s: parameter's type is incorrecly\n", procedure->contents.procedure.name);
+            exit(EXIT_FAILURE); 
+        }
+
+        // check list size
+        int cur_list_length = VectorLength((Vector *)(list->contents.literal.value));
+        if (list_length != cur_list_length)
+        {
+            fprintf(stderr, "%s: all lists must have same size\n", procedure->contents.procedure.name);
+            exit(EXIT_FAILURE); 
+        }
+    }
+
+    Vector *results = VectorNew(sizeof(AST_Node *));
+
+    for (int i = 0; i < list_length; i++)
+    {
+        Vector *column = VectorNew(sizeof(AST_Node *));
+
+        for (int j = 1; j < VectorLength(operands); j++)
+        {
+            AST_Node *list = *(AST_Node **)VectorNth(operands, j);
+            Vector *value = (Vector *)(list->contents.literal.value);
+            AST_Node *item = VectorNth(value, i);
+            VectorAppend(column, &item);
+        }
+
+        // execute fn
+        // constructe a call expression and call the eval().
+        AST_Node *call_expression = ast_node_new(NOT_IN_AST, Call_Expression, fn->contents.procedure.name, column);
+        generate_context(call_expression, fn, NULL);
+        Result result = eval(call_expression, NULL);
+
+        // append to results
+        if (ast_node_get_tag(result) == IN_AST)
+        {
+            result = ast_node_deep_copy(result, NULL);
+        }
+        VectorAppend(results, &result);
+    }
+
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, List_Literal, results);
+    return ast_node;
 }
 
 AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)

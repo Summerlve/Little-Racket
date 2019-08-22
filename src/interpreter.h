@@ -165,6 +165,7 @@ void traverser(AST ast, Visitor visitor, void *aux_data); // left-sub-tree-first
 
 // calculator parts
 typedef AST_Node *Result; // the result of whole racket code.
+void generate_context(AST_Node *node, AST_Node *parent, void *aux_data);
 Vector *calculator(AST ast, void *aux_data);
 int results_free(Vector *results);
 Result eval(AST_Node *ast_node, void *aux_data);

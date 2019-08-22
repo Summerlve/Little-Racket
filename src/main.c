@@ -53,18 +53,15 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
     // load racket file content into memory.
     Raw_Code *raw_code = racket_file_load(path);
-
     // show the raw_code in gaint single string.
     printf("Raw code:\n");
     racket_file_map(raw_code, print_raw_code, NULL);
     printf("\n");
-
     // tokenizer 
     Tokens *tokens = tokenizer(raw_code);
     printf("Tokens:\n");
     tokens_map(tokens, print_tokens, NULL);
     printf("\n");
-
     // parser
     AST ast = parser(tokens);
     // show ast by traverser
@@ -77,7 +74,7 @@ int main(int argc, char *argv[])
     // calculator
     Vector *results = calculator(ast, NULL);
     // show result by traverser
-    printf("Result:\n");
+    printf("\nResult:\n");
     for (int i = 0; i < VectorLength(results); i++)
     {
         Result result = *(AST_Node **)VectorNth(results, i);
