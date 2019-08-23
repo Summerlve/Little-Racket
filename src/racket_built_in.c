@@ -572,13 +572,24 @@ AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
         {
             AST_Node *list = *(AST_Node **)VectorNth(operands, j);
             Vector *value = (Vector *)(list->contents.literal.value);
-            AST_Node *item = VectorNth(value, i);
+            AST_Node *item = *(AST_Node **)VectorNth(value, i);
             VectorAppend(column, &item);
         }
 
         // execute fn
         // constructe a call expression and call the eval().
-        AST_Node *call_expression = ast_node_new(NOT_IN_AST, Call_Expression, fn->contents.procedure.name, column);
+        AST_Node *call_expression = NULL;
+        // named procedure
+        if (fn->contents.procedure.name != NULL)
+        {
+            call_expression = ast_node_new(NOT_IN_AST, Call_Expression, fn->contents.procedure.name, NULL, column);
+        }
+        // anonymous procedure
+        else if (fn->contents.procedure.name == NULL)
+        {
+            call_expression = ast_node_new(NOT_IN_AST, Call_Expression, NULL, fn, column);
+        }
+
         generate_context(call_expression, fn, NULL);
         Result result = eval(call_expression, NULL);
 
@@ -588,6 +599,8 @@ AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
             result = ast_node_deep_copy(result, NULL);
         }
         VectorAppend(results, &result);
+
+        VectorFree(column, NULL, NULL);
     }
 
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, List_Literal, results);

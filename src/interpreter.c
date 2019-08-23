@@ -471,7 +471,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // parser parts
 
 // ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL)
-// ast_node_new(tag, Call_Expression, name, params/NULL)
+// ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
 // ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
 //   ast_node_new(tag, Local_Binding_Form, DEFINE, char *name, AST_Node *value)
 //   ast_node_new(tag, Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
@@ -509,9 +509,17 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
-        const char *name = va_arg(ap, const char *);
-        ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
-        strcpy(ast_node->contents.call_expression.name, name);
+        char *name = va_arg(ap, char *);
+        if (name == NULL)
+        {
+            ast_node->contents.call_expression.name = name;
+        }
+        else if (name != NULL)
+        {
+            ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
+            strcpy(ast_node->contents.call_expression.name, name);
+        }
+        ast_node->contents.call_expression.anonymous_procedure = va_arg(ap, AST_Node *);
         Vector *params = va_arg(ap, Vector *);
         if (params == NULL) params = VectorNew(sizeof(AST_Node *));
         ast_node->contents.call_expression.params = params;
@@ -1215,7 +1223,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 token = tokens_nth(tokens, *current_p);
             }
             
-            AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, name_token->value, params);
+            AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, name_token->value, NULL, params);
             (*current_p)++; // skip ')'
             return ast_node;
         }
@@ -1504,6 +1512,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         const char *name = ast_node->contents.call_expression.name;
+        AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
         Vector *params = ast_node->contents.call_expression.params;
 
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
@@ -1515,7 +1524,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             VectorAppend(params_copy, &node_copy);
         }
 
-        copy = ast_node_new(ast_node->tag, Call_Expression, name, params_copy);
+        copy = ast_node_new(ast_node->tag, Call_Expression, name, anonymous_procedure, params_copy);
     }
 
     if (ast_node->type == Binding)
@@ -1782,11 +1791,9 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
     if(handler->exit != NULL) handler->exit(node, parent, aux_data);
 }
 
-// defult AST_Node handler for calculator parts
 Visitor get_defult_visitor(void)
 {
-    Visitor visitor = visitor_new();
-    return visitor;
+    return NULL;
 }
 
 // left-sub-tree-first dfs algo. 
@@ -1800,7 +1807,9 @@ void traverser(AST ast, Visitor visitor, void *aux_data)
 static AST_Node *find_contextable_node(AST_Node *current_node)
 {
     if (current_node == NULL) return NULL;
+
     AST_Node *contextable = NULL;
+
     if (current_node->context == NULL)
     {
         contextable = current_node->parent;
@@ -1814,6 +1823,7 @@ static AST_Node *find_contextable_node(AST_Node *current_node)
     {
         contextable = current_node;
     }
+
     return contextable;
 }
 
@@ -1827,14 +1837,19 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         {
             node->context = VectorNew(sizeof(AST_Node *));
         }
+
         // only one Program Node in AST, so the following code will run only once.
         Vector *built_in_bindings = generate_built_in_bindings(); // add built-in binding to Program.
         for (int i = 0; i < VectorLength(built_in_bindings); i++)
         {
             AST_Node *binding = *(AST_Node **)VectorNth(built_in_bindings, i);
+            generate_context(binding, node, aux_data); // generate context for built-in bindings.
             VectorAppend(node->contents.program.built_in_bindings, &binding);
         }
+
         free_built_in_bindings(built_in_bindings, NULL); // free 'built_in_bindings' itself only.
+
+        // generate context for body.
         Vector *body = node->contents.program.body;
         for (int i = 0; i < VectorLength(body); i++)
         {
@@ -2072,8 +2087,11 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Procedure)
     {
-        // the context of procedure will be created by generate context for lambda_form.
-        return;
+        // built-in procedures.
+        if (node->contents.procedure.c_native_function != NULL)
+        {
+
+        }
     }
     
     if (node->type == Number_Literal ||
@@ -2209,19 +2227,37 @@ Result eval(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
+        
         const char *name = ast_node->contents.call_expression.name;
-        AST_Node *binding = ast_node_new(NOT_IN_AST, Binding, name, NULL);
-        generate_context(binding, ast_node, NULL);
-        AST_Node *binding_contains_value = search_binding_value(binding);
-        ast_node_free(binding); // free the tmp binding.
+        AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
+        AST_Node *procedure = NULL;
 
-        if (binding_contains_value == NULL)
+        // anonymous procedure call
+        if (name == NULL && anonymous_procedure != NULL)
         {
-            fprintf(stderr, "eval(): unbound identifier: %s\n", name);
+            procedure = anonymous_procedure;
+        }
+        // named procedure call
+        else if (name != NULL && anonymous_procedure == NULL)
+        {
+            AST_Node *binding = ast_node_new(NOT_IN_AST, Binding, name, NULL);
+            generate_context(binding, ast_node, NULL);
+            AST_Node *binding_contains_value = search_binding_value(binding);
+            ast_node_free(binding); // free the tmp binding.
+
+            if (binding_contains_value == NULL)
+            {
+                fprintf(stderr, "eval(): unbound identifier: %s\n", name);
+                exit(EXIT_FAILURE);
+            }
+
+            procedure = binding_contains_value->contents.binding.value;
+        }
+        else {
+            fprintf(stderr, "eval(): call expression error\n");
             exit(EXIT_FAILURE);
         }
 
-        AST_Node *procedure = binding_contains_value->contents.binding.value;
         if (procedure->type != Procedure)
         {
             fprintf(stderr, "eval(): not a procedure: %s\n", name);
@@ -2588,6 +2624,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
         matched = true;
         Vector *params = ast_node->contents.lambda_form.params;
         Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
+
         result = ast_node_new(NOT_IN_AST, Procedure, NULL, -1, NULL, NULL, NULL);
 
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
@@ -2632,6 +2669,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         {
             result->context = VectorCopy(ast_node->context, context_copy_helper, NULL);
         }
+
+        generate_context(result, ast_node->parent, NULL);
     }
 
     if (matched == false)
@@ -2690,4 +2729,42 @@ static int result_free(Result result)
     if (result == NULL) return 1;
     if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);
     return 1;
+}
+
+// output result
+void output_result(Result result)
+{
+    bool matched = false;
+
+    if (result->type == Number_Literal)
+    {
+        matched = true;
+        fprintf(stdout, "%s\n", (char *)(result->contents.literal.value));
+    }
+
+    if (result->type ==  String_Literal)
+    {
+        matched = true;
+        fprintf(stdout, "%s\n", (char *)(result->contents.literal.value));
+    }
+
+    if (result->type ==  Character_Literal)
+    {
+        matched = true;
+        fprintf(stdout, "%c\n", *(char *)(result->contents.literal.value));
+    }
+
+    if (result->type ==  List_Literal)
+    {
+        matched = true;
+        fprintf(stdout, "'(");
+        Vector *value = (Vector *)(result->contents.literal.value);
+    }
+
+    if (matched == false)
+    {
+        // when no matches any AST_Node_Type.
+        fprintf(stderr, "output_result(): can not output AST_Node_Type: %d\n", result->type);
+        exit(EXIT_FAILURE);
+    }
 }

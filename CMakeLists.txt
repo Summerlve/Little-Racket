@@ -30,34 +30,43 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     include(CTest)
 
     add_test(factorial-test Little-Racket ../test/fact.test.rkt)
-    set_tests_properties (factorial-test PROPERTIES PASS_REGULAR_EXPRESSION "479001600")
+    set_tests_properties(factorial-test PROPERTIES PASS_REGULAR_EXPRESSION "479001600")
 
     add_test(fibonacci-test Little-Racket ../test/fib.test.rkt)
-    set_tests_properties (fibonacci-test PROPERTIES PASS_REGULAR_EXPRESSION "21")
+    set_tests_properties(fibonacci-test PROPERTIES PASS_REGULAR_EXPRESSION "21")
 
     add_test(calling-test Little-Racket ../test/calling.test.rkt)
-    set_tests_properties (calling-test PROPERTIES PASS_REGULAR_EXPRESSION "1")
+    set_tests_properties(calling-test PROPERTIES PASS_REGULAR_EXPRESSION "1")
 
     add_test(define-lambda-test Little-Racket ../test/define-lambda.test.rkt)
-    set_tests_properties (define-lambda-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:fn>")
+    set_tests_properties(define-lambda-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:fn>")
 
     add_test(define-test Little-Racket ../test/define.test.rkt)
-    set_tests_properties (define-test PROPERTIES PASS_REGULAR_EXPRESSION "101")
+    set_tests_properties(define-test PROPERTIES PASS_REGULAR_EXPRESSION "101")
 
     add_test(let-test Little-Racket ../test/let.test.rkt)
-    set_tests_properties (let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
+    set_tests_properties(let-test PROPERTIES PASS_REGULAR_EXPRESSION "6")
 
     add_test(let*-test Little-Racket ../test/let*.test.rkt)
-    set_tests_properties (let*-test PROPERTIES PASS_REGULAR_EXPRESSION "3")
+    set_tests_properties(let*-test PROPERTIES PASS_REGULAR_EXPRESSION "3")
     
     add_test(letrec-test Little-Racket ../test/letrec.test.rkt)
-    set_tests_properties (letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:access-binding-itself>")
+    set_tests_properties(letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:access-binding-itself>")
     
     add_test(list-test Little-Racket ../test/list.test.rkt)
-    set_tests_properties (list-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 1  2.2  3 \"list\"  #t  #f \\)")
+    set_tests_properties(list-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 1  2.2  3 \"list\"  #t  #f \\)")
     
     add_test(pair-test Little-Racket ../test/pair.test.rkt)
-    set_tests_properties (pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 1  .  2.2 \\)")
+    set_tests_properties(pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 1  .  2.2 \\)")
+
+    add_test(complex-example-test Little-Racket ../test/complex-example.rkt)
+    set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 11  2.2  233  '\\( 1  .  2 \\) \"abcd\" \"123abc\" \\)")
+
+    add_test(map-test-1 Little-Racket ../test/map.test-1.rkt)
+    set_tests_properties(map-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 3  6 \\)")
+
+    add_test(map-test-2 Little-Racket ../test/map.test-2.rkt)
+    set_tests_properties(map-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 3  6  9 \\)")
 endif()
 
 list(APPEND my_source_files 
@@ -70,4 +79,3 @@ list(APPEND my_source_files
 add_executable(Little-Racket ${my_source_files})
 
 target_link_libraries(Little-Racket m)
-

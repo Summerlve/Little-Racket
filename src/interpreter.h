@@ -66,7 +66,7 @@ typedef enum _z_boolean_type {
 } Boolean_Type;
 typedef struct _z_ast_node {
     struct _z_ast_node *parent;
-    Vector *context;
+    Vector *context; // optional
     AST_Node_Type type;
     /*
         context: AST_Node *[] type: binding.
@@ -119,7 +119,10 @@ typedef struct _z_ast_node {
             struct _z_ast_node *value; // binding's value, pointes to a AST_Node.
         } binding;
         struct { // call_expression: (+ 1 2) etc, excludes loacl bingding form or other special form such as let define if etc, just simple function call.
+            // if a procedure has name, set anonymous_procedure to NULL
+            // if a procedure has no name, set name to NULL
             char *name; // search procedure by name.
+            struct _z_ast_node *anonymous_procedure; // anonymous function call, can not found fn by name.
             Vector *params; // params is AST_Node *[]
         } call_expression; // call expression
         struct  {
@@ -169,5 +172,6 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data);
 Vector *calculator(AST ast, void *aux_data);
 int results_free(Vector *results);
 Result eval(AST_Node *ast_node, void *aux_data);
+void output_result(Result result);
 
 #endif
