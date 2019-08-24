@@ -1324,8 +1324,8 @@ int ast_free(AST ast)
 AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
 {
     /*
-        AST_Node::parent: can not copy, you should use generate_context() to generate context for a ast copy.
-        AST_Node::context: can not copy, you should use generate_context() to generate context for a ast copy.
+        AST_Node::parent: can not copy, you should use generate_context() or xxx->parent = yyy to set parent of an ast copy.
+        AST_Node::context: can not copy, you should use generate_context() to generate context of an ast copy.
         AST_Node::tag: copy tag
     **/
 

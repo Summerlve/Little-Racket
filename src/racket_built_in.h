@@ -3,10 +3,6 @@
 
 #include "./interpreter.h"
 
-// null is equal to empty is equal to '(), both of them are list not a pair.
-#define racket_null NULL 
-#define racket_empty NULL
-
 // AST_Node *[] type: binding.
 Vector *generate_built_in_bindings(void);
 int free_built_in_bindings(Vector *built_in_bindings, VectorFreeFunction free_fn);

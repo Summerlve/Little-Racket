@@ -60,13 +60,29 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     set_tests_properties(pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\(1 . 2.2\\)")
 
     add_test(complex-example-test Little-Racket ../test/complex-example.rkt)
-    set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\(11 2.2 233 '\\(1 . 2\\) \"abcd\" \"123abc\"\\)")
+    set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION
+        "'\\(11 2.2 233 '\\(1 . 2\\) \"abcd\" \"123abc\"\\)[\r\n\t ]*"
+    )
 
     add_test(map-test-1 Little-Racket ../test/map.test-1.rkt)
     set_tests_properties(map-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(3 6\\)")
 
     add_test(map-test-2 Little-Racket ../test/map.test-2.rkt)
     set_tests_properties(map-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(3 6 9\\)")
+
+    add_test(is-list-test-1 Little-Racket ../test/is-list.test-1.rkt)
+    set_tests_properties(is-list-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "#t")
+
+    add_test(is-list-test-2 Little-Racket ../test/is-list.test-2.rkt)
+    set_tests_properties(is-list-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "#f")
+
+    add_test(is-list-test-error Little-Racket ../test/is-list.test-error.rkt)
+    set_tests_properties(is-list-test-error PROPERTIES PASS_REGULAR_EXPRESSION
+        "list\\?: arity mismatch;[\r\n\t ]*\
+        the expected number of arguments does not match the given number[\r\n\t ]*\
+        expected: 1[\r\n\t ]*\
+        given: 0[\r\n\t ]*"
+    )
 endif()
 
 list(APPEND my_source_files 
@@ -76,6 +92,6 @@ list(APPEND my_source_files
             ./src/vector.c
             ./src/custom_handler.c
             ./src/racket_built_in.c)
-add_executable(Little-Racket ${my_source_files})
 
+add_executable(Little-Racket ${my_source_files})
 target_link_libraries(Little-Racket m)

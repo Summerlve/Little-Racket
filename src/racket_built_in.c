@@ -607,9 +607,101 @@ AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
+// (list? v) -> boolean?
 AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)
 {
-    return NULL;
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count != arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    // get single v for operands
+    AST_Node *ast_node = *(AST_Node **)VectorNth(operands, 0);
+    Boolean_Type *value = malloc(sizeof(Boolean_Type)); 
+
+    if (ast_node->type == List_Literal)
+        *value = R_TRUE;
+    else if (ast_node->type != List_Literal)
+        *value = R_FALSE;
+
+    AST_Node *result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
+    return result;
+}
+
+// (filter pred lst) -> list?
+AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
+{
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count != arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    // check procedure
+    AST_Node *pred = *(AST_Node **)VectorNth(operands, 0);
+    if (pred->type != Procedure)
+    {
+        fprintf(stderr, "%s: parameter's type is incorrecly\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    // the second of operands must be list
+    AST_Node *list_literal = *(AST_Node **)VectorNth(operands, 1); 
+    if (list_literal->type != List_Literal)
+    {
+        fprintf(stderr, "%s: parameter's type is incorrecly\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    Vector *list = (Vector *)(list_literal->contents.literal.value);
+    Vector *value = VectorNew(sizeof(AST_Node *));
+
+    for (int i = 0; i < VectorLength(list); i++)
+    {
+        Vector *column = VectorNew(sizeof(AST_Node *));
+        AST_Node *item = *(AST_Node **)VectorNth(list, i);
+        VectorAppend(column, &item);
+        
+        // execute fn
+        // constructe a call expression and call the eval().
+        AST_Node *call_expression = NULL;
+        // named procedure
+        if (pred->contents.procedure.name != NULL)
+        {
+            call_expression = ast_node_new(NOT_IN_AST, Call_Expression, pred->contents.procedure.name, NULL, column);
+        }
+        // anonymous procedure
+        else if (pred->contents.procedure.name == NULL)
+        {
+            call_expression = ast_node_new(NOT_IN_AST, Call_Expression, NULL, pred, column);
+        }
+
+        generate_context(call_expression, pred, NULL);
+        Result result = eval(call_expression, NULL); 
+
+        // check Boolean_Literal
+        // if #t append item to value
+        AST_Node *item_copy = NULL;
+        VectorAppend(value, &item_copy);
+
+        VectorFree(column, NULL, NULL);
+    }
+
+    AST_Node *result = ast_node_new(NOT_IN_AST, List_Literal, value);
+    return result;
 }
 
 Vector *generate_built_in_bindings(void)
@@ -640,6 +732,14 @@ Vector *generate_built_in_bindings(void)
 
     procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "map", 2, NULL, NULL, (void(*)(void))racket_native_map); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "map", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "filter", 2, NULL, NULL, (void(*)(void))racket_native_filter); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "filter", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "list?", 1, NULL, NULL, (void(*)(void))racket_native_is_list); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "list?", procedure);
     VectorAppend(built_in_bindings, &binding);
 
     return built_in_bindings;
