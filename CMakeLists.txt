@@ -54,19 +54,19 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     set_tests_properties(letrec-test PROPERTIES PASS_REGULAR_EXPRESSION "#<procedure:access-binding-itself>")
     
     add_test(list-test Little-Racket ../test/list.test.rkt)
-    set_tests_properties(list-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 1  2.2  3 \"list\"  #t  #f \\)")
+    set_tests_properties(list-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\(1 2.2 3 \"list\" #t #f\\)")
     
     add_test(pair-test Little-Racket ../test/pair.test.rkt)
-    set_tests_properties(pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 1  .  2.2 \\)")
+    set_tests_properties(pair-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\(1 . 2.2\\)")
 
     add_test(complex-example-test Little-Racket ../test/complex-example.rkt)
-    set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 11  2.2  233  '\\( 1  .  2 \\) \"abcd\" \"123abc\" \\)")
+    set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\(11 2.2 233 '\\(1 . 2\\) \"abcd\" \"123abc\"\\)")
 
     add_test(map-test-1 Little-Racket ../test/map.test-1.rkt)
-    set_tests_properties(map-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 3  6 \\)")
+    set_tests_properties(map-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(3 6\\)")
 
     add_test(map-test-2 Little-Racket ../test/map.test-2.rkt)
-    set_tests_properties(map-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "'\\( 3  6  9 \\)")
+    set_tests_properties(map-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(3 6 9\\)")
 endif()
 
 list(APPEND my_source_files 

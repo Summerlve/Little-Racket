@@ -23,7 +23,7 @@ p
 (+ 1 2)
 1
 (if (+ 1 2) #\a #\b)
-(define closure (lambda (x) x a))
+(define closure (lambda (x) x))
 (closure 1)
 (+ 1 (+ 1 2))
 (= 1 1.0 1.0000) 

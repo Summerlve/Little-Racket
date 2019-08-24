@@ -172,6 +172,6 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data);
 Vector *calculator(AST ast, void *aux_data);
 int results_free(Vector *results);
 Result eval(AST_Node *ast_node, void *aux_data);
-void output_result(Result result);
+void output_results(Vector *results);
 
 #endif

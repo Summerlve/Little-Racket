@@ -2710,7 +2710,13 @@ Vector *calculator(AST ast, void *aux_data)
     return results;
 }
 
-static int result_free(Result result);
+static int result_free(Result result)
+{
+    if (result == NULL) return 1;
+    if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);
+    return 1;
+}
+
 int results_free(Vector *results)
 {
     int error = 0;
@@ -2724,41 +2730,86 @@ int results_free(Vector *results)
     return error;
 }
 
-static int result_free(Result result)
-{
-    if (result == NULL) return 1;
-    if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);
-    return 1;
-}
-
-// output result
-void output_result(Result result)
+static void output_result(Result result)
 {
     bool matched = false;
 
     if (result->type == Number_Literal)
     {
         matched = true;
-        fprintf(stdout, "%s\n", (char *)(result->contents.literal.value));
+        fprintf(stdout, "%s", (char *)(result->contents.literal.value));
     }
 
     if (result->type ==  String_Literal)
     {
         matched = true;
-        fprintf(stdout, "%s\n", (char *)(result->contents.literal.value));
+        fprintf(stdout, "\"%s\"", (char *)(result->contents.literal.value));
     }
 
     if (result->type ==  Character_Literal)
     {
         matched = true;
-        fprintf(stdout, "%c\n", *(char *)(result->contents.literal.value));
+        fprintf(stdout, "#\\%c", *(char *)(result->contents.literal.value));
     }
 
     if (result->type ==  List_Literal)
     {
         matched = true;
-        fprintf(stdout, "'(");
+
         Vector *value = (Vector *)(result->contents.literal.value);
+
+        int length = VectorLength(value);
+        int last = length - 1;
+
+        fprintf(stdout, "'(");
+        for (int i = 0; i < length; i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(value, i);
+            output_result(node);
+            if (i != last) fprintf(stdout, " ");
+        }
+        fprintf(stdout, ")");
+    }
+
+    if (result->type == Pair_Literal)
+    {
+        matched = true;
+
+        Vector *value = (Vector *)(result->contents.literal.value);
+        AST_Node *car = *(AST_Node **)VectorNth(value, 0);
+        AST_Node *cdr = *(AST_Node **)VectorNth(value, 1);
+
+        int length = 2; // a dot pair always has two elements.
+
+        fprintf(stdout, "'(");
+        output_result(car);
+        fprintf(stdout, " . ");
+        output_result(cdr);
+        fprintf(stdout, ")");
+    }
+
+    if (result->type == Boolean_Literal)
+    {
+        matched = true;
+
+        Boolean_Type *value = (Boolean_Type *)(result->contents.literal.value);
+
+        if (*value == R_TRUE)
+            fprintf(stdout, "#t");
+        else if (*value == R_FALSE)
+            fprintf(stdout, "#f");
+    }
+
+    if (result->type == Procedure)
+    {
+        matched = true;
+
+        char *name = result->contents.procedure.name;
+
+        if (name == NULL)
+            fprintf(stdout, "#<procedure>");
+        else if (name != NULL)
+            fprintf(stdout, "#<procedure:%s>", name);
     }
 
     if (matched == false)
@@ -2766,5 +2817,15 @@ void output_result(Result result)
         // when no matches any AST_Node_Type.
         fprintf(stderr, "output_result(): can not output AST_Node_Type: %d\n", result->type);
         exit(EXIT_FAILURE);
+    }
+}
+
+void output_results(Vector *results)
+{
+    for (int i = 0; i < VectorLength(results); i++)
+    {
+        Result result = *(AST_Node **)VectorNth(results, i);
+        output_result(result);
+        fprintf(stdout, "\n");
     }
 }
