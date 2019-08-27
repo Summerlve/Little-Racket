@@ -29,7 +29,19 @@
 5. calculate：(+-*/ expr ...)
 6. Built-in procdures: (list), (cons), (list?), (pair?), (map), (filter), (car), (cdr), (=) (>) (<) for Number
 7. Conditional Form: (if), (cond), (and), (or), (not)
+
 ---
+
+## DLC: ##
+
+### For the truth  - 2019.10 ###
+
+1. Racket null, empty
+2. ((lambda (...) ...) ...), procedure call
+3. (>=), (<=)
+
+---
+
 ## Using cmake to build this project. ##
 
 ### Compile the project: ###
@@ -42,7 +54,9 @@
 > ./Little-Racket <path_to_racket_file>
 > ......
 ```
+
 ---
+
 ## Workflow ##
 
 Raw code

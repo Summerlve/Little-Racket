@@ -83,6 +83,9 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
         expected: 1[\r\n\t ]*\
         given: 0[\r\n\t ]*"
     )
+
+    add_test(filter-test-1 Little-Racket ../test/filter.test-1.rkt)
+    set_tests_properties(filter-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(1\\)")
 endif()
 
 list(APPEND my_source_files 
