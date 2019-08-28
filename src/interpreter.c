@@ -1203,6 +1203,24 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (*current_p)++; // skip the ')' of if expression.;
                 return if_expr;
             }
+            
+            // handle 'and'
+            if (strcmp(token->value, "and") == 0)
+            {
+
+            }
+
+            // handle 'not'
+            if (strcmp(token->value, "not") == 0)
+            {
+
+            }
+
+            // handle 'or'
+            if (strcmp(token->value, "or") == 0)
+            {
+
+            }
 
             // handle ... 
             

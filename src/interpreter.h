@@ -109,9 +109,15 @@ typedef struct _z_ast_node {
                     struct _z_ast_node *else_expr;
                 } if_expression;
                 // cond
-                // and
-                // or
-                // not
+                struct { // and
+
+                } and_expression;
+                struct { // or
+
+                } or_expression;
+                struct { // not
+
+                } not_expression;
             } contents;
         } conditional_form;
         struct { // case: let ... [a 1] 'value' field will have a value, case: a (single variable identifier) 'value' field set to null.

@@ -28,15 +28,15 @@
 4. calling：(proc arg ...)
 5. calculate：(+-*/ expr ...)
 6. Built-in procdures: (list), (cons), (list?), (pair?), (map), (filter), (car), (cdr), (=) (>) (<) for Number
-7. Conditional Form: (if), (cond), (and), (or), (not)
+7. Conditional Form: (if), (and), (or), (not)
 
 ---
 
 ## DLC: ##
 
-### For the truth  - 2019.10 ###
+### LRT (Little-Racket-For-The-Truth)  - 2019.10 ###
 
-1. Racket null, empty
+1. (cond) 
 2. ((lambda (...) ...) ...), procedure call
 3. (>=), (<=)
 
