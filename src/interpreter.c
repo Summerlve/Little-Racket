@@ -481,6 +481,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(tag, Procedure, name/NULL, required_params_count, params, body_exprs, c_native_function/NULL)
 // ast_node_new(tag, Conditional_Form, Conditional_Form_Type, ...)
 //   ast_node_new(tag, Conditional_Form, IF, test_expr, then_expr, else_expr)
+//   ast_node_new(tag, Conditional_Form, AND, Vector *exprs/NULL)
 // ast_node_new(tag, Lambda_Form, params, body_exprs)
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 {
@@ -594,6 +595,8 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 
         if (conditional_form_type == AND)
         {
+            matched = true;
+            ast_node->contents.conditional_form.contents.and_expression.exprs = va_arg(ap, Vector *);
         }
 
         if (conditional_form_type == NOT)
@@ -837,6 +840,22 @@ int ast_node_free(AST_Node *ast_node)
 
         if (conditional_form_type == AND)
         {
+            matched = true;
+            Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
+            for (int i = 0; i < VectorLength(exprs); i++)
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                ast_node_free(expr);
+            }
+        }
+
+        if (conditional_form_type == NOT)
+        {
+
+        }
+
+        if (conditional_form_type == OR)
+        {
 
         }
 
@@ -1001,10 +1020,10 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     {
         char token_value = (token->value)[0];
 
-        // '(' and ')' normally function call or each kind of form such as let let* if cond etc.
+        // '(' and ')' normally function call or each kind of form such as let let* if cond etc
         if (token_value == LEFT_PAREN)
         {
-            // point to the function's name.
+            // point to the function's name
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
 
@@ -1069,7 +1088,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                         exit(EXIT_FAILURE);
                     }
 
-                    // move to next '[' or ')' that completeing the binding form.
+                    // move to next '[' or ')' that completeing the binding form
                     (*current_p)++;
                     token = tokens_nth(tokens, *current_p);
                 }
@@ -1077,7 +1096,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 /*
                     collect body_exprs
                 */
-                // move to next token.
+                // move to next token
                 (*current_p)++;
                 token = tokens_nth(tokens, *current_p);
                 
@@ -1136,11 +1155,11 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     exit(EXIT_FAILURE);
                 }
 
-                // move to first arg of argument-list. 
+                // move to first arg of argument-list 
                 (*current_p)++;
                 token = tokens_nth(tokens, *current_p);
 
-                // collect arguments.
+                // collect arguments
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
                 {
@@ -1149,18 +1168,18 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     token = tokens_nth(tokens, *current_p);
                 }
 
-                // check ')' of argument-list.
+                // check ')' of argument-list
                 if ((token->value)[0] != RIGHT_PAREN)
                 {
                     fprintf(stderr, "walk(): lambda: bad syntax\n");
                     exit(EXIT_FAILURE);
                 }
 
-                // move to first body_expr.
+                // move to first body_expr
                 (*current_p)++;
                 token = tokens_nth(tokens, *current_p);
 
-                // collect body expressions.
+                // collect body expressions
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
                 {
@@ -1169,7 +1188,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     token = tokens_nth(tokens, *current_p);
                 }
 
-                // check ')' of body_exprs.
+                // check ')' of body_exprs
                 if ((token->value)[0] != RIGHT_PAREN)
                 {
                     fprintf(stderr, "walk(): lambda: bad syntax\n");
@@ -1177,14 +1196,14 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 }
 
                 AST_Node *lambda = ast_node_new(IN_AST, Lambda_Form, params, body_exprs);
-                (*current_p)++; // skip ')' of lambda expression. 
+                (*current_p)++; // skip ')' of lambda expression 
                 return lambda;
             }
 
             // handle 'if'
             if (strcmp(token->value, "if") == 0)
             {
-                // move to test_expr.
+                // move to test_expr
                 (*current_p)++;
 
                 AST_Node *test_expr = walk(tokens, current_p);
@@ -1200,14 +1219,49 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 }
 
                 AST_Node *if_expr = ast_node_new(IN_AST, Conditional_Form, IF, test_expr, then_expr, else_expr);
-                (*current_p)++; // skip the ')' of if expression.;
+                (*current_p)++; // skip the ')' of if expression
                 return if_expr;
             }
             
             // handle 'and'
             if (strcmp(token->value, "and") == 0)
             {
+                // move to first expr or ')'
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
 
+                // check ')'
+                // (and) -> #t
+                if ((token->value)[0] == RIGHT_PAREN)
+                {
+                    Vector *exprs = VectorNew(sizeof(AST_Node *));
+                    AST_Node *and_expr = ast_node_new(IN_AST, Conditional_Form, AND, exprs);
+                    (*current_p)++; // skip the ')' of and expression
+                    return and_expr;
+                }
+
+                // when have some exprs
+                // (and 1), (and #t #f), ...
+                Vector *exprs = VectorNew(sizeof(AST_Node *));
+
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    AST_Node *expr = walk(tokens, current_p);
+                    VectorAppend(exprs, &expr);
+                    token = tokens_nth(tokens, *current_p);
+                }
+
+                // check ')' of and expression
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): and: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                AST_Node *and_expr = ast_node_new(IN_AST, Conditional_Form, AND, exprs);
+                (*current_p)++; // skip the ')' of and expression
+                return and_expr;
             }
 
             // handle 'not'
@@ -1228,7 +1282,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             Token *name_token = token;
             Vector *params = VectorNew(sizeof(AST_Node *));
 
-            // point to the first argument.
+            // point to the first argument
             (*current_p)++; 
             token = tokens_nth(tokens, *current_p);
 
@@ -1259,10 +1313,10 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 exit(EXIT_FAILURE);
             }
 
-            // move to first element of list or pair.
+            // move to first element of list or pair
             (*current_p)++;
 
-            // check list or pair '.', dont move current_p, use a tmp value instead.
+            // check list or pair '.', dont move current_p, use a tmp value instead
             bool is_pair = false;
             int cursor = *current_p + 1;
             Token *tmp = tokens_nth(tokens, cursor);
@@ -1487,6 +1541,15 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == AND)
         {
             matched = true;
+            Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
+            Vector *exprs_copy = VectorNew(sizeof(AST_Node *));
+
+            for (int i = 0; i < VectorLength(exprs); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(exprs, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                VectorAppend(exprs_copy, &node_copy);
+            }
         }
 
         if (conditional_form_type == NOT)

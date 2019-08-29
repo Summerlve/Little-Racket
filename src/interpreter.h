@@ -110,7 +110,7 @@ typedef struct _z_ast_node {
                 } if_expression;
                 // cond
                 struct { // and
-
+                    Vector *exprs; // AST_Node *[]
                 } and_expression;
                 struct { // or
 
