@@ -842,11 +842,14 @@ int ast_node_free(AST_Node *ast_node)
         {
             matched = true;
             Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
+
             for (int i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 ast_node_free(expr);
             }
+
+            VectorFree(exprs, NULL, NULL)
         }
 
         if (conditional_form_type == NOT)
@@ -1836,7 +1839,28 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
             traverser_helper(else_expr, node, visitor, aux_data);
         }
 
+        if (conditional_form_type == AND)
+        {
+            Vector *exprs = node->contents.conditional_form.contents.and_expression.exprs;
+            for (int i = 0; i < VectorLength(exprs); i++)
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                traverser_helper(expr, node, visitor, aux_data);
+            }
+        }
+
+        if (conditional_form_type == NOT)
+        {
+            
+        }
+
+        if (conditional_form_type == OR)
+        {
+            
+        }
+
         // ...
+
     }
 
     if (node->type == List_Literal)
@@ -2112,6 +2136,26 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             generate_context(test_expr, node, aux_data);
             generate_context(then_expr, node, aux_data);
             generate_context(else_expr, node, aux_data);
+        }
+
+        if (node->contents.conditional_form.type == AND)
+        {
+            Vector *exprs = node->contents.conditional_form.contents.and_expression.exprs;
+            for (int i = 0; i < VectorLength(exprs); i++) 
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                generate_context(expr, node, aux_data);
+            }
+        }
+
+        if (node->contents.conditional_form.type == NOT)
+        {
+            
+        }
+
+        if (node->contents.conditional_form.type == OR)
+        {
+            
         }
     }
 
@@ -2638,6 +2682,32 @@ Result eval(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == AND)
         {
             matched = true;
+            Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
+
+            Boolean_Type *value = malloc(sizeof(Boolean_Type)); 
+
+            if (VectorLength(exprs) == 0)
+            {
+                *value = R_TRUE;
+            }
+
+            if (VectorLength(exprs) > 0)
+            {
+                for (int i = 0; i < VectorLength(exprs); i++)
+                {
+                    AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                    AST_Node *expr_val = eval(expr, aux_data);
+
+                    if (expr_val->type == Boolean_Literal &&
+                        *(Boolean_Type *)(expr_val->contents.literal.value) == R_FALSE)
+                    {
+                        *value = R_FALSE;
+                        break;
+                    }
+                }
+            }
+
+            result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
         }
 
         if (conditional_form_type == NOT)

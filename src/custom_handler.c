@@ -239,6 +239,19 @@ static void conditional_form_enter(AST_Node *node, AST_Node *parent, void *aux_d
     {
         
     }
+
+    if (node->contents.conditional_form.type == AND)
+    {
+        printf(" (and ");
+    }
+
+    if (node->contents.conditional_form.type == NOT)
+    {
+    }
+
+    if (node->contents.conditional_form.type == OR)
+    {
+    }
 }
 
 static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
@@ -251,6 +264,19 @@ static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_da
     if (node->contents.conditional_form.type == COND)
     {
         
+    }
+
+    if (node->contents.conditional_form.type == AND)
+    {
+        printf(" ) ");
+    }
+
+    if (node->contents.conditional_form.type == NOT)
+    {
+    }
+
+    if (node->contents.conditional_form.type == OR)
+    {
     }
 }
 
