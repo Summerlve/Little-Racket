@@ -849,7 +849,7 @@ int ast_node_free(AST_Node *ast_node)
                 ast_node_free(expr);
             }
 
-            VectorFree(exprs, NULL, NULL)
+            VectorFree(exprs, NULL, NULL);
         }
 
         if (conditional_form_type == NOT)
@@ -1553,6 +1553,8 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
                 VectorAppend(exprs_copy, &node_copy);
             }
+
+            copy = ast_node_new(ast_node->tag, Conditional_Form, AND, exprs_copy);
         }
 
         if (conditional_form_type == NOT)
@@ -2684,11 +2686,11 @@ Result eval(AST_Node *ast_node, void *aux_data)
             matched = true;
             Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
 
-            Boolean_Type *value = malloc(sizeof(Boolean_Type)); 
-
             if (VectorLength(exprs) == 0)
             {
+                Boolean_Type *value = malloc(sizeof(Boolean_Type)); 
                 *value = R_TRUE;
+                result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
             }
 
             if (VectorLength(exprs) > 0)
@@ -2701,13 +2703,15 @@ Result eval(AST_Node *ast_node, void *aux_data)
                     if (expr_val->type == Boolean_Literal &&
                         *(Boolean_Type *)(expr_val->contents.literal.value) == R_FALSE)
                     {
+                        Boolean_Type *value = malloc(sizeof(Boolean_Type)); 
                         *value = R_FALSE;
+                        result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
                         break;
                     }
+
+                    result = expr_val;
                 }
             }
-
-            result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
         }
 
         if (conditional_form_type == NOT)
