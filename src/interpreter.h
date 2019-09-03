@@ -116,7 +116,7 @@ typedef struct _z_ast_node {
 
                 } or_expression;
                 struct { // not
-
+                    struct _z_ast_node *expr;
                 } not_expression;
             } contents;
         } conditional_form;

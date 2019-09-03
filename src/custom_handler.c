@@ -247,6 +247,7 @@ static void conditional_form_enter(AST_Node *node, AST_Node *parent, void *aux_d
 
     if (node->contents.conditional_form.type == NOT)
     {
+        printf(" (not ");
     }
 
     if (node->contents.conditional_form.type == OR)
@@ -273,6 +274,7 @@ static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_da
 
     if (node->contents.conditional_form.type == NOT)
     {
+        printf(" ) ");
     }
 
     if (node->contents.conditional_form.type == OR)
@@ -294,6 +296,7 @@ Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
     AST_Node_Handler *handler = NULL;
+
     handler = ast_node_handler_new(Program, program_enter, program_exit);
     ast_node_handler_append(visitor, handler);
     handler = ast_node_handler_new(Call_Expression, call_expression_enter, call_expression_exit);
@@ -320,5 +323,6 @@ Visitor get_custom_visitor(void)
     ast_node_handler_append(visitor, handler);
     handler = ast_node_handler_new(Lambda_Form, lambda_form_enter, lambda_form_exit);
     ast_node_handler_append(visitor, handler);
+    
     return visitor;
 }

@@ -482,6 +482,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(tag, Conditional_Form, Conditional_Form_Type, ...)
 //   ast_node_new(tag, Conditional_Form, IF, test_expr, then_expr, else_expr)
 //   ast_node_new(tag, Conditional_Form, AND, Vector *exprs/NULL)
+//   ast_node_new(tag, Conditional_Form, NOT, AST_Node *expr/NULL)
 // ast_node_new(tag, Lambda_Form, params, body_exprs)
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 {
@@ -601,6 +602,8 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 
         if (conditional_form_type == NOT)
         {
+            matched = true;
+            ast_node->contents.conditional_form.contents.not_expression.expr = va_arg(ap, AST_Node *);
         }
 
         if (conditional_form_type == OR)
@@ -854,7 +857,9 @@ int ast_node_free(AST_Node *ast_node)
 
         if (conditional_form_type == NOT)
         {
-
+            matched = true;
+            AST_Node *expr = ast_node->contents.conditional_form.contents.not_expression.expr;
+            ast_node_free(expr);
         }
 
         if (conditional_form_type == OR)
@@ -1270,7 +1275,23 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             // handle 'not'
             if (strcmp(token->value, "not") == 0)
             {
+                // move to expr
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
 
+                AST_Node *expr = walk(tokens, current_p);
+
+                // check ')' of not expression
+                token = tokens_nth(tokens, *current_p);
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): not: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                AST_Node *not_expr = ast_node_new(IN_AST, Conditional_Form, NOT, expr);
+                (*current_p)++; // skip the ')' of not expression
+                return not_expr;
             }
 
             // handle 'or'
@@ -1560,6 +1581,9 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == NOT)
         {
             matched = true;
+            AST_Node *expr = ast_node->contents.conditional_form.contents.not_expression.expr;
+            AST_Node *expr_copy = ast_node_deep_copy(expr, aux_data);
+            copy = ast_node_new(ast_node->tag, Conditional_Form, NOT, expr_copy);
         }
 
         if (conditional_form_type == OR)
@@ -1853,7 +1877,8 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
         if (conditional_form_type == NOT)
         {
-            
+            AST_Node *expr = node->contents.conditional_form.contents.not_expression.expr;
+            traverser_helper(expr, node, visitor, aux_data);
         }
 
         if (conditional_form_type == OR)
@@ -2152,7 +2177,8 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
         if (node->contents.conditional_form.type == NOT)
         {
-            
+            AST_Node *expr = node->contents.conditional_form.contents.not_expression.expr;
+            generate_context(expr, node, aux_data);
         }
 
         if (node->contents.conditional_form.type == OR)
@@ -2717,6 +2743,18 @@ Result eval(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == NOT)
         {
             matched = true;
+
+            AST_Node *expr = ast_node->contents.conditional_form.contents.not_expression.expr;
+            AST_Node *expr_val = eval(expr, aux_data);            
+
+            Boolean_Type *value = malloc(sizeof(Boolean_Type));
+
+            if (expr_val->type == Boolean_Literal && *(Boolean_Type *)(expr_val->contents.literal.value) == R_FALSE)
+                *value = R_TRUE; 
+            else
+                *value = R_FALSE; 
+
+            result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
         }
 
         if (conditional_form_type == OR)
