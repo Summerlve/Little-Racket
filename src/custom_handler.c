@@ -252,6 +252,7 @@ static void conditional_form_enter(AST_Node *node, AST_Node *parent, void *aux_d
 
     if (node->contents.conditional_form.type == OR)
     {
+        printf(" (or ");
     }
 }
 
@@ -279,6 +280,7 @@ static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_da
 
     if (node->contents.conditional_form.type == OR)
     {
+        printf(" ) ");
     }
 }
 

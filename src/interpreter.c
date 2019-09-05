@@ -608,6 +608,8 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 
         if (conditional_form_type == OR)
         {
+            matched = true;
+            ast_node->contents.conditional_form.contents.or_expression.exprs = va_arg(ap, Vector *);
         }
     }
 
@@ -864,7 +866,16 @@ int ast_node_free(AST_Node *ast_node)
 
         if (conditional_form_type == OR)
         {
+            matched = true;
+            Vector *exprs = ast_node->contents.conditional_form.contents.or_expression.exprs;
 
+            for (int i = 0; i < VectorLength(exprs); i++)
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                ast_node_free(expr);
+            }
+
+            VectorFree(exprs, NULL, NULL);
         }
 
         // ...
@@ -1238,11 +1249,12 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 (*current_p)++;
                 token = tokens_nth(tokens, *current_p);
 
+                Vector *exprs = VectorNew(sizeof(AST_Node *));
+
                 // check ')'
                 // (and) -> #t
                 if ((token->value)[0] == RIGHT_PAREN)
                 {
-                    Vector *exprs = VectorNew(sizeof(AST_Node *));
                     AST_Node *and_expr = ast_node_new(IN_AST, Conditional_Form, AND, exprs);
                     (*current_p)++; // skip the ')' of and expression
                     return and_expr;
@@ -1250,8 +1262,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
                 // when have some exprs
                 // (and 1), (and #t #f), ...
-                Vector *exprs = VectorNew(sizeof(AST_Node *));
-
                 while ((token->type != PUNCTUATION) ||
                        (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
                 {
@@ -1297,7 +1307,41 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             // handle 'or'
             if (strcmp(token->value, "or") == 0)
             {
+                // move to first expr or ')'
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
 
+                Vector *exprs = VectorNew(sizeof(AST_Node *));
+
+                // check ')'
+                // (or) -> #f 
+                if ((token->value)[0] == RIGHT_PAREN)
+                {
+                    AST_Node *or_expr = ast_node_new(IN_AST, Conditional_Form, OR, exprs);
+                    (*current_p)++; // skip the ')' of and expression
+                    return or_expr;
+                } 
+
+                // when have some exprs
+                // (or 1) -> 1, (or #f ...) -> ...
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    AST_Node *expr = walk(tokens, current_p);
+                    VectorAppend(exprs, &expr);
+                    token = tokens_nth(tokens, *current_p);
+                }
+
+                // check ')' of or expression
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): or: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                AST_Node *or_expr = ast_node_new(IN_AST, Conditional_Form, OR, exprs);
+                (*current_p)++; // skip the ')' of and expression
+                return or_expr;
             }
 
             // handle ... 
@@ -1589,6 +1633,17 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == OR)
         {
             matched = true;
+            Vector *exprs = ast_node->contents.conditional_form.contents.or_expression.exprs;
+            Vector *exprs_copy = VectorNew(sizeof(AST_Node *));
+
+            for (int i = 0; i < VectorLength(exprs); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(exprs, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                VectorAppend(exprs_copy, &node_copy);
+            }
+
+            copy = ast_node_new(ast_node->tag, Conditional_Form, OR, exprs_copy);
         }
     }
     
@@ -1883,7 +1938,12 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
         if (conditional_form_type == OR)
         {
-            
+            Vector *exprs = node->contents.conditional_form.contents.or_expression.exprs;
+            for (int i = 0; i < VectorLength(exprs); i++)
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                traverser_helper(expr, node, visitor, aux_data);
+            }
         }
 
         // ...
@@ -2183,7 +2243,12 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
         if (node->contents.conditional_form.type == OR)
         {
-            
+            Vector *exprs = node->contents.conditional_form.contents.or_expression.exprs;
+            for (int i = 0; i < VectorLength(exprs); i++) 
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                generate_context(expr, node, aux_data);
+            }
         }
     }
 
@@ -2760,6 +2825,34 @@ Result eval(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == OR)
         {
             matched = true;
+            Vector *exprs = ast_node->contents.conditional_form.contents.or_expression.exprs;
+            
+            if (VectorLength(exprs) == 0)
+            {
+                Boolean_Type *value = malloc(sizeof(Boolean_Type));
+                *value = R_FALSE;
+                result = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
+            }
+            else if (VectorLength(exprs) == 1)
+            {
+                AST_Node *expr = *(AST_Node **)VectorNth(exprs, 0);
+                AST_Node *expr_val = eval(expr, aux_data);
+                result = expr_val;
+            }
+            else if (VectorLength(exprs) > 1)
+            {
+                for (int i = 0; i < VectorLength(exprs); i++)
+                {
+                    AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
+                    AST_Node *expr_val = eval(expr, aux_data);
+
+                    if (expr_val->type != Boolean_Literal ||
+                        *(Boolean_Type *)(expr_val->contents.literal.value) == R_FALSE)
+                    {
+
+                    } 
+                }
+            }
         }
     }
 

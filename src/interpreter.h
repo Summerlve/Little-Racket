@@ -113,7 +113,7 @@ typedef struct _z_ast_node {
                     Vector *exprs; // AST_Node *[]
                 } and_expression;
                 struct { // or
-
+                    Vector *exprs; // AST_Node *[]
                 } or_expression;
                 struct { // not
                     struct _z_ast_node *expr;
