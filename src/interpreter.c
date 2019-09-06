@@ -2847,10 +2847,13 @@ Result eval(AST_Node *ast_node, void *aux_data)
                     AST_Node *expr_val = eval(expr, aux_data);
 
                     if (expr_val->type != Boolean_Literal ||
-                        *(Boolean_Type *)(expr_val->contents.literal.value) == R_FALSE)
+                        (expr_val->type == Boolean_Literal && *(Boolean_Type *)(expr_val->contents.literal.value) == R_TRUE))
                     {
-
+                        result = expr_val;
+                        break;
                     } 
+
+                    result = expr_val;
                 }
             }
         }

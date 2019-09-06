@@ -936,6 +936,18 @@ AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
     return NULL;
 }
 
+// (car pair) -> any/c
+AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
+{
+
+}
+
+// (cdr pair) -> any/c
+AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
+{
+
+}
+
 Vector *generate_built_in_bindings(void)
 {
     Vector *built_in_bindings = VectorNew(sizeof(AST_Node *));
@@ -984,6 +996,14 @@ Vector *generate_built_in_bindings(void)
 
     procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "pair?", 1, NULL, NULL, (void(*)(void))racket_native_is_pair); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "pair?", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "car", 1, NULL, NULL, (void(*)(void))racket_native_car); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "car", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cdr", 1, NULL, NULL, (void(*)(void))racket_native_cdr); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "cdr", procedure);
     VectorAppend(built_in_bindings, &binding);
 
     return built_in_bindings;
