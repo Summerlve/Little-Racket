@@ -923,7 +923,9 @@ AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
 
     if (v->type == Pair_Literal)
         *value = R_TRUE;
-    else if (v->type != Pair_Literal)
+    else if (v->type == List_Literal && VectorLength((Vector *)(v->contents.literal.value)) != 0)
+        *value = R_TRUE;
+    else
         *value = R_FALSE;
 
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, value);
@@ -939,13 +941,38 @@ AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
 // (car pair) -> any/c
 AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
 {
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count != arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
 
+    // check if it is a pair
+    return NULL;
 }
 
 // (cdr pair) -> any/c
 AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
 {
-
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count != arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+    
+    return NULL;
 }
 
 Vector *generate_built_in_bindings(void)

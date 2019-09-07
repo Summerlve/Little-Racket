@@ -79,9 +79,9 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     add_test(is-list-test-error Little-Racket ../test/is-list.test-error.rkt)
     set_tests_properties(is-list-test-error PROPERTIES PASS_REGULAR_EXPRESSION
         "list\\?: arity mismatch;[\r\n\t ]*\
-        the expected number of arguments does not match the given number[\r\n\t ]*\
-        expected: 1[\r\n\t ]*\
-        given: 0[\r\n\t ]*"
+the expected number of arguments does not match the given number[\r\n\t ]*\
+expected: 1[\r\n\t ]*\
+given: 0[\r\n\t ]*"
     )
 
     add_test(filter-test-1 Little-Racket ../test/filter.test-1.rkt)
