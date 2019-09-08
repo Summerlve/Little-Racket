@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define DOUBLE_MAX_DIGIT_LENGTH 512 
 
@@ -954,7 +955,27 @@ AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
     }
 
     // check if it is a pair
-    return NULL;
+    AST_Node *ast_node = *(AST_Node **)VectorNth(operands, 0);
+    bool is_pair = false;
+
+    if (ast_node->type == Pair_Literal)
+        is_pair = true;
+    else if (ast_node->type == List_Literal && VectorLength((Vector *)(ast_node->contents.literal.value)) != 0)
+        is_pair = true;
+    else
+        is_pair = false;
+
+    if (is_pair == false)
+    {
+        fprintf(stderr, "%s: contract violation\n"
+                        "expected: pair?\n"
+                        "given: %d\n", procedure->contents.procedure.name, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    Vector *value = (Vector *)(ast_node->contents.literal.value);
+    AST_Node *car = VectorNth(value, 0);
+    return ast_node_deep_copy(car, NULL);
 }
 
 // (cdr pair) -> any/c
@@ -972,7 +993,51 @@ AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE); 
     }
     
-    return NULL;
+    // check if it is a pair
+    AST_Node *ast_node = *(AST_Node **)VectorNth(operands, 0);
+    bool is_pair = false;
+
+    if (ast_node->type == Pair_Literal)
+        is_pair = true;
+    else if (ast_node->type == List_Literal && VectorLength((Vector *)(ast_node->contents.literal.value)) != 0)
+        is_pair = true;
+    else
+        is_pair = false;
+
+    if (is_pair == false)
+    {
+        fprintf(stderr, "%s: contract violation\n"
+                        "expected: pair?\n"
+                        "given: %d\n", procedure->contents.procedure.name, operands_count);
+        exit(EXIT_FAILURE);
+    }
+
+    Vector *value = (Vector *)(ast_node->contents.literal.value);
+
+    if (ast_node->type == Pair_Literal)
+    {
+        AST_Node *cdr = VectorNth(value, 1);
+        return ast_node_deep_copy(cdr, NULL);
+    }
+    else if (ast_node->type == List_Literal)
+    {
+        Vector *list = VectorNew(sizeof(AST_Node *));
+
+        for (int i = 1; i < VectorLength(value); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(value, i);
+            AST_Node *node_copy = ast_node_deep_copy(node, NULL);
+            VectorAppend(list, &node_copy);
+        }
+
+        AST_Node *cdr = ast_node_new(NOT_IN_AST, List_Literal, list);
+        return cdr;
+    }
+    else
+    {
+        fprintf(stderr, "something wrong in racket_native_cdr\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 Vector *generate_built_in_bindings(void)
