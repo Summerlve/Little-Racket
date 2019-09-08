@@ -64,28 +64,81 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
         "'\\(11 2.2 233 '\\(1 . 2\\) \"abcd\" \"123abc\"\\)[\r\n\t ]*"
     )
 
-    add_test(map-test-1 Little-Racket ../test/map.test-1.rkt)
-    set_tests_properties(map-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(3 6\\)")
+    add_test(map-test Little-Racket ../test/map.test.rkt)
+    set_tests_properties(map-test PROPERTIES PASS_REGULAR_EXPRESSION
+"'\\(3 6\\)[\r\n\t ]*\
+'\\(3 6 9\\)"
+    )
 
-    add_test(map-test-2 Little-Racket ../test/map.test-2.rkt)
-    set_tests_properties(map-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(3 6 9\\)")
+    add_test(is-list-test Little-Racket ../test/is-list.test.rkt)
+    set_tests_properties(is-list-test PROPERTIES PASS_REGULAR_EXPRESSION
+"#t[\r\n\t ]*\
+#f"
+    )
 
-    add_test(is-list-test-1 Little-Racket ../test/is-list.test-1.rkt)
-    set_tests_properties(is-list-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "#t")
-
-    add_test(is-list-test-2 Little-Racket ../test/is-list.test-2.rkt)
-    set_tests_properties(is-list-test-2 PROPERTIES PASS_REGULAR_EXPRESSION "#f")
+    add_test(is-pair-test Little-Racket ../test/is-pair.test.rkt)
+    set_tests_properties(is-pair-test PROPERTIES PASS_REGULAR_EXPRESSION
+"#f[\r\n\t ]*\
+#t"
+    )
 
     add_test(is-list-test-error Little-Racket ../test/is-list.test-error.rkt)
     set_tests_properties(is-list-test-error PROPERTIES PASS_REGULAR_EXPRESSION
-        "list\\?: arity mismatch;[\r\n\t ]*\
+"list\\?: arity mismatch;[\r\n\t ]*\
 the expected number of arguments does not match the given number[\r\n\t ]*\
 expected: 1[\r\n\t ]*\
 given: 0[\r\n\t ]*"
     )
 
-    add_test(filter-test-1 Little-Racket ../test/filter.test-1.rkt)
-    set_tests_properties(filter-test-1 PROPERTIES PASS_REGULAR_EXPRESSION "'\\(1\\)")
+    add_test(filter-test Little-Racket ../test/filter.test.rkt)
+    set_tests_properties(filter-test PROPERTIES PASS_REGULAR_EXPRESSION "'\\(1\\)")
+
+    add_test(and-test Little-Racket ../test/and.test.rkt)
+    set_tests_properties(and-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#t[\r\n\t ]*\
+1[\r\n\t ]*\
+#f[\r\n\t ]*\
+1[\r\n\t ]*\
+#t"
+    )
+
+    add_test(not-test Little-Racket ../test/not.test.rkt)
+    set_tests_properties(not-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#f[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f"
+    )
+
+    add_test(or-test Little-Racket ../test/or.test.rkt)
+    set_tests_properties(or-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#f[\r\n\t ]*\
+1[\r\n\t ]*\
+#t"
+    )
+
+    add_test(number-equal-test Little-Racket ../test/number-equal.test.rkt)
+    set_tests_properties(number-equal-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#t[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f"
+    )
+
+    add_test(number-more-than-test Little-Racket ../test/number-more-than.test.rkt)
+    set_tests_properties(number-more-than-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#t[\r\n\t ]*\
+#f[\r\n\t ]*\
+#f"
+    )
+
+    add_test(number-less-than-test Little-Racket ../test/number-less-than.test.rkt)
+    set_tests_properties(number-less-than-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#t[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f"
+    )
+
 endif()
 
 list(APPEND my_source_files 

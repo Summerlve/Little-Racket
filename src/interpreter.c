@@ -1382,7 +1382,17 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // move to first element of list or pair
+            // or ) for '() empty list
             (*current_p)++;
+            token = tokens_nth(tokens, *current_p);
+            if ((token->value)[0] == RIGHT_PAREN)
+            {
+                // '() empty list here
+                Vector *value = VectorNew(sizeof(AST_Node *));
+                AST_Node *empty_list = ast_node_new(IN_AST, List_Literal, value);
+                (*current_p)++; // skip ')'
+                return empty_list;
+            }
 
             // check list or pair '.', dont move current_p, use a tmp value instead
             bool is_pair = false;
@@ -1394,6 +1404,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             AST_Node *ast_node = NULL;
             if (is_pair)
             {
+                // pair here
                 AST_Node *car = walk(tokens, current_p);
                 (*current_p)++; // skip '.'
                 AST_Node *cdr = walk(tokens, current_p);
@@ -1411,6 +1422,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
             else
             {
+                // non-empty list here
                 Vector *value = VectorNew(sizeof(AST_Node *));
 
                 while ((token->type != PUNCTUATION) ||
@@ -2521,11 +2533,22 @@ Result eval(AST_Node *ast_node, void *aux_data)
             int operands_count = VectorLength(operands);
             if (operands_count != required_params_count)
             {
-                fprintf(stderr, "%s: arity mismatch;\n"
-                                "the expected number of arguments does not match the given number\n"
-                                "expected: %d\n"
-                                "given: %d\n", procedure->contents.procedure.name, required_params_count, operands_count);
-                exit(EXIT_FAILURE); 
+                if (procedure->contents.procedure.name == NULL)
+                {
+                    fprintf(stderr, "anomyous procedure: arity mismatch;\n"
+                                    "the expected number of arguments does not match the given number\n"
+                                    "expected: %d\n"
+                                    "given: %d\n", required_params_count, operands_count);
+                    exit(EXIT_FAILURE); 
+                }
+                else if (procedure->contents.procedure.name != NULL)
+                {
+                    fprintf(stderr, "%s: arity mismatch;\n"
+                                    "the expected number of arguments does not match the given number\n"
+                                    "expected: %d\n"
+                                    "given: %d\n", procedure->contents.procedure.name, required_params_count, operands_count);
+                    exit(EXIT_FAILURE); 
+                }
             }
 
             // generate a environment for every function call.

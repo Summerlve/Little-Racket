@@ -39,6 +39,7 @@
 1. (cond) 
 2. ((lambda (...) ...) ...), procedure call
 3. (>=), (<=)
+4. racket null and empty
 
 ---
 
