@@ -139,6 +139,19 @@ given: 0[\r\n\t ]*"
 #f"
     )
 
+    add_test(car-test Little-Racket ../test/car.test.rkt)
+    set_tests_properties(car-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"1[\r\n\t ]*\
+\"name\"[\r\n\t ]*\
+2"
+    )
+
+    add_test(cdr-test Little-Racket ../test/cdr.test.rkt)
+    set_tests_properties(cdr-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"'\\(2\\)[\r\n\t ]*\
+'\\(\\)[\r\n\t ]*\
+6"
+    )
 endif()
 
 list(APPEND my_source_files 

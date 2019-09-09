@@ -933,10 +933,32 @@ AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
-// (list)
+// (list v ...) -> list?
 AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
 {
-    return NULL;
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count < arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    Vector *value = VectorNew(sizeof(AST_Node *));
+
+    for (int i = 0; i < operands_count; i++)
+    {
+        AST_Node *node = *(AST_Node **)VectorNth(operands, i);
+        AST_Node *node_copy = ast_node_deep_copy(node, NULL);
+        VectorAppend(value, &node_copy);
+    }
+
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, List_Literal, value);
+    return ast_node;
 }
 
 // (car pair) -> any/c
@@ -974,7 +996,7 @@ AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
     }
 
     Vector *value = (Vector *)(ast_node->contents.literal.value);
-    AST_Node *car = VectorNth(value, 0);
+    AST_Node *car = *(AST_Node **)VectorNth(value, 0);
     return ast_node_deep_copy(car, NULL);
 }
 
@@ -1016,7 +1038,7 @@ AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
 
     if (ast_node->type == Pair_Literal)
     {
-        AST_Node *cdr = VectorNth(value, 1);
+        AST_Node *cdr = *(AST_Node **)VectorNth(value, 1);
         return ast_node_deep_copy(cdr, NULL);
     }
     else if (ast_node->type == List_Literal)
@@ -1037,6 +1059,50 @@ AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
     {
         fprintf(stderr, "something wrong in racket_native_cdr\n");
         exit(EXIT_FAILURE);
+    }
+}
+
+AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
+{
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count != arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    AST_Node *car = *(AST_Node **)VectorNth(operands, 0);
+    AST_Node *cdr = *(AST_Node **)VectorNth(operands, 1);
+    
+    if (cdr->type == List_Literal)
+    {
+        Vector *value = VectorNew(sizeof(AST_Node *));
+        Vector *cdr_value = (Vector *)(cdr->contents.literal.value);
+
+        VectorAppend(value, &car);
+        for (int i = 0; i < VectorLength(cdr_value); i++)
+        {
+            AST_Node *node = *(AST_Node **)VectorNth(cdr_value, i);
+            VectorAppend(value, &node);
+        }
+
+        AST_Node *ast_node = ast_node_new(NOT_IN_AST, List_Literal, value);
+        return ast_node;
+    }
+    else
+    {
+        Vector *value = VectorNew(sizeof(AST_Node *));
+
+        VectorAppend(value, &car);
+        VectorAppend(value, &cdr);
+        
+        AST_Node *ast_node = ast_node_new(NOT_IN_AST, Pair_Literal, value);
+        return ast_node;
     }
 }
 
@@ -1096,6 +1162,14 @@ Vector *generate_built_in_bindings(void)
 
     procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cdr", 1, NULL, NULL, (void(*)(void))racket_native_cdr); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "cdr", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "list", 0, NULL, NULL, (void(*)(void))racket_native_list); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "list", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cons", 2, NULL, NULL, (void(*)(void))racket_native_cons); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "cons", procedure);
     VectorAppend(built_in_bindings, &binding);
 
     return built_in_bindings;
