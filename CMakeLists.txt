@@ -61,7 +61,7 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
 
     add_test(complex-example-test Little-Racket ../test/complex-example.rkt)
     set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION
-        "'\\(11 2.2 233 '\\(1 . 2\\) \"abcd\" \"123abc\"\\)[\r\n\t ]*"
+        "'\\(11 2.2 233 \\(1 . 2\\) \"abcd\" \"123abc\"\\)[\r\n\t ]*"
     )
 
     add_test(map-test Little-Racket ../test/map.test.rkt)
@@ -151,6 +151,20 @@ given: 0[\r\n\t ]*"
 "'\\(2\\)[\r\n\t ]*\
 '\\(\\)[\r\n\t ]*\
 6"
+    )
+
+    add_test(proc-list-test Little-Racket ../test/proc-list.test.rkt)
+    set_tests_properties(proc-list-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"'\\(1 2 3\\)[\r\n\t ]*\
+'\\(1 2 3 4\\)[\r\n\t ]*\
+'\\(\\(1 2\\) \\(3 4\\)\\)"
+    )
+
+    add_test(proc-cons-test Little-Racket ../test/proc-cons.test.rkt)
+    set_tests_properties(proc-cons-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"'\\(1 . 2\\)[\r\n\t ]*\
+'\\(1\\)[\r\n\t ]*\
+'\\(\\(1 2 3\\) 4\\)"
     )
 endif()
 

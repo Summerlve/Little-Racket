@@ -294,6 +294,16 @@ static void lambda_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
     printf(" ) ");
 }
 
+static void set_form_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    printf("(set! ");
+}
+
+static void set_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    printf(" ) ");
+}
+
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
@@ -324,6 +334,8 @@ Visitor get_custom_visitor(void)
     handler = ast_node_handler_new(Conditional_Form, conditional_form_enter, conditional_form_exit);
     ast_node_handler_append(visitor, handler);
     handler = ast_node_handler_new(Lambda_Form, lambda_form_enter, lambda_form_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Set_Form, set_form_enter, set_form_exit);
     ast_node_handler_append(visitor, handler);
     
     return visitor;

@@ -52,7 +52,7 @@ typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_Literal, Pair_Literal, Boolean_Literal,
-    Local_Binding_Form, Conditional_Form, Lambda_Form,
+    Local_Binding_Form, Set_Form, Conditional_Form, Lambda_Form,
     Call_Expression, Binding, Procedure, Program
 } AST_Node_Type;
 typedef enum _z_local_binding_form_type {
@@ -99,6 +99,10 @@ typedef struct _z_ast_node {
                 } define;
             } contents;
         } local_binding_form;
+        struct {
+            struct _z_ast_node *id; // binding with no value.
+            struct _z_ast_node *expr;
+        } set_form;
         struct { // conditionals form: if, cond, and, or.
             Conditional_Form_Type type;
             union {
@@ -178,6 +182,6 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data);
 Vector *calculator(AST ast, void *aux_data);
 int results_free(Vector *results);
 Result eval(AST_Node *ast_node, void *aux_data);
-void output_results(Vector *results);
+void output_results(Vector *results, void *aux_data);
 
 #endif

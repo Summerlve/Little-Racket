@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     Vector *results = calculator(ast, NULL);
 
     // output results
-    output_results(results);
+    output_results(results, NULL);
 
     // release memory
     racket_file_free(raw_code);
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     Vector *results = calculator(ast, NULL);
 
     // output results
-    output_results(results);
+    output_results(results, NULL);
 
     // release memory
     racket_file_free(raw_code);

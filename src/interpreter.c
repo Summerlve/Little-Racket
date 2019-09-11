@@ -403,7 +403,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             // const char *pattern = "^[^\\\\\\(\\)\\[\\]\\{\\}\",'`;#\\|\\s]+";
             // fucked with regex T_T
 
-            const char *pattern = "^[a-zA-Z\\+-\\*/]+"; // ^[a-zA-Z\+-\*/]+
+            const char *pattern = "^[a-zA-Z\\+-\\*/!]+"; // ^[a-zA-Z\+-\*/!]+
             regex_t reg;
             regmatch_t match[1];
     
@@ -484,6 +484,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 //   ast_node_new(tag, Conditional_Form, AND, Vector *exprs/NULL)
 //   ast_node_new(tag, Conditional_Form, NOT, AST_Node *expr/NULL)
 // ast_node_new(tag, Lambda_Form, params, body_exprs)
+// ast_node_new(tag, Set_Form, id/NULL, expr/NULL)
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -575,6 +576,13 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
             AST_Node *value = va_arg(ap, AST_Node *);
             ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(ast_node->tag, Binding, name, value);
         }
+    }
+
+    if (ast_node->type == Set_Form)
+    {
+        matched = true;
+        ast_node->contents.set_form.id = va_arg(ap, AST_Node *);
+        ast_node->contents.set_form.expr = va_arg(ap, AST_Node *);
     }
 
     if (ast_node->type == Conditional_Form)
@@ -821,6 +829,15 @@ int ast_node_free(AST_Node *ast_node)
             matched = true;
             ast_node_free(ast_node->contents.local_binding_form.contents.define.binding);
         }
+    }
+
+    if (ast_node->type == Set_Form)
+    {
+        matched = true;
+        AST_Node *id = ast_node->contents.set_form.id;
+        AST_Node *expr = ast_node->contents.set_form.expr;
+        ast_node_free(id);
+        ast_node_free(expr);
     }
 
     if (ast_node->type == Conditional_Form)
@@ -1344,6 +1361,28 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 return or_expr;
             }
 
+            // handle set!
+            if (strcmp(token->value, "set!") == 0)
+            {
+                // move to id.
+                (*current_p)++;
+
+                AST_Node *id = walk(tokens, current_p);
+                AST_Node *expr = walk(tokens, current_p);
+
+                // check ')'
+                token = tokens_nth(tokens, *current_p);
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): set!: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                AST_Node *set_expr = ast_node_new(IN_AST, Set_Form, id, expr);
+                (*current_p)++; // skip the ')' of and expression
+                return set_expr;
+            }
+
             // handle ... 
             
             // handle normally function call
@@ -1593,6 +1632,18 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             if (local_binding_form_type == LETREC)
                 copy = ast_node_new(ast_node->tag, Local_Binding_Form, LETREC, bindings_copy, body_exprs_copy);
         }
+    }
+
+    if (ast_node->type == Set_Form)
+    {
+        matched = true;
+        AST_Node *id = ast_node->contents.set_form.id;
+        AST_Node *expr = ast_node->contents.set_form.expr;
+
+        AST_Node *id_copy = ast_node_deep_copy(id, aux_data);
+        AST_Node *expr_copy = ast_node_deep_copy(expr, aux_data);
+
+        copy = ast_node_new(ast_node->tag, Set_Form, id_copy, expr_copy);
     }
 
     if (ast_node->type == Conditional_Form)
@@ -1918,6 +1969,14 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         }
     }
 
+    if (node->type == Set_Form)
+    {
+        AST_Node *id = node->contents.set_form.id;
+        AST_Node *expr = node->contents.set_form.expr;
+        traverser_helper(id, node, visitor, aux_data);
+        traverser_helper(expr, node, visitor, aux_data);
+    }
+
     if (node->type == Conditional_Form)
     {
         Conditional_Form_Type conditional_form_type = node->contents.conditional_form.type;
@@ -2223,6 +2282,14 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
                 generate_context(body_expr, node, aux_data);
             }
         }
+    }
+
+    if (node->type == Set_Form)
+    {
+        AST_Node *id = node->contents.set_form.id;
+        AST_Node *expr = node->contents.set_form.expr;
+        generate_context(id, node, aux_data);
+        generate_context(expr, node, aux_data);
     }
 
     if (node->type == Conditional_Form)
@@ -2735,6 +2802,12 @@ Result eval(AST_Node *ast_node, void *aux_data)
         }
     }
 
+    if (ast_node->type == Set_Form)
+    {
+        matched = true;
+        result = NULL;
+    } 
+
     if (ast_node->type == Conditional_Form)
     {
         Conditional_Form_Type conditional_form_type = ast_node->contents.conditional_form.type;
@@ -3042,7 +3115,7 @@ int results_free(Vector *results)
     return error;
 }
 
-static void output_result(Result result)
+static void output_result(Result result, void *aux_data)
 {
     bool matched = false;
 
@@ -3073,11 +3146,19 @@ static void output_result(Result result)
         int length = VectorLength(value);
         int last = length - 1;
 
-        fprintf(stdout, "'(");
+        if (aux_data != NULL && strcmp(aux_data, "in_list_or_in_pair") == 0)
+        {
+            fprintf(stdout, "(");
+        }
+        else
+        {
+            fprintf(stdout, "'(");
+        }
+        
         for (int i = 0; i < length; i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(value, i);
-            output_result(node);
+            output_result(node, "in_list_or_in_pair");
             if (i != last) fprintf(stdout, " ");
         }
         fprintf(stdout, ")");
@@ -3093,10 +3174,17 @@ static void output_result(Result result)
 
         int length = 2; // a dot pair always has two elements.
 
-        fprintf(stdout, "'(");
-        output_result(car);
+        if (aux_data != NULL && strcmp(aux_data, "in_list_or_in_pair") == 0)
+        {
+            fprintf(stdout, "(");
+        }
+        else
+        {
+            fprintf(stdout, "'(");
+        }
+        output_result(car, "in_list_or_in_pair");
         fprintf(stdout, " . ");
-        output_result(cdr);
+        output_result(cdr, "in_list_or_in_pair");
         fprintf(stdout, ")");
     }
 
@@ -3132,12 +3220,12 @@ static void output_result(Result result)
     }
 }
 
-void output_results(Vector *results)
+void output_results(Vector *results, void *aux_data)
 {
     for (int i = 0; i < VectorLength(results); i++)
     {
         Result result = *(AST_Node **)VectorNth(results, i);
-        output_result(result);
+        output_result(result, aux_data);
         fprintf(stdout, "\n");
     }
 }
