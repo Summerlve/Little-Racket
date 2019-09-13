@@ -2384,10 +2384,44 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
     if (node->type == Procedure)
     {
-        // built-in procedures.
+        // built-in procedure.
         if (node->contents.procedure.c_native_function != NULL)
         {
 
+        }
+
+        // programmer defined procedure.
+        if (node->contents.procedure.c_native_function == NULL)
+        {
+            Vector *params = node->contents.procedure.params;
+            Vector *body_exprs = node->contents.procedure.body_exprs;
+
+            for (int i = 0; i < VectorLength(params); i++)
+            {
+                AST_Node *param = *(AST_Node **)VectorNth(params, i);
+                generate_context(param, node, aux_data);
+            }
+
+            // append param to every expr in body_exprs, even a Number_Literal ast node.
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
+                if (body_expr->context == NULL)
+                {
+                    body_expr->context = VectorNew(sizeof(AST_Node *));
+                }
+                for(int j = 0; j < VectorLength(params); j++)
+                {
+                    AST_Node *param = *(AST_Node **)VectorNth(params, j);
+                    VectorAppend(body_expr->context, &param);
+                }
+            }
+
+            for (int i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                generate_context(body_expr, node, aux_data);
+            } 
         }
     }
     
@@ -2805,6 +2839,25 @@ Result eval(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Set_Form)
     {
         matched = true;
+        AST_Node *id = ast_node->contents.set_form.id;
+        AST_Node *expr = ast_node->contents.set_form.expr;
+
+        AST_Node *binding = search_binding_value(id);
+        AST_Node *expr_val = eval(expr, aux_data);
+
+        AST_Node *old_value = binding->contents.binding.value;
+        ast_node_free(old_value);
+
+        binding->contents.binding.value = ast_node_deep_copy(expr_val, aux_data);
+        binding->contents.binding.value->tag = IN_AST;
+        if (binding->contents.binding.value->type == Procedure)
+        {
+            AST_Node *procedure = binding->contents.binding.value;
+            procedure->contents.procedure.name = malloc(strlen(binding->contents.binding.name) + 1);
+            strcpy(procedure->contents.procedure.name, binding->contents.binding.name);
+        }
+        generate_context(binding->contents.binding.value, ast_node, aux_data);
+
         result = NULL;
     } 
 

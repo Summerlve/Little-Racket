@@ -166,6 +166,14 @@ given: 0[\r\n\t ]*"
 '\\(1\\)[\r\n\t ]*\
 '\\(\\(1 2 3\\) 4\\)"
     )
+
+    add_test(set-test Little-Racket ../test/set.test.rkt)
+    set_tests_properties(set-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"2[\r\n\t ]*\
+#<procedure:a>[\r\n\t ]*\
+1[\r\n\t ]*\
+8"
+    )
 endif()
 
 list(APPEND my_source_files 
