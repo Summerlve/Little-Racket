@@ -569,25 +569,17 @@ AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 
     if (list_length == 0)
     {
-        Vector *column = VectorNew(sizeof(AST_Node *));
-        
-        // execute fn
-        // constructe a call expression and call the eval().
-        AST_Node *call_expression = NULL;
-        // named procedure
-        if (fn->contents.procedure.name != NULL)
-        {
-            call_expression = ast_node_new(NOT_IN_AST, Call_Expression, fn->contents.procedure.name, NULL, column);
-        }
-        // anonymous procedure
-        else if (fn->contents.procedure.name == NULL)
-        {
-            call_expression = ast_node_new(NOT_IN_AST, Call_Expression, NULL, fn, column);
-        }
+        int list_num = VectorLength(operands) - 1;
 
-        generate_context(call_expression, fn, NULL);
-        Result result = eval(call_expression, NULL);
-        VectorAppend(results, &result);
+        // check arity
+        if (list_num != fn->contents.procedure.required_params_count)
+        {
+            fprintf(stderr, "map: argument mismatch;\n"
+                        "the given procedure's expected number of arguments does not match the given number of lists\n"
+                        "expected: %d\n"
+                        "given: %d\n", fn->contents.procedure.required_params_count, list_num);
+            exit(EXIT_FAILURE); 
+        }
     }
 
     for (int i = 0; i < list_length; i++)

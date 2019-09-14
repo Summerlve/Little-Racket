@@ -61,7 +61,32 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
 
     add_test(complex-example-test Little-Racket ../test/complex-example.rkt)
     set_tests_properties(complex-example-test PROPERTIES PASS_REGULAR_EXPRESSION
-        "'\\(11 2.2 233 \\(1 . 2\\) \"abcd\" \"123abc\"\\)[\r\n\t ]*"
+"'\\(11 2.2 233 \"abcd\" \"123abc\"\\)[\r\n\t ]*\
+'\\(#t #f\\)[\r\n\t ]*\
+2[\r\n\t ]*\
+-11900.000000[\r\n\t ]*\
+113[\r\n\t ]*\
+99[\r\n\t ]*\
+1[\r\n\t ]*\
+1[\r\n\t ]*\
+3.000000[\r\n\t ]*\
+3.000000[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f[\r\n\t ]*\
+3.000000[\r\n\t ]*\
+3[\r\n\t ]*\
+1[\r\n\t ]*\
+1[\r\n\t ]*\
+4[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f[\r\n\t ]*\
+#f[\r\n\t ]*\
+#f[\r\n\t ]*\
+120[\r\n\t ]*\
+#f[\r\n\t ]*\
+'\\(#t #f #f\\)[\r\n\t ]*\
+'\\(\\)[\r\n\t ]*\
+'\\(\\)"
     )
 
     add_test(map-test Little-Racket ../test/map.test.rkt)
@@ -82,9 +107,9 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
 #t"
     )
 
-    add_test(is-list-test-error Little-Racket ../test/is-list.test-error.rkt)
-    set_tests_properties(is-list-test-error PROPERTIES PASS_REGULAR_EXPRESSION
-"list\\?: arity mismatch;[\r\n\t ]*\
+    add_test(is-list-error-test Little-Racket ../test/is-list-error.test.rkt)
+    set_tests_properties(is-list-error-test PROPERTIES PASS_REGULAR_EXPRESSION
+"list\\?: arity mismatch\;[\r\n\t ]*\
 the expected number of arguments does not match the given number[\r\n\t ]*\
 expected: 1[\r\n\t ]*\
 given: 0[\r\n\t ]*"
@@ -173,6 +198,14 @@ given: 0[\r\n\t ]*"
 #<procedure:a>[\r\n\t ]*\
 1[\r\n\t ]*\
 8"
+    )
+
+    add_test(map-error-test Little-Racket ../test/map-error.test.rkt)
+    set_tests_properties(map-error-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"map\: argument mismatch\;[\r\n\t ]*\
+the given procedure's expected number of arguments does not match the given number of lists[\r\n\t ]*\
+expected: 1[\r\n\t ]*\
+given: 2"
     )
 endif()
 
