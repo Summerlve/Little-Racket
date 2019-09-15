@@ -657,10 +657,11 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         // check '.' to decide use int or double.
         if (strchr(ast_node->contents.literal.value, '.') == NULL)
         {
-            // convert string to int.
-            int c_native_value = atoi(ast_node->contents.literal.value);
-            ast_node->contents.literal.c_native_value = malloc(sizeof(int));
-            memcpy(ast_node->contents.literal.c_native_value, &c_native_value, sizeof(int));
+            // convert string to long long int.
+            char *endptr = NULL;
+            long long int c_native_value = strtoll(ast_node->contents.literal.value, &endptr, 10);
+            ast_node->contents.literal.c_native_value = malloc(sizeof(long long int));
+            memcpy(ast_node->contents.literal.c_native_value, &c_native_value, sizeof(long long int));
         }
         else
         {

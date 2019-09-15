@@ -30,10 +30,10 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     include(CTest)
 
     add_test(factorial-test Little-Racket ../test/fact.test.rkt)
-    set_tests_properties(factorial-test PROPERTIES PASS_REGULAR_EXPRESSION "479001600")
+    set_tests_properties(factorial-test PROPERTIES PASS_REGULAR_EXPRESSION "87178291200")
 
     add_test(fibonacci-test Little-Racket ../test/fib.test.rkt)
-    set_tests_properties(fibonacci-test PROPERTIES PASS_REGULAR_EXPRESSION "21")
+    set_tests_properties(fibonacci-test PROPERTIES PASS_REGULAR_EXPRESSION "2584")
 
     add_test(calling-test Little-Racket ../test/calling.test.rkt)
     set_tests_properties(calling-test PROPERTIES PASS_REGULAR_EXPRESSION "1")
@@ -86,7 +86,8 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
 #f[\r\n\t ]*\
 '\\(#t #f #f\\)[\r\n\t ]*\
 '\\(\\)[\r\n\t ]*\
-'\\(\\)"
+'\\(\\)[\r\n\t ]*\
+#f"
     )
 
     add_test(map-test Little-Racket ../test/map.test.rkt)

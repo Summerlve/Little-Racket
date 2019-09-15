@@ -84,7 +84,7 @@ typedef struct _z_ast_node {
                Vector * - list or pair literal, store the contents into elements(AST_Node *[]), and c_native_value set to null.
             */
             void *value; 
-            // convert normally literal value to c_native_value, such as double: 123.999, when list, pair, boolean, character, string set this field to null.
+            // convert normally literal value to c_native_value, such as double: 123.999 or long long int: 87178291200, when list, pair, boolean, character, string set this field to null.
             void *c_native_value; 
         } literal;
         struct { // local binding form: define, let, let*, letrec.

@@ -47,7 +47,7 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
     struct {
         bool is_int;
         union {
-            int iv;
+            long long int iv;
             double dv;
         } value;
     } result = {
@@ -70,7 +70,7 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
 
         if (cur_operand_is_int == true)
         {
-            int c_native_value = *(int *)(operand->contents.literal.c_native_value);
+            long long int c_native_value = *(long long int *)(operand->contents.literal.c_native_value);
             if (result.is_int == true)
             {
                 result.value.iv += c_native_value;
@@ -101,7 +101,7 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%d", result.value.iv);
+        sprintf(value, "%lld", result.value.iv);
     }
     else
     {
@@ -139,7 +139,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
     struct {
         bool is_int;
         union {
-            int iv;
+            long long int iv;
             double dv;
         } value;
     } result = {
@@ -150,7 +150,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
     if (strchr(minuend->contents.literal.value, '.') == NULL)
     {
         // minuend is int.
-        int c_native_value = *(int *)(minuend->contents.literal.c_native_value);
+        long long int c_native_value = *(long long int *)(minuend->contents.literal.c_native_value);
         if (operands_count != 1)
         {
             result.value.iv = c_native_value;
@@ -190,7 +190,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
 
         if (cur_operand_is_int == true)
         {
-            int c_native_value = *(int *)(subtrahend->contents.literal.c_native_value);
+            long long int c_native_value = *(long long int *)(subtrahend->contents.literal.c_native_value);
             if (result.is_int == true)
             {
                 result.value.iv -= c_native_value;
@@ -221,7 +221,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%d", result.value.iv);
+        sprintf(value, "%lld", result.value.iv);
     }
     else
     {
@@ -252,7 +252,7 @@ AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
     struct {
         bool is_int;
         union {
-            int iv;
+            long long int iv;
             double dv;
         } value;
     } result = {
@@ -275,7 +275,7 @@ AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
 
         if (cur_operand_is_int == true)
         {
-            int c_native_value = *(int *)(operand->contents.literal.c_native_value);
+            long long int c_native_value = *(long long int *)(operand->contents.literal.c_native_value);
             if (result.is_int == true)
             {
                 result.value.iv *= c_native_value;
@@ -306,7 +306,7 @@ AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%d", result.value.iv);
+        sprintf(value, "%lld", result.value.iv);
     }
     else
     {
@@ -346,7 +346,7 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     double dividend_value = 0.0;
     if (strchr(dividend->contents.literal.value, '.') == NULL)
     {
-        dividend_value = *(int *)(dividend->contents.literal.c_native_value);
+        dividend_value = *(long long int *)(dividend->contents.literal.c_native_value);
     }
     else
     {
@@ -382,7 +382,7 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
         double c_native_value = 0.0;
         if (strchr(divisor->contents.literal.value, '.') == NULL)
         {
-            c_native_value = *(int *)(divisor->contents.literal.c_native_value);
+            c_native_value = *(long long int *)(divisor->contents.literal.c_native_value);
         }
         else
         {
