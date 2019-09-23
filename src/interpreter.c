@@ -1,8 +1,8 @@
-#include "./interpreter.h"
-#include "./load_racket_file.h"
-#include "./vector.h"
-#include "./racket_built_in.h"
-#include "./custom_handler.h"
+#include "interpreter.h"
+#include "load_racket_file.h"
+#include "vector.h"
+#include "racket_built_in.h"
+#include "custom_handler.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>

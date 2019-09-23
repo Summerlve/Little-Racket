@@ -1,4 +1,4 @@
-#include "./load_racket_file.h"
+#include "load_racket_file.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,5 +1,5 @@
-#include "./racket_built_in.h"
-#include "./interpreter.h"
+#include "racket_built_in.h"
+#include "interpreter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -30,7 +30,7 @@ static int int_digit_count(int num)
     return digit_count;
 }
 
-AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -115,7 +115,7 @@ AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
-AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -235,7 +235,7 @@ AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
-AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -320,7 +320,7 @@ AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
     return ast_node;
 }
 
-AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -409,7 +409,7 @@ AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
 }
 
 // (= z w ...) -> boolean?
-AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -514,7 +514,7 @@ AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operands)
 }
 
 // (map fn list ...)
-AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -626,7 +626,7 @@ AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 }
 
 // (list? v) -> boolean?
-AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -654,7 +654,7 @@ AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)
 }
 
 // (filter pred lst) -> list?
-AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -734,7 +734,7 @@ AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
 }
 
 // (> x y ...+) -> boolean?
-AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -827,7 +827,7 @@ AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *operands)
 }
 
 // (< x y ...) -> boolean?
-AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -920,7 +920,7 @@ AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *operands)
 }
 
 // (pair? v) -> boolean?
-AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -949,7 +949,7 @@ AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
 }
 
 // (list v ...) -> list?
-AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -977,7 +977,7 @@ AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
 }
 
 // (car pair) -> any/c
-AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -1016,7 +1016,7 @@ AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
 }
 
 // (cdr pair) -> any/c
-AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -1077,7 +1077,7 @@ AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
     }
 }
 
-AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
+static AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
 {
     // check arity
     int arity = procedure->contents.procedure.required_params_count;
@@ -1119,6 +1119,14 @@ AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
         AST_Node *ast_node = ast_node_new(NOT_IN_AST, Pair_Literal, value);
         return ast_node;
     }
+}
+
+static AST_Node *racket_native_less_or_equal_than(AST_Node *procedure, Vector *operands)
+{
+}
+
+static AST_Node *racket_native_more_or_equal_than(AST_Node *procedure, Vector *operands)
+{
 }
 
 Vector *generate_built_in_bindings(void)
@@ -1185,6 +1193,14 @@ Vector *generate_built_in_bindings(void)
 
     procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cons", 2, NULL, NULL, (void(*)(void))racket_native_cons); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "cons", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<=", 1, NULL, NULL, (void(*)(void))racket_native_cons); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, "<=", procedure);
+    VectorAppend(built_in_bindings, &binding);
+
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">=", 1, NULL, NULL, (void(*)(void))racket_native_cons); 
+    binding = ast_node_new(BUILT_IN_BINDING, Binding, ">=", procedure);
     VectorAppend(built_in_bindings, &binding);
 
     return built_in_bindings;

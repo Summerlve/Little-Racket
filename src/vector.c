@@ -1,5 +1,5 @@
-#include "./vector.h"
-#include "./interpreter.h"
+#include "vector.h"
+#include "interpreter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

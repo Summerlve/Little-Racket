@@ -1,8 +1,8 @@
 #ifndef INTERPRETER
 #define INTERPRETER
 
-#include "./load_racket_file.h"
-#include "./vector.h"
+#include "load_racket_file.h"
+#include "vector.h"
 
 // tokenizer parts
 // number type
