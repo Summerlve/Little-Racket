@@ -208,6 +208,28 @@ the given procedure's expected number of arguments does not match the given numb
 expected: 1[\r\n\t ]*\
 given: 2"
     )
+
+    add_test(negative-number-test Little-Racket ../test/negative-number.test.rkt)
+    set_tests_properties(negative-number-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"-199.98[\r\n\t ]*\
+-45"
+    )
+
+    add_test(number-less-or-equal-than-test Little-Racket ../test/number-less-or-equal-than.test.rkt)
+    set_tests_properties(number-less-or-equal-than-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#t[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f[\r\n\t ]*\
+#t"
+    )
+
+    add_test(number-more-or-equal-than-test Little-Racket ../test/number-more-or-equal-than.test.rkt)
+    set_tests_properties(number-more-or-equal-than-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"#t[\r\n\t ]*\
+#t[\r\n\t ]*\
+#t[\r\n\t ]*\
+#f"
+    )
 endif()
 
 list(APPEND my_source_files 

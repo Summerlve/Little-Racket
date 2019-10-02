@@ -757,7 +757,7 @@ static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *ope
 
     struct {
         union {
-            int int_val;
+            long long int int_val;
             double double_val;
         } contents;
         bool is_int;
@@ -765,7 +765,7 @@ static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *ope
     
     if (strchr(pre_number->contents.literal.value, '.') == NULL)
     {
-        pre.contents.int_val = *(int *)(pre_number->contents.literal.c_native_value);
+        pre.contents.int_val = *(long long int *)(pre_number->contents.literal.c_native_value);
         pre.is_int = true;
     }
     else
@@ -789,7 +789,7 @@ static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *ope
 
         if (strchr(cur_number->contents.literal.value, '.') == NULL)
         {
-            cur.contents.int_val = *(int *)(cur_number->contents.literal.c_native_value);
+            cur.contents.int_val = *(long long int *)(cur_number->contents.literal.c_native_value);
             cur.is_int = true;
         }
         else
@@ -850,7 +850,7 @@ static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *ope
 
     struct {
         union {
-            int int_val;
+            long long int int_val;
             double double_val;
         } contents;
         bool is_int;
@@ -858,7 +858,7 @@ static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *ope
     
     if (strchr(pre_number->contents.literal.value, '.') == NULL)
     {
-        pre.contents.int_val = *(int *)(pre_number->contents.literal.c_native_value);
+        pre.contents.int_val = *(long long int *)(pre_number->contents.literal.c_native_value);
         pre.is_int = true;
     }
     else
@@ -882,7 +882,7 @@ static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *ope
 
         if (strchr(cur_number->contents.literal.value, '.') == NULL)
         {
-            cur.contents.int_val = *(int *)(cur_number->contents.literal.c_native_value);
+            cur.contents.int_val = *(long long int *)(cur_number->contents.literal.c_native_value);
             cur.is_int = true;
         }
         else
@@ -1121,12 +1121,190 @@ static AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
     }
 }
 
+// (<= x y ...) -> boolean?
 static AST_Node *racket_native_less_or_equal_than(AST_Node *procedure, Vector *operands)
 {
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count < arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: at least %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    const AST_Node *pre_number = *(AST_Node **)VectorNth(operands, 0); 
+    if (pre_number->type != Number_Literal)
+    {
+        fprintf(stderr, "#<procedure:%s>: operands must be number\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    struct {
+        union {
+            long long int int_val;
+            double double_val;
+        } contents;
+        bool is_int;
+    } pre, cur;
+    
+    if (strchr(pre_number->contents.literal.value, '.') == NULL)
+    {
+        pre.contents.int_val = *(long long int *)(pre_number->contents.literal.c_native_value);
+        pre.is_int = true;
+    }
+    else
+    {
+        pre.contents.double_val = *(double *)(pre_number->contents.literal.c_native_value);
+        pre.is_int = false;
+    }
+
+    Boolean_Type *result = malloc(sizeof(Boolean_Type));
+    *result = R_TRUE; // true by default.
+
+    for (int i = 1; i < VectorLength(operands); i++)
+    {
+        AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
+
+        if (cur_number->type != Number_Literal)
+        {
+            fprintf(stderr, "#<procedure:%s>: operands must be number\n", procedure->contents.procedure.name);
+            exit(EXIT_FAILURE); 
+        }
+
+        if (strchr(cur_number->contents.literal.value, '.') == NULL)
+        {
+            cur.contents.int_val = *(long long int *)(cur_number->contents.literal.c_native_value);
+            cur.is_int = true;
+        }
+        else
+        {
+            cur.contents.double_val = *(double *)(cur_number->contents.literal.c_native_value);
+            cur.is_int = false;
+        }
+
+        if (cur.is_int == true && pre.is_int == true)
+        {
+            if (cur.contents.int_val < pre.contents.int_val) *result = R_FALSE;
+            pre.contents.int_val = cur.contents.int_val;
+        }
+        else if (cur.is_int == true && pre.is_int == false)
+        {
+            if (cur.contents.int_val < pre.contents.double_val) *result = R_FALSE;
+            pre.contents.int_val = cur.contents.int_val;
+        }
+        else if (cur.is_int == false && pre.is_int == true)
+        {
+            if (cur.contents.double_val < pre.contents.int_val) *result = R_FALSE;
+            pre.contents.double_val = cur.contents.double_val;
+        }
+        else if (cur.is_int == false && pre.is_int == false)
+        {
+            if (cur.contents.double_val < pre.contents.double_val) *result = R_FALSE;
+            pre.contents.double_val = cur.contents.double_val;
+        }
+
+        pre.is_int = cur.is_int;
+    }
+
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, result);
+    return ast_node;
 }
 
+// (>= x y ...) -> boolean?
 static AST_Node *racket_native_more_or_equal_than(AST_Node *procedure, Vector *operands)
 {
+    // check arity
+    int arity = procedure->contents.procedure.required_params_count;
+    int operands_count = VectorLength(operands);
+    if (operands_count < arity)
+    {
+        fprintf(stderr, "%s: arity mismatch;\n"
+                        "the expected number of arguments does not match the given number\n"
+                        "expected: at least %d\n"
+                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+        exit(EXIT_FAILURE); 
+    }
+
+    const AST_Node *pre_number = *(AST_Node **)VectorNth(operands, 0); 
+    if (pre_number->type != Number_Literal)
+    {
+        fprintf(stderr, "#<procedure:%s>: operands must be number\n", procedure->contents.procedure.name);
+        exit(EXIT_FAILURE); 
+    }
+
+    struct {
+        union {
+            long long int int_val;
+            double double_val;
+        } contents;
+        bool is_int;
+    } pre, cur;
+    
+    if (strchr(pre_number->contents.literal.value, '.') == NULL)
+    {
+        pre.contents.int_val = *(long long int *)(pre_number->contents.literal.c_native_value);
+        pre.is_int = true;
+    }
+    else
+    {
+        pre.contents.double_val = *(double *)(pre_number->contents.literal.c_native_value);
+        pre.is_int = false;
+    }
+
+    Boolean_Type *result = malloc(sizeof(Boolean_Type));
+    *result = R_TRUE; // true by default.
+
+    for (int i = 1; i < VectorLength(operands); i++)
+    {
+        AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
+
+        if (cur_number->type != Number_Literal)
+        {
+            fprintf(stderr, "#<procedure:%s>: operands must be number\n", procedure->contents.procedure.name);
+            exit(EXIT_FAILURE); 
+        }
+
+        if (strchr(cur_number->contents.literal.value, '.') == NULL)
+        {
+            cur.contents.int_val = *(long long int *)(cur_number->contents.literal.c_native_value);
+            cur.is_int = true;
+        }
+        else
+        {
+            cur.contents.double_val = *(double *)(cur_number->contents.literal.c_native_value);
+            cur.is_int = false;
+        }
+
+        if (cur.is_int == true && pre.is_int == true)
+        {
+            if (cur.contents.int_val > pre.contents.int_val) *result = R_FALSE;
+            pre.contents.int_val = cur.contents.int_val;
+        }
+        else if (cur.is_int == true && pre.is_int == false)
+        {
+            if (cur.contents.int_val > pre.contents.double_val) *result = R_FALSE;
+            pre.contents.int_val = cur.contents.int_val;
+        }
+        else if (cur.is_int == false && pre.is_int == true)
+        {
+            if (cur.contents.double_val > pre.contents.int_val) *result = R_FALSE;
+            pre.contents.double_val = cur.contents.double_val;
+        }
+        else if (cur.is_int == false && pre.is_int == false)
+        {
+            if (cur.contents.double_val > pre.contents.double_val) *result = R_FALSE;
+            pre.contents.double_val = cur.contents.double_val;
+        }
+
+        pre.is_int = cur.is_int;
+    }
+
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, result);
+    return ast_node;
 }
 
 Vector *generate_built_in_bindings(void)
@@ -1195,11 +1373,11 @@ Vector *generate_built_in_bindings(void)
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "cons", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<=", 1, NULL, NULL, (void(*)(void))racket_native_cons); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<=", 1, NULL, NULL, (void(*)(void))racket_native_less_or_equal_than); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "<=", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">=", 1, NULL, NULL, (void(*)(void))racket_native_cons); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">=", 1, NULL, NULL, (void(*)(void))racket_native_more_or_equal_than); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, ">=", procedure);
     VectorAppend(built_in_bindings, &binding);
 
