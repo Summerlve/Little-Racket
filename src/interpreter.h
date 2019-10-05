@@ -64,6 +64,15 @@ typedef enum _z_conditional_form_type {
 typedef enum _z_boolean_type {
     R_FALSE, R_TRUE // any value other than #f counts as true.
 } Boolean_Type;
+typedef enum _z_cond_clause_type {
+    TEST_EXPR_WITH_BODY, ELSE_STATEMENT, TEST_EXPR_WITH_PROC, SINGLE_TEST_EXPR
+} Cond_Clause_Type;
+typedef struct _z_ast_node AST_Node;
+typedef struct _z_cond_clause {
+    Cond_Clause_Type type;
+    AST_Node *test_expr; // set to null when type is ELSE_STATEMENT
+    Vector *then_bodies; // AST_Node *[]
+} Cond_Clause;
 typedef struct _z_ast_node {
     struct _z_ast_node *parent;
     Vector *context; // optional
@@ -103,7 +112,7 @@ typedef struct _z_ast_node {
             struct _z_ast_node *id; // binding with no value.
             struct _z_ast_node *expr;
         } set_form;
-        struct { // conditionals form: if, cond, and, or.
+        struct { // conditional form: if, cond, and, or, not.
             Conditional_Form_Type type;
             union {
                 // if
@@ -112,7 +121,9 @@ typedef struct _z_ast_node {
                     struct _z_ast_node *then_expr;
                     struct _z_ast_node *else_expr;
                 } if_expression;
-                // cond
+                struct { // cond
+                    Vector *cond_clauses; // Cond_Clause *[]
+                } cond_expression;
                 struct { // and
                     Vector *exprs; // AST_Node *[]
                 } and_expression;

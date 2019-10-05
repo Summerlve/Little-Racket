@@ -230,6 +230,13 @@ given: 2"
 #t[\r\n\t ]*\
 #f"
     )
+
+    add_test(cond-test Little-Racket ../test/cond.test.rkt)
+    set_tests_properties(cond-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"5[\r\n\t ]*\
+6[\r\n\t ]*\
+4181"
+    )
 endif()
 
 list(APPEND my_source_files 

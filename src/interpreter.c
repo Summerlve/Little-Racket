@@ -469,7 +469,6 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 }
 
 // parser parts
-
 // ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL)
 // ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
 // ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
@@ -483,6 +482,8 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 //   ast_node_new(tag, Conditional_Form, IF, test_expr, then_expr, else_expr)
 //   ast_node_new(tag, Conditional_Form, AND, Vector *exprs/NULL)
 //   ast_node_new(tag, Conditional_Form, NOT, AST_Node *expr/NULL)
+//   ast_node_new(tag, Conditional_Form, OR, Vector *exprs/NULL)
+//   ast_node_new(tag, Conditional_Form, COND, Vector *cond_clauses/NULL)
 // ast_node_new(tag, Lambda_Form, params, body_exprs)
 // ast_node_new(tag, Set_Form, id/NULL, expr/NULL)
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
@@ -600,6 +601,8 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 
         if (conditional_form_type == COND)
         {
+            matched = true;
+            ast_node->contents.conditional_form.contents.cond_expression.cond_clauses = va_arg(ap, Vector *);
         }
 
         if (conditional_form_type == AND)
@@ -858,7 +861,38 @@ int ast_node_free(AST_Node *ast_node)
 
         if (conditional_form_type == COND)
         {
+            matched = true;
+            Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
+            int length = VectorLength(cond_clauses);
 
+            for (int i = 0; i < length; i++)
+            {
+                Cond_Clause *cond_clause = *(Cond_Clause **)VectorNth(cond_clauses, i);
+
+                if (cond_clause->type == TEST_EXPR_WITH_BODY)
+                {
+                    // [test-expr then-body ...+]
+                    AST_Node *test_expr = cond_clause->test_expr;
+                }
+                else if (cond_clause->type == ELSE_STATEMENT)
+                {
+                    // [else then-body ...+]
+                }
+                else if (cond_clause->type == TEST_EXPR_WITH_PROC)
+                {
+
+                }
+                else if (cond_clause->type == SINGLE_TEST_EXPR)
+                {
+
+                }
+                else
+                {
+                    // something wrong here
+                }
+            }
+
+            VectorFree(cond_clauses, NULL, NULL);
         }
 
         if (conditional_form_type == AND)
