@@ -65,13 +65,14 @@ typedef enum _z_boolean_type {
     R_FALSE, R_TRUE // any value other than #f counts as true.
 } Boolean_Type;
 typedef enum _z_cond_clause_type {
-    TEST_EXPR_WITH_BODY, ELSE_STATEMENT, TEST_EXPR_WITH_PROC, SINGLE_TEST_EXPR
+    TEST_EXPR_WITH_THENBODY, ELSE_STATEMENT, TEST_EXPR_WITH_PROC, SINGLE_TEST_EXPR
 } Cond_Clause_Type;
 typedef struct _z_ast_node AST_Node;
 typedef struct _z_cond_clause {
     Cond_Clause_Type type;
     AST_Node *test_expr; // set to null when type is ELSE_STATEMENT
     Vector *then_bodies; // AST_Node *[]
+    AST_Node *proc_expr; // when TEST_EXPR_WITH_PROC
 } Cond_Clause;
 typedef struct _z_ast_node {
     struct _z_ast_node *parent;

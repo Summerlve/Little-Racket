@@ -469,6 +469,67 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 }
 
 // parser parts
+// cond_clause_new(type, test_expr/NULL, then_bodies/NULL, proc_expr/NULL)
+static Cond_Clause *cond_clause_new(Cond_Clause_Type type, AST_Node *test_expr, Vector *then_bodies, AST_Node *proc_expr)
+{
+    Cond_Clause *clause = (Cond_Clause *)malloc(sizeof(Cond_Clause));
+    clause->type = type;
+    clause->test_expr = test_expr;
+    clause->then_bodies = then_bodies;
+    clause->proc_expr = proc_expr;
+    return clause;
+}
+
+static int cond_clause_free(Cond_Clause *clause)
+{
+    if (clause == NULL) return 1;
+
+    if (clause->type == TEST_EXPR_WITH_THENBODY)
+    {
+        // [test-expr then-body ...+]
+        // needs to free test_expr and then_bodies
+        AST_Node *test_expr = clause->test_expr;
+        ast_node_free(test_expr);
+
+        Vector *then_bodies = clause->then_bodies;
+        for (int i = 0; i < VectorLength(then_bodies); i++)
+        {
+            AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+            ast_node_free(then_body);
+        }
+        VectorFree(then_bodies, NULL, NULL);
+    }
+    else if (clause->type == ELSE_STATEMENT)
+    {
+        // [else then-body ...+]
+        // needs to free then_bodies
+        Vector *then_bodies = clause->then_bodies;
+        for (int i = 0; i < VectorLength(then_bodies); i++)
+        {
+            AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+            ast_node_free(then_body);
+        }
+        VectorFree(then_bodies, NULL, NULL);
+    }
+    else if (clause->type == TEST_EXPR_WITH_PROC)
+    {
+    }
+    else if (clause->type == SINGLE_TEST_EXPR)
+    {
+    }
+    else
+    {
+        // something wrong here
+        fprintf(stderr, "cond_clause_free(): can not handle clause->type: %d\n", clause->type);
+        exit(EXIT_FAILURE);
+    }
+
+    // free itself
+    free(clause);
+
+    return 0;
+}
+
 // ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL)
 // ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
 // ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
@@ -863,33 +924,12 @@ int ast_node_free(AST_Node *ast_node)
         {
             matched = true;
             Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
-            int length = VectorLength(cond_clauses);
 
-            for (int i = 0; i < length; i++)
+            for (int i = 0; i < VectorLength(cond_clauses); i++)
             {
-                Cond_Clause *cond_clause = *(Cond_Clause **)VectorNth(cond_clauses, i);
-
-                if (cond_clause->type == TEST_EXPR_WITH_BODY)
-                {
-                    // [test-expr then-body ...+]
-                    AST_Node *test_expr = cond_clause->test_expr;
-                }
-                else if (cond_clause->type == ELSE_STATEMENT)
-                {
-                    // [else then-body ...+]
-                }
-                else if (cond_clause->type == TEST_EXPR_WITH_PROC)
-                {
-
-                }
-                else if (cond_clause->type == SINGLE_TEST_EXPR)
-                {
-
-                }
-                else
-                {
-                    // something wrong here
-                }
+                // free each cond_clause
+                Cond_Clause *clause = *(Cond_Clause **)VectorNth(cond_clauses, i);
+                cond_clause_free(clause);
             }
 
             VectorFree(cond_clauses, NULL, NULL);
@@ -1702,6 +1742,64 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == COND)
         {
             matched = true;
+            Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
+            Vector *cond_clauses_copy = VectorNew(sizeof(Cond_Clause *));
+
+            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            {
+                Cond_Clause *clause = *(Cond_Clause **)VectorNth(cond_clauses, i);
+                Cond_Clause *clause_copy = NULL;
+
+                if (clause->type == TEST_EXPR_WITH_THENBODY)
+                {
+                    // [test-expr then-body ...+]
+                    AST_Node *test_expr = clause->test_expr;
+                    AST_Node *test_expr_copy = ast_node_deep_copy(test_expr, aux_data);
+
+                    Vector *then_bodies = clause->then_bodies;
+                    Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
+                    
+                    for (int j = 0; j < VectorLength(then_bodies); j++)
+                    {
+                        AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
+                        AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
+                        VectorAppend(then_bodies_copy, &then_body_copy);
+                    }
+
+                    clause_copy = cond_clause_new(clause->type, test_expr_copy, then_bodies_copy, clause->proc_expr);
+                }
+                else if (clause->type == ELSE_STATEMENT)
+                {
+                    // [else then-body ...+]
+                    Vector *then_bodies = clause->then_bodies;
+                    Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
+                    
+                    for (int j = 0; j < VectorLength(then_bodies); j++)
+                    {
+                        AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
+                        AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
+                        VectorAppend(then_bodies_copy, &then_body_copy);
+                    }
+
+                    clause_copy = cond_clause_new(clause->type, clause->test_expr, then_bodies_copy, clause->proc_expr);
+                }
+                else if (clause->type == TEST_EXPR_WITH_PROC)
+                {
+                }
+                else if (clause->type == SINGLE_TEST_EXPR)
+                {
+                }
+                else
+                {
+                    // something wrong here
+                    fprintf(stderr, "ast_node_deep_copy(): can not copy clause->type: %d\n", clause->type);
+                    exit(EXIT_FAILURE); 
+                }
+
+                VectorAppend(cond_clauses_copy, &clause_copy);
+            }
+
+            copy = ast_node_new(ast_node->tag, Conditional_Form, COND, cond_clauses_copy);
         }
 
         if (conditional_form_type == AND)
@@ -2052,8 +2150,11 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
             }
         }
 
-        // ...
-
+        if (conditional_form_type == COND)
+        {
+            Vector *cond_clauses = node->contents.conditional_form.contents.cond_expression.cond_clauses;
+            
+        }
     }
 
     if (node->type == List_Literal)
