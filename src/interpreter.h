@@ -53,7 +53,7 @@ typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_Literal, Pair_Literal, Boolean_Literal,
     Local_Binding_Form, Set_Form, Conditional_Form, Lambda_Form,
-    Call_Expression, Binding, Procedure, Program
+    Call_Expression, Binding, Procedure, Program, Cond_Clause
 } AST_Node_Type;
 typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC
@@ -68,14 +68,8 @@ typedef enum _z_cond_clause_type {
     TEST_EXPR_WITH_THENBODY, ELSE_STATEMENT, TEST_EXPR_WITH_PROC, SINGLE_TEST_EXPR
 } Cond_Clause_Type;
 typedef struct _z_ast_node AST_Node;
-typedef struct _z_cond_clause {
-    Cond_Clause_Type type;
-    AST_Node *test_expr; // set to null when type is ELSE_STATEMENT
-    Vector *then_bodies; // AST_Node *[]
-    AST_Node *proc_expr; // when TEST_EXPR_WITH_PROC
-} Cond_Clause;
 typedef struct _z_ast_node {
-    struct _z_ast_node *parent;
+    AST_Node *parent;
     Vector *context; // optional
     AST_Node_Type type;
     /*
@@ -105,22 +99,22 @@ typedef struct _z_ast_node {
                     Vector *body_exprs; // AST_Node *[]
                 } lets;
                 struct {
-                    struct _z_ast_node *binding;
+                    AST_Node *binding;
                 } define;
             } contents;
         } local_binding_form;
         struct {
-            struct _z_ast_node *id; // binding with no value.
-            struct _z_ast_node *expr;
+            AST_Node *id; // binding with no value.
+            AST_Node *expr;
         } set_form;
         struct { // conditional form: if, cond, and, or, not.
             Conditional_Form_Type type;
             union {
                 // if
                 struct {
-                    struct _z_ast_node *test_expr;
-                    struct _z_ast_node *then_expr;
-                    struct _z_ast_node *else_expr;
+                    AST_Node *test_expr;
+                    AST_Node *then_expr;
+                    AST_Node *else_expr;
                 } if_expression;
                 struct { // cond
                     Vector *cond_clauses; // Cond_Clause *[]
@@ -132,19 +126,25 @@ typedef struct _z_ast_node {
                     Vector *exprs; // AST_Node *[]
                 } or_expression;
                 struct { // not
-                    struct _z_ast_node *expr;
+                    AST_Node *expr;
                 } not_expression;
             } contents;
         } conditional_form;
+        struct {
+            Cond_Clause_Type type;
+            AST_Node *test_expr; // set to null when type is ELSE_STATEMENT
+            Vector *then_bodies; // AST_Node *[]
+            AST_Node *proc_expr; // when TEST_EXPR_WITH_PROC
+        } cond_clause;
         struct { // case: let ... [a 1] 'value' field will have a value, case: a (single variable identifier) 'value' field set to null.
             char *name; // binding's name.
-            struct _z_ast_node *value; // binding's value, pointes to a AST_Node.
+            AST_Node *value; // binding's value, pointes to a AST_Node.
         } binding;
         struct { // call_expression: (+ 1 2) etc, excludes loacl bingding form or other special form such as let define if etc, just simple function call.
             // if a procedure has name, set anonymous_procedure to NULL
             // if a procedure has no name, set name to NULL
             char *name; // search procedure by name.
-            struct _z_ast_node *anonymous_procedure; // anonymous function call, can not found fn by name.
+            AST_Node *anonymous_procedure; // anonymous function call, can not found fn by name.
             Vector *params; // params is AST_Node *[]
         } call_expression; // call expression
         struct  {
@@ -176,8 +176,8 @@ typedef Vector *Visitor; // AST_Node_Handler *[]
 typedef void (*VisitorFunction)(AST_Node *node, AST_Node *parent, void *aux_data);
 typedef struct _z_ast_node_handler {
     AST_Node_Type type;
-    VisitorFunction enter;
-    VisitorFunction exit;
+    VisitorFunction enter; // or NULL
+    VisitorFunction exit; // or NULL
 } AST_Node_Handler;
 Visitor visitor_new();
 int visitor_free(Visitor visitor);
