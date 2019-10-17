@@ -1742,54 +1742,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             for (int i = 0; i < VectorLength(cond_clauses); i++)
             {
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
-                AST_Node *cond_clause_copy = NULL;
-
-                if (cond_clause->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
-                {
-                    // [test-expr then-body ...+]
-                    AST_Node *test_expr = cond_clause->contents.cond_clause.test_expr;
-                    AST_Node *test_expr_copy = ast_node_deep_copy(test_expr, aux_data);
-
-                    Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
-                    Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
-                    
-                    for (int j = 0; j < VectorLength(then_bodies); j++)
-                    {
-                        AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
-                        AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
-                        VectorAppend(then_bodies_copy, &then_body_copy);
-                    }
-
-                    cond_clause_copy = ast_node_new(cond_clause->tag, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr_copy, then_bodies_copy, NULL);
-                }
-                else if (cond_clause->contents.cond_clause.type == ELSE_STATEMENT)
-                {
-                    // [else then-body ...+]
-                    Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
-                    Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
-                    
-                    for (int j = 0; j < VectorLength(then_bodies); j++)
-                    {
-                        AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
-                        AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
-                        VectorAppend(then_bodies_copy, &then_body_copy);
-                    }
-
-                    cond_clause_copy = ast_node_new(cond_clause->tag, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies_copy, NULL);
-                }
-                else if (cond_clause->contents.cond_clause.type == TEST_EXPR_WITH_PROC)
-                {
-                }
-                else if (cond_clause->contents.cond_clause.type == SINGLE_TEST_EXPR)
-                {
-                }
-                else
-                {
-                    // something wrong here
-                    fprintf(stderr, "ast_node_deep_copy(): can not copy clause->type: %d\n", cond_clause->contents.cond_clause.type);
-                    exit(EXIT_FAILURE); 
-                }
-
+                AST_Node *cond_clause_copy = ast_node_deep_copy(cond_clause, aux_data);
                 VectorAppend(cond_clauses_copy, &cond_clause_copy);
             }
 
@@ -1839,7 +1792,53 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
 
     if (ast_node->type == Cond_Clause)
     {
+        matched = true;
         
+        if (ast_node->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
+        {
+            // [test-expr then-body ...+]
+            AST_Node *test_expr = ast_node->contents.cond_clause.test_expr;
+            AST_Node *test_expr_copy = ast_node_deep_copy(test_expr, aux_data);
+
+            Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
+            Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
+            
+            for (int i = 0; i < VectorLength(then_bodies); i++)
+            {
+                AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+                AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
+                VectorAppend(then_bodies_copy, &then_body_copy);
+            }
+
+            copy = ast_node_new(ast_node->tag, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr_copy, then_bodies_copy, NULL);
+        }
+        else if (ast_node->contents.cond_clause.type == ELSE_STATEMENT)
+        {
+            // [else then-body ...+]
+            Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
+            Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
+            
+            for (int i = 0; i < VectorLength(then_bodies); i++)
+            {
+                AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+                AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
+                VectorAppend(then_bodies_copy, &then_body_copy);
+            }
+
+            copy = ast_node_new(ast_node->tag, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies_copy, NULL);
+        }
+        else if (ast_node->contents.cond_clause.type == TEST_EXPR_WITH_PROC)
+        {
+        }
+        else if (ast_node->contents.cond_clause.type == SINGLE_TEST_EXPR)
+        {
+        }
+        else
+        {
+            // something wrong here
+            fprintf(stderr, "ast_node_deep_copy(): can not copy Cond_Clause_Type: %d\n", ast_node->contents.cond_clause.type);
+            exit(EXIT_FAILURE); 
+        }
     }
     
     if (ast_node->type == Lambda_Form)
@@ -2014,7 +2013,7 @@ AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type)
     return NULL;
 }
 
-// traverser help function.
+// traverser helper function.
 static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data)
 {
     if (node == NULL)
@@ -2027,7 +2026,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
     if (handler == NULL)
     {
-        fprintf(stderr, "traverser_node(): can not find handler for AST_Node_Type: %d\n", node->type);
+        fprintf(stderr, "traverser_helper(): can not find handler for AST_Node_Type: %d\n", node->type);
         exit(EXIT_FAILURE);
     }
 
@@ -2151,10 +2150,52 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         if (conditional_form_type == COND)
         {
             Vector *cond_clauses = node->contents.conditional_form.contents.cond_expression.cond_clauses;
-
             for (int i = 0; i < VectorLength(cond_clauses); i++)
             {
+                AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
+                traverser_helper(cond_clause, node, visitor, aux_data);
             }
+        }
+    }
+
+    if (node->type == Cond_Clause)
+    {
+        if (node->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
+        {
+            // [test-expr then-body ...+]
+            AST_Node *test_expr = node->contents.cond_clause.test_expr;
+            Vector *then_bodies = node->contents.cond_clause.then_bodies;
+            
+            traverser_helper(test_expr, node, visitor, aux_data);
+
+            for (int i = 0; i < VectorLength(then_bodies); i++)
+            {
+                AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+                traverser_helper(then_body, node, visitor, aux_data);
+            }
+        }
+        else if (node->contents.cond_clause.type == ELSE_STATEMENT)
+        {
+            // [else then-body ...+]
+            Vector *then_bodies = node->contents.cond_clause.then_bodies;
+
+            for (int i = 0; i < VectorLength(then_bodies); i++)
+            {
+                AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+                traverser_helper(then_body, node, visitor, aux_data);
+            }
+        }
+        else if (node->contents.cond_clause.type == TEST_EXPR_WITH_PROC)
+        {
+        }
+        else if (node->contents.cond_clause.type == SINGLE_TEST_EXPR)
+        {
+        }
+        else
+        {
+            // something wrong here
+            fprintf(stderr, "traverser_helper(): can not handle Cond_Clause_Type: %d\n", node->contents.cond_clause.type);
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -2466,6 +2507,16 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
                 generate_context(expr, node, aux_data);
             }
         }
+
+        if (node->contents.conditional_form.type == COND)
+        {
+
+        }
+    }
+
+    if (node->type == Cond_Clause)
+    {
+        
     }
 
     if (node->type == Call_Expression)
