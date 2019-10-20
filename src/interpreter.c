@@ -483,7 +483,9 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 //   ast_node_new(tag, Conditional_Form, NOT, AST_Node *expr/NULL)
 //   ast_node_new(tag, Conditional_Form, OR, Vector *exprs/NULL)
 //   ast_node_new(tag, Conditional_Form, COND, Vector *cond_clauses/NULL)
-//      ast_node_new(tag, Cond_Clause, Cond_Clause_Type type, AST_Node *test_expr/NULL, Vector *then_bodies/NULL, AST_Node *proc_expr/NULL)
+//   ast_node_new(tag, Cond_Clause, Cond_Clause_Type type, AST_Node *test_expr/NULL, Vector *then_bodies/NULL, AST_Node *proc_expr/NULL)
+//      ast_node_new(tag, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr, then_bodies, NULL)
+//      ast_node_new(tag, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies, NULL)
 // ast_node_new(tag, Lambda_Form, params, body_exprs)
 // ast_node_new(tag, Set_Form, id/NULL, expr/NULL)
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
@@ -1428,6 +1430,87 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 AST_Node *or_expr = ast_node_new(IN_AST, Conditional_Form, OR, exprs);
                 (*current_p)++; // skip the ')' of and expression
                 return or_expr;
+            }
+
+            // handle cond
+            if (strcmp(token->value, "cond") == 0)
+            {
+                Vector *cond_clauses = VectorNew(sizeof(AST_Node *));
+
+                // move to first cond clause
+                (*current_p)++;
+                token = tokens_nth(tokens, *current_p);
+
+                while ((token->type != PUNCTUATION) ||
+                       (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)) 
+                {
+                    AST_Node *cond_clause = NULL;
+
+                    // check '['
+                    if ((token->value)[0] != LEFT_SQUARE_BRACKET)
+                    {
+                        fprintf(stderr, "walk(): cond: bad syntax\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    // move to test-expr or else
+                    (*current_p)++;
+                    token = tokens_nth(tokens, *current_p);
+
+                    if (strcmp(token->value, "else") == 0)
+                    {
+                        // else statement
+                        Vector *then_bodies = VectorNew(sizeof(AST_Node *));
+
+                        // move to first then_body
+                        (*current_p)++;
+                        token = tokens_nth(tokens, *current_p);
+
+                        while ((token->type != PUNCTUATION) ||
+                               (token->type == PUNCTUATION && (token->value)[0] != RIGHT_SQUARE_BRACKET)) 
+                        {
+                            
+                        }
+                        
+                        cond_clause = ast_node_new(IN_AST, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies, NULL);
+                    }
+                    else
+                    {
+                        // other, actually TEST_EXPR_WITH_THENBODY only right now
+                        Vector *then_bodies = VectorNew(sizeof(AST_Node *));
+                        AST_Node *test_expr = NULL;
+
+                        while ((token->type != PUNCTUATION) ||
+                               (token->type == PUNCTUATION && (token->value)[0] != RIGHT_SQUARE_BRACKET)) 
+                        {
+                            
+                        }
+
+                        cond_clause = ast_node_new(IN_AST, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr, then_bodies, NULL);
+                    }
+
+                    // check ']'
+                    if ((token->value)[0] != RIGHT_SQUARE_BRACKET)
+                    {
+                        fprintf(stderr, "walk(): cond: bad syntax\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    VectorAppend(cond_clauses, &cond_clause);
+                    (*current_p)++; // skip ']'
+                    token = tokens_nth(tokens, *current_p);
+                }
+
+                // check ')' of cond expression
+                if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): cond: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                AST_Node *cond_expr = ast_node_new(IN_AST, Conditional_Form, COND, cond_clauses);
+                (*current_p)++; // skip the ')' of cond expression
+                return cond_expr;
             }
 
             // handle set!
@@ -2510,13 +2593,56 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
         if (node->contents.conditional_form.type == COND)
         {
-
+            Vector *cond_clauses = node->contents.conditional_form.contents.cond_expression.cond_clauses;
+            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            {
+                AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
+                generate_context(cond_clause, node, aux_data);
+            }
         }
     }
 
     if (node->type == Cond_Clause)
     {
-        
+        Cond_Clause_Type cond_clause_type = node->contents.cond_clause.type;
+
+        if (cond_clause_type == TEST_EXPR_WITH_THENBODY)
+        {
+            // [test-expr then-body ...+]
+            // needs to free test_expr and then_bodies
+            AST_Node *test_expr = node->contents.cond_clause.test_expr;
+            generate_context(test_expr, node, aux_data);
+
+            Vector *then_bodies = node->contents.cond_clause.then_bodies;
+            for (int i = 0; i < VectorLength(then_bodies); i++)
+            {
+                AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+                generate_context(then_body, node, aux_data);
+            }
+        }
+        else if (cond_clause_type == ELSE_STATEMENT)
+        {
+            // [else then-body ...+]
+            // needs to free then_bodies
+            Vector *then_bodies = node->contents.cond_clause.then_bodies;
+            for (int i = 0; i < VectorLength(then_bodies); i++)
+            {
+                AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
+                generate_context(then_body, node, aux_data);
+            }
+        }
+        else if (cond_clause_type == TEST_EXPR_WITH_PROC)
+        {
+        }
+        else if (cond_clause_type == SINGLE_TEST_EXPR)
+        {
+        }
+        else
+        {
+            // something wrong here
+            fprintf(stderr, "generate_context(): can not handle cond_clause_type: %d\n", cond_clause_type);
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (node->type == Call_Expression)
