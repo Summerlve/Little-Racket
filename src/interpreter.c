@@ -1436,6 +1436,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             if (strcmp(token->value, "cond") == 0)
             {
                 Vector *cond_clauses = VectorNew(sizeof(AST_Node *));
+                int else_statement_counter = 0;
 
                 // move to first cond clause
                 (*current_p)++;
@@ -1469,21 +1470,27 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                         while ((token->type != PUNCTUATION) ||
                                (token->type == PUNCTUATION && (token->value)[0] != RIGHT_SQUARE_BRACKET)) 
                         {
-                            
+                            AST_Node *then_body = walk(tokens, current_p);
+                            VectorAppend(then_bodies, &then_body);
+                            token = tokens_nth(tokens, *current_p);
                         }
                         
+                        else_statement_counter ++;
                         cond_clause = ast_node_new(IN_AST, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies, NULL);
                     }
                     else
                     {
                         // other, actually TEST_EXPR_WITH_THENBODY only right now
                         Vector *then_bodies = VectorNew(sizeof(AST_Node *));
-                        AST_Node *test_expr = NULL;
+                        AST_Node *test_expr = walk(tokens, current_p);
+                        token = tokens_nth(tokens, *current_p);
 
                         while ((token->type != PUNCTUATION) ||
                                (token->type == PUNCTUATION && (token->value)[0] != RIGHT_SQUARE_BRACKET)) 
                         {
-                            
+                            AST_Node *then_body = walk(tokens, current_p);
+                            VectorAppend(then_bodies, &then_body);
+                            token = tokens_nth(tokens, *current_p);
                         }
 
                         cond_clause = ast_node_new(IN_AST, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr, then_bodies, NULL);
@@ -1503,6 +1510,23 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
                 // check ')' of cond expression
                 if ((token->value)[0] != RIGHT_PAREN)
+                {
+                    fprintf(stderr, "walk(): cond: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                // check else statement situation 
+                if (else_statement_counter == 1)
+                {
+                    // check the last element of cond_clauses if it is a ELSE_STATEMENT or not
+                    AST_Node *else_statment = *(AST_Node **)VectorNth(cond_clauses, VectorLength(cond_clauses) - 1);
+                    if (else_statment->contents.cond_clause.test_expr != NULL)
+                    {
+                        fprintf(stderr, "walk(): cond: bad syntax\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                else if (else_statement_counter > 1)
                 {
                     fprintf(stderr, "walk(): cond: bad syntax\n");
                     exit(EXIT_FAILURE);
@@ -3233,6 +3257,65 @@ Result eval(AST_Node *ast_node, void *aux_data)
         if (conditional_form_type == COND)
         {
             matched = true;
+            Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
+
+            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            {
+                AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
+
+                if (ast_node->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
+                {
+                    // [test-expr then-body ...+]
+                    AST_Node *test_expr = cond_clause->contents.cond_clause.test_expr;
+                    Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
+
+                    AST_Node *test_val = eval(test_expr, aux_data);
+                    if (test_val == NULL)
+                    {
+                        fprintf(stderr, "eval(): cond: bad syntax\n");
+                        exit(EXIT_FAILURE); 
+                    }
+
+                    if (test_val->type != Boolean_Literal ||
+                        (test_val->type == Boolean_Literal && (*(Boolean_Type *)(test_val->contents.literal.value) == R_TRUE)))
+
+                    {
+                        Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
+                        for (int j = 0; j < VectorLength(then_bodies); j++)
+                        {
+                            AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
+                            result = eval(then_body, aux_data);
+                        }
+                    }
+
+                    if (ast_node_get_tag(test_val) == NOT_IN_AST)
+                    {
+                        ast_node_free(test_val);
+                    } 
+                }
+                else if (ast_node->contents.cond_clause.type == ELSE_STATEMENT)
+                {
+                    // [else then-body ...+]
+                    Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
+                    for (int j = 0; j < VectorLength(then_bodies); j++)
+                    {
+                        AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
+                        result = eval(then_body, aux_data);
+                    }
+                }
+                else if (ast_node->contents.cond_clause.type == TEST_EXPR_WITH_PROC)
+                {
+                }
+                else if (ast_node->contents.cond_clause.type == SINGLE_TEST_EXPR)
+                {
+                }
+                else
+                {
+                    // something wrong here
+                    fprintf(stderr, "eval(): can not handle Cond_Clause_Type: %d\n", ast_node->contents.cond_clause.type);
+                    exit(EXIT_FAILURE);
+                }
+            }
         }
 
         if (conditional_form_type == AND)

@@ -237,7 +237,7 @@ static void conditional_form_enter(AST_Node *node, AST_Node *parent, void *aux_d
 
     if (node->contents.conditional_form.type == COND)
     {
-        
+        printf(" (cond ");
     }
 
     if (node->contents.conditional_form.type == AND)
@@ -265,7 +265,7 @@ static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_da
 
     if (node->contents.conditional_form.type == COND)
     {
-        
+        printf(" ) ");
     }
 
     if (node->contents.conditional_form.type == AND)
@@ -281,6 +281,32 @@ static void conditional_form_exit(AST_Node *node, AST_Node *parent, void *aux_da
     if (node->contents.conditional_form.type == OR)
     {
         printf(" ) ");
+    }
+}
+
+static void cond_clause_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    if (node->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
+    {
+        printf(" [ ");
+    }
+
+    if (node->contents.cond_clause.type == ELSE_STATEMENT)
+    {
+        printf(" [else ");
+    }
+}
+
+static void cond_clause_exit(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    if (node->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
+    {
+        printf(" ] ");
+    }
+
+    if (node->contents.cond_clause.type == ELSE_STATEMENT)
+    {
+        printf(" ] ");
     }
 }
 
@@ -336,6 +362,8 @@ Visitor get_custom_visitor(void)
     handler = ast_node_handler_new(Lambda_Form, lambda_form_enter, lambda_form_exit);
     ast_node_handler_append(visitor, handler);
     handler = ast_node_handler_new(Set_Form, set_form_enter, set_form_exit);
+    ast_node_handler_append(visitor, handler);
+    handler = ast_node_handler_new(Cond_Clause, cond_clause_enter, cond_clause_exit);
     ast_node_handler_append(visitor, handler);
     
     return visitor;
