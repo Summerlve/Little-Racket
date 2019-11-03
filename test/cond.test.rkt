@@ -1,6 +1,7 @@
 #lang racket
 (cond
-    [else 5]) ; 5
+    [(= 1 1) 6 108 (+ 1 8)]
+    [else 5]) ; 9 
 (cond
     [(= 1 2) 1 2 "is-one"]
     [else 6]) ; 6

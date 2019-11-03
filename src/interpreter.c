@@ -925,11 +925,11 @@ int ast_node_free(AST_Node *ast_node)
 
     if (ast_node->type == Cond_Clause)
     {
-        matched = true;
         Cond_Clause_Type cond_clause_type = ast_node->contents.cond_clause.type;
 
         if (cond_clause_type == TEST_EXPR_WITH_THENBODY)
         {
+            matched = true;
             // [test-expr then-body ...+]
             // needs to free test_expr and then_bodies
             AST_Node *test_expr = ast_node->contents.cond_clause.test_expr;
@@ -945,6 +945,7 @@ int ast_node_free(AST_Node *ast_node)
         }
         else if (cond_clause_type == ELSE_STATEMENT)
         {
+            matched = true;
             // [else then-body ...+]
             // needs to free then_bodies
             Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
@@ -3263,11 +3264,10 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
 
-                if (ast_node->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
+                if (cond_clause->contents.cond_clause.type == TEST_EXPR_WITH_THENBODY)
                 {
                     // [test-expr then-body ...+]
                     AST_Node *test_expr = cond_clause->contents.cond_clause.test_expr;
-                    Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
 
                     AST_Node *test_val = eval(test_expr, aux_data);
                     if (test_val == NULL)
@@ -3286,6 +3286,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                             AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
                             result = eval(then_body, aux_data);
                         }
+                        break;
                     }
 
                     if (ast_node_get_tag(test_val) == NOT_IN_AST)
@@ -3293,7 +3294,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                         ast_node_free(test_val);
                     } 
                 }
-                else if (ast_node->contents.cond_clause.type == ELSE_STATEMENT)
+                else if (cond_clause->contents.cond_clause.type == ELSE_STATEMENT)
                 {
                     // [else then-body ...+]
                     Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
@@ -3302,17 +3303,18 @@ Result eval(AST_Node *ast_node, void *aux_data)
                         AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
                         result = eval(then_body, aux_data);
                     }
+                    break;
                 }
-                else if (ast_node->contents.cond_clause.type == TEST_EXPR_WITH_PROC)
+                else if (cond_clause->contents.cond_clause.type == TEST_EXPR_WITH_PROC)
                 {
                 }
-                else if (ast_node->contents.cond_clause.type == SINGLE_TEST_EXPR)
+                else if (cond_clause->contents.cond_clause.type == SINGLE_TEST_EXPR)
                 {
                 }
                 else
                 {
                     // something wrong here
-                    fprintf(stderr, "eval(): can not handle Cond_Clause_Type: %d\n", ast_node->contents.cond_clause.type);
+                    fprintf(stderr, "eval(): can not handle Cond_Clause_Type: %d\n", cond_clause->contents.cond_clause.type);
                     exit(EXIT_FAILURE);
                 }
             }

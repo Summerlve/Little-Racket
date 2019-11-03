@@ -7,10 +7,16 @@
 int main(int argc, char *argv[])
 {
     #ifdef RELEASE_MODE
-    // get the path from command arg.
+    // check rkt file argument
+    if (argc != 2)
+    {
+        perror("miss .rkt file.");
+        exit(EXIT_FAILURE);
+    }
+    // get the path from command arg
     const char *path = argv[1];
 
-    // load racket file content into memory.
+    // load racket file content into memory
     Raw_Code *raw_code = racket_file_load(path);
 
     // tokenizer 
@@ -33,10 +39,16 @@ int main(int argc, char *argv[])
     #endif
 
     #ifdef TEST_MODE 
-    // get the path from command arg.
+    // check rkt file argument
+    if (argc != 2)
+    {
+        perror("miss .rkt file.");
+        exit(EXIT_FAILURE);
+    }
+    // get the path from command arg
     const char *path = argv[1];
 
-    // load racket file content into memory.
+    // load racket file content into memory
     Raw_Code *raw_code = racket_file_load(path);
 
     // tokenizer 
@@ -59,12 +71,18 @@ int main(int argc, char *argv[])
     #endif
 
     #ifdef DEBUG_MODE
-    // get the path from command arg.
+    // check rkt file argument
+    if (argc != 2)
+    {
+        perror("miss .rkt file.");
+        exit(EXIT_FAILURE);
+    }
+    // get the path from command arg
     const char *path = argv[1];
 
-    // load racket file content into memory.
+    // load racket file content into memory
     Raw_Code *raw_code = racket_file_load(path);
-    // show the raw_code in gaint single string.
+    // show the raw_code in gaint single string
     printf("Raw code:\n");
     racket_file_map(raw_code, print_raw_code, NULL);
     printf("\n");
