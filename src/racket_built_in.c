@@ -1093,6 +1093,10 @@ static AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
 
     AST_Node *car = *(AST_Node **)VectorNth(operands, 0);
     AST_Node *cdr = *(AST_Node **)VectorNth(operands, 1);
+    car = ast_node_deep_copy(car, NULL);
+    car->tag = NOT_IN_AST;
+    cdr = ast_node_deep_copy(cdr, NULL);
+    cdr->tag = NOT_IN_AST;
     
     if (cdr->type == List_Literal)
     {

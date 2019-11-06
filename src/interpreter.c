@@ -707,7 +707,9 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     if (ast_node->type == Boolean_Literal)
     {
         matched = true;
-        ast_node->contents.literal.value = va_arg(ap, Boolean_Type *);
+        Boolean_Type *value = va_arg(ap, Boolean_Type *);
+        ast_node->contents.literal.value = malloc(sizeof(Boolean_Type));
+        memcpy(ast_node->contents.literal.value, value, sizeof(Boolean_Type));
         ast_node->contents.literal.c_native_value = NULL;
     }
 
@@ -3537,10 +3539,14 @@ Vector *calculator(AST ast, void *aux_data)
         {
             if (ast_node_get_tag(result) == IN_AST)
             {
-                result = ast_node_deep_copy(result, NULL);
-                result->tag = NOT_IN_AST;
+                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
+                result_copy->tag = NOT_IN_AST;
+                VectorAppend(results, &result_copy);
             }
-            VectorAppend(results, &result);
+            else if (ast_node_get_tag(result) == NOT_IN_AST)
+            {
+                VectorAppend(results, &result);
+            }
         }
     }
 
@@ -3550,8 +3556,7 @@ Vector *calculator(AST ast, void *aux_data)
 static int result_free(Result result)
 {
     if (result == NULL) return 1;
-    if (ast_node_get_tag(result) == NOT_IN_AST) return ast_node_free(result);
-    return 1;
+    return ast_node_free(result);
 }
 
 int results_free(Vector *results)
@@ -3560,7 +3565,7 @@ int results_free(Vector *results)
 
     for (int i = 0; i < VectorLength(results); i++)
     {
-        AST_Node *result = VectorNth(results, i);
+        AST_Node *result = *(AST_Node **)VectorNth(results, i);
         error = error | result_free(result);
     }
 
