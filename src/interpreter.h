@@ -53,7 +53,8 @@ typedef enum _z_ast_node_type {
     Number_Literal, String_Literal, Character_Literal,
     List_Literal, Pair_Literal, Boolean_Literal,
     Local_Binding_Form, Set_Form, Conditional_Form, Lambda_Form,
-    Call_Expression, Binding, Procedure, Program, Cond_Clause
+    Call_Expression, Binding, Procedure, Program, Cond_Clause,
+    NULL_Expression, EMPTY_Expression
 } AST_Node_Type;
 typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC

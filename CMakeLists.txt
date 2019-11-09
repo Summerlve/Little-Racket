@@ -237,6 +237,12 @@ given: 2"
 6[\r\n\t ]*\
 4181"
     )
+
+    add_test(null-empty-test Little-Racket ../test/null-empty.test.rkt)
+    set_tests_properties(null-empty-test PROPERTIES PASS_REGULAR_EXPRESSION 
+"'\\(\\)[\r\n\t ]*\
+'\\(\\)"
+    )
 endif()
 
 list(APPEND my_source_files 
