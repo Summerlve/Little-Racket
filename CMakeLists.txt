@@ -241,8 +241,8 @@ given: 2"
     add_test(null-empty-test Little-Racket ../test/null-empty.test.rkt)
     set_tests_properties(null-empty-test PROPERTIES PASS_REGULAR_EXPRESSION 
 "'\\(\\)[\r\n\t ]*\
-'\\(\\)"
-    )
+'\\(\\)[\r\n\t ]*\
+'\\(1 \\(\\)\\)")
 endif()
 
 list(APPEND my_source_files 

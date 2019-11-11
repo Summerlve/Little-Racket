@@ -488,6 +488,8 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 //      ast_node_new(tag, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies, NULL)
 // ast_node_new(tag, Lambda_Form, params, body_exprs)
 // ast_node_new(tag, Set_Form, id/NULL, expr/NULL)
+// ast_node_new(tag, NULL_Expression)
+// ast_node_new(tag, EMPTY_Expression)
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -711,6 +713,18 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         ast_node->contents.literal.value = malloc(sizeof(Boolean_Type));
         memcpy(ast_node->contents.literal.value, value, sizeof(Boolean_Type));
         ast_node->contents.literal.c_native_value = NULL;
+    }
+
+    if (ast_node->type == NULL_Expression)
+    {
+        matched = true;
+        ast_node->contents.null_expression.value = NULL;
+    }
+
+    if (ast_node->type == EMPTY_Expression)
+    {
+        matched = true;
+        ast_node->contents.empty_expression.value = NULL;
     }
 
     va_end(ap);
@@ -1030,6 +1044,20 @@ int ast_node_free(AST_Node *ast_node)
         free(ast_node->contents.literal.value);
     }
 
+    if (ast_node->type == NULL_Expression)
+    {
+        matched = true;
+        if (ast_node->contents.null_expression.value != NULL)
+            ast_node_free(ast_node->contents.null_expression.value);
+    }
+
+    if (ast_node->type == EMPTY_Expression)
+    {
+        matched = true;
+        if (ast_node->contents.empty_expression.value != NULL)
+            ast_node_free(ast_node->contents.empty_expression.value);
+    }
+
     if (matched == false)
     {
         // when no matches any AST_Node_Type.
@@ -1084,6 +1112,23 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
     if (token->type == IDENTIFIER)
     {
+        // handle null
+        if (strcmp(token->value, "null") == 0)
+        {
+            AST_Node *null_expr = ast_node_new(IN_AST, NULL_Expression);
+            (*current_p)++; // skip null itself
+            return null_expr;
+        }
+
+        // handle empty
+        if (strcmp(token->value, "empty") == 0)
+        {
+            AST_Node *empty_expr = ast_node_new(IN_AST, EMPTY_Expression);
+            (*current_p)++; // skip empty itself
+            return empty_expr;
+        }
+
+        // handle normally identifier 
         AST_Node *ast_node = ast_node_new(IN_AST, Binding, token->value, NULL);
         (*current_p)++;
         return ast_node;
@@ -1764,6 +1809,24 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         copy = ast_node_new(ast_node->tag, Boolean_Literal, ast_node->contents.literal.value);
     }
 
+    if (ast_node->type == NULL_Expression)
+    {
+        matched = true;
+        copy = ast_node_new(ast_node->tag, NULL_Expression);
+        AST_Node *value = ast_node->contents.null_expression.value;
+        if (value != NULL)
+            copy->contents.null_expression.value = ast_node_deep_copy(value, aux_data);
+    }
+
+    if (ast_node->type == EMPTY_Expression)
+    {
+        matched = true;
+        copy = ast_node_new(ast_node->tag, EMPTY_Expression);
+        AST_Node *value = ast_node->contents.empty_expression.value;
+        if (value != NULL)
+            copy->contents.empty_expression.value = ast_node_deep_copy(value, aux_data);
+    }
+    
     if (ast_node->type == Local_Binding_Form)
     {
         Local_Binding_Form_Type local_binding_form_type = ast_node->contents.local_binding_form.type;
@@ -2774,6 +2837,20 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         return;
     }
 
+    if (node->type == NULL_Expression)
+    {
+        AST_Node *value = node->contents.null_expression.value;
+        if (value != NULL)
+            generate_context(value, node, aux_data);
+    }
+
+    if (node->type == EMPTY_Expression)
+    {
+        AST_Node *value = node->contents.empty_expression.value;
+        if (value != NULL)
+            generate_context(value, node, aux_data);
+    }
+
     if (node->type == List_Literal)
     {
         // symbol doesnt impled right now, so '((+ 1 2)) will not be supported.
@@ -3435,6 +3512,16 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         result = ast_node;
+    }
+
+    if (ast_node->type == NULL_Expression ||
+        ast_node->type == EMPTY_Expression)
+    {
+        // return '()
+        // the element's size in list means nothing, so use 1 byte(sizeof(char))
+        Vector *empty_vector = VectorNew(sizeof(char));
+        AST_Node *empty_list = ast_node_new(IN_AST, List_Literal, empty_vector);
+        return empty_list;
     }
 
     // List_Literal works out itself.

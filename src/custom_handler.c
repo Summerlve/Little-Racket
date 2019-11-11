@@ -330,6 +330,16 @@ static void set_form_exit(AST_Node *node, AST_Node *parent, void *aux_data)
     printf(" ) ");
 }
 
+static void null_expression_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    printf("null\n");
+}
+
+static void empty_expression_enter(AST_Node *node, AST_Node *parent, void *aux_data)
+{
+    printf("empty\n");
+}
+
 Visitor get_custom_visitor(void)
 {
     Visitor visitor = visitor_new();
@@ -337,34 +347,54 @@ Visitor get_custom_visitor(void)
 
     handler = ast_node_handler_new(Program, program_enter, program_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Call_Expression, call_expression_enter, call_expression_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Procedure, procedure_enter, NULL);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(List_Literal, list_enter, list_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Pair_Literal, pair_enter, pair_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Number_Literal, number_enter, NULL);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Character_Literal, character_enter, NULL);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(String_Literal, string_enter, NULL);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Binding, binding_enter, binding_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Local_Binding_Form, local_binding_form_enter, local_binding_form_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Boolean_Literal, boolean_enter, NULL);
     ast_node_handler_append(visitor, handler);
+    
     handler = ast_node_handler_new(Conditional_Form, conditional_form_enter, conditional_form_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Lambda_Form, lambda_form_enter, lambda_form_exit);
     ast_node_handler_append(visitor, handler);
+
     handler = ast_node_handler_new(Set_Form, set_form_enter, set_form_exit);
     ast_node_handler_append(visitor, handler);
+    
     handler = ast_node_handler_new(Cond_Clause, cond_clause_enter, cond_clause_exit);
     ast_node_handler_append(visitor, handler);
     
+    handler = ast_node_handler_new(NULL_Expression, null_expression_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+
+    handler = ast_node_handler_new(EMPTY_Expression, empty_expression_enter, NULL);
+    ast_node_handler_append(visitor, handler);
+
     return visitor;
 }

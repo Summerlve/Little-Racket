@@ -46,7 +46,8 @@ typedef enum _z_ast_node_tag{
     IN_AST, // this kind of ast_node will be freed in ast_free() in main.c.
     NOT_IN_AST, // fresh data, not in ast.
     BUILT_IN_PROCEDURE, // built-in procedure.
-    BUILT_IN_BINDING // built-in binding.
+    BUILT_IN_BINDING, // built-in binding.
+    IMMUTABLE // read only value, can not be changed.
 } AST_Node_Tag;
 typedef void (*Function)(void); // Function points to any type of function.
 typedef enum _z_ast_node_type {
@@ -163,6 +164,12 @@ typedef struct _z_ast_node {
             Vector *body; // program's body is AST_Node *[]
             Vector *built_in_bindings; // like context in AST_Node, store the built-in bindings.
         } program;
+        struct {
+            AST_Node *value; // '()
+        } null_expression;
+        struct {
+            AST_Node *value; // '()
+        } empty_expression;
     } contents;
 } AST_Node;
 typedef AST_Node *AST; // AST_Node whos type is Program, the AST is a pointer to this kind of AST_Node, AST is an abstract of 'abstract syntax tree'.
