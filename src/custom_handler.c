@@ -35,7 +35,7 @@ static void procedure_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
     const char *name = node->contents.procedure.name;
     if (name != NULL) printf("#<procedure:%s>\n", name);
-    else printf("#<procedure:anonymous>\n");
+    else printf("#<procedure>\n");
 }
 
 static void list_enter(AST_Node *node, AST_Node *parent, void *aux_data)

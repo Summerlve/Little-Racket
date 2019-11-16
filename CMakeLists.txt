@@ -41,7 +41,8 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     add_test(define-lambda-test Little-Racket ../test/define-lambda.test.rkt)
     set_tests_properties(define-lambda-test PROPERTIES PASS_REGULAR_EXPRESSION
 "#<procedure:fn>[\r\n\t ]*\
-#<procedure>"
+#<procedure>[\r\n\t ]*\
+1"
     )
 
     add_test(define-test Little-Racket ../test/define.test.rkt)

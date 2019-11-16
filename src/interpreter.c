@@ -1182,13 +1182,6 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             (*current_p)++;
             token = tokens_nth(tokens, *current_p); 
 
-            // check IDENTIFIER
-            if (token->type != IDENTIFIER)
-            {
-                fprintf(stderr, "walk(): function call or form syntax error\n");
-                exit(EXIT_FAILURE);
-            }
-
             // handle Local_Binding_Form
             // handle 'let' 'let*' 'letrec' contains '[' and ']'
             if ((strcmp(token->value, "let") == 0) ||
@@ -1660,12 +1653,12 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
             if (name_or_lambda.is_name == true) 
             {
-                AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, name_or_lambda.value.name_token->value, NULL, params);
+                ast_node = ast_node_new(IN_AST, Call_Expression, name_or_lambda.value.name_token->value, NULL, params);
             }
 
             if (name_or_lambda.is_name == false) 
             {
-                AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, NULL, name_or_lambda.value.lambda, params);
+                ast_node = ast_node_new(IN_AST, Call_Expression, NULL, name_or_lambda.value.lambda, params);
             }
             
             (*current_p)++; // skip ')'

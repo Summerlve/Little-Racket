@@ -34,12 +34,14 @@
 
 ## DLC: ##
 
-### LRT (Little-Racket-For-The-Truth)  - 2019.10 ###
+### LRT (Little-Racket-For-The-Truth) - 2019.10 ###
 
 1. (cond) 
 2. ((lambda (...) ...) ...), procedure call
 3. (>=), (<=)
 4. racket null and empty
+
+### LRL (Little-Racket-Integrate-With-Third-Part-Lib) - 2020.1 ###
 
 ---
 
