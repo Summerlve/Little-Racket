@@ -1610,12 +1610,42 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             // handle ... 
             
             // handle normally function call
-            Token *name_token = token;
+            struct {
+                bool is_name;
+                union {
+                    Token *name_token;
+                    AST_Node *lambda;
+                } value;
+            } name_or_lambda = {.is_name = false, .value = {NULL}};
+
+            if (token->type == IDENTIFIER)
+            {
+                name_or_lambda.is_name = true;
+                name_or_lambda.value.name_token = token;
+            }
+
+            if (token->type != IDENTIFIER)
+            {
+                // ((lambda (x) x) x) 
+                name_or_lambda.is_name = false;
+                name_or_lambda.value.lambda = walk(tokens, current_p); 
+
+                // check lambda form
+                if (name_or_lambda.value.lambda->type != Lambda_Form)
+                {
+                    fprintf(stderr, "walk(): call expression: bad syntax\n");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
             Vector *params = VectorNew(sizeof(AST_Node *));
 
-            // point to the first argument
-            (*current_p)++; 
-            token = tokens_nth(tokens, *current_p);
+            // point to the first argument when name only
+            if (name_or_lambda.is_name == true)
+            {
+                (*current_p)++; 
+                token = tokens_nth(tokens, *current_p);
+            }
 
             while ((token->type != PUNCTUATION) ||
                    (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
@@ -1625,8 +1655,19 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 if (param != NULL) VectorAppend(params, &param);
                 token = tokens_nth(tokens, *current_p);
             }
+
+            AST_Node *ast_node = NULL;
+
+            if (name_or_lambda.is_name == true) 
+            {
+                AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, name_or_lambda.value.name_token->value, NULL, params);
+            }
+
+            if (name_or_lambda.is_name == false) 
+            {
+                AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, NULL, name_or_lambda.value.lambda, params);
+            }
             
-            AST_Node *ast_node = ast_node_new(IN_AST, Call_Expression, name_token->value, NULL, params);
             (*current_p)++; // skip ')'
             return ast_node;
         }
@@ -2981,10 +3022,12 @@ Result eval(AST_Node *ast_node, void *aux_data)
         AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
         AST_Node *procedure = NULL;
 
-        // anonymous procedure call
+        // anonymous procedure call or ((lambda (x) x) 1)
         if (name == NULL && anonymous_procedure != NULL)
         {
             procedure = anonymous_procedure;
+            if (procedure->type == Lambda_Form)
+                procedure = eval(procedure, aux_data);
         }
         // named procedure call
         else if (name != NULL && anonymous_procedure == NULL)
