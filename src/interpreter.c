@@ -2191,7 +2191,7 @@ int ast_node_handler_free(AST_Node_Handler *handler)
     return 0;
 }
 
-static void visitor_free_helper(void *value_addr, int index, Vector *vector, void *aux_data)
+static void visitor_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data)
 {
     AST_Node_Handler *handler = *(AST_Node_Handler **)value_addr;
     ast_node_handler_free(handler);
@@ -2993,7 +2993,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
     found: return binding_contains_value;
 }
 
-static void *context_copy_helper(void *value_addr, int index, Vector *original_vector, Vector *new_vector, void *aux_data)
+static void *context_copy_helper(void *value_addr, size_t index, Vector *original_vector, Vector *new_vector, void *aux_data)
 {
     AST_Node *binding = *(AST_Node **)value_addr;
     return value_addr;
