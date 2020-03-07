@@ -1,6 +1,6 @@
-#include "load_racket_file.h"
-#include "interpreter.h"
-#include "custom_handler.h"
+#include "../include/load_racket_file.h"
+#include "../include/interpreter.h"
+#include "../include/custom_handler.h"
 #include <stdio.h>
 #include <stdlib.h>
 

@@ -1,5 +1,5 @@
-#include "racket_built_in.h"
-#include "interpreter.h"
+#include "../include/racket_built_in.h"
+#include "../include/interpreter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

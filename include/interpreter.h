@@ -3,13 +3,14 @@
 
 #include "load_racket_file.h"
 #include "vector.h"
+#include <stddef.h>
 
 // tokenizer parts
 // number type
 typedef struct _z_number {
     char *contents; // use a dynamic null-terminated string to store a number.
-    int logical_length; // logical length.
-    int allocated_length; // allocated length.
+    size_t logical_length; // logical length.
+    size_t allocated_length; // allocated length.
 } Number_Type;
 typedef enum _z_token_type {
     LANGUAGE, /* whcih language are used, supports only: #lang racket */
@@ -33,8 +34,8 @@ typedef struct _z_token {
 } Token;
 typedef struct _z_tokens {
     Token **contents; // store all tokens here, Token [].
-    int logical_length; // logical length.
-    int allocated_length; // allocated length.
+    size_t logical_length; // logical length.
+    size_t allocated_length; // allocated length.
 } Tokens;
 typedef void (*TokensMapFunction)(const Token *token, void *aux_data); // tokens map function.
 Tokens *tokenizer(Raw_Code *raw_code); // return tokens here, remember free the memory.

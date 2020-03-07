@@ -1,5 +1,5 @@
-#include "custom_handler.h"
-#include "interpreter.h"
+#include "../include/custom_handler.h"
+#include "../include/interpreter.h"
 
 void print_raw_code(const char *line, void *aux_data)
 {

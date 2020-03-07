@@ -1,8 +1,8 @@
-#include "interpreter.h"
-#include "load_racket_file.h"
-#include "vector.h"
-#include "racket_built_in.h"
-#include "custom_handler.h"
+#include "../include/interpreter.h"
+#include "../include/load_racket_file.h"
+#include "../include/vector.h"
+#include "../include/racket_built_in.h"
+#include "../include/custom_handler.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <regex.h>
 #include <stdarg.h>
+#include <stddef.h>
 
 // tokenizer parts macro definitions.
 /* define ascii character here */
@@ -121,12 +122,12 @@ static Tokens *tokens_new()
     return tokens;
 }
 
-static int tokens_length(Tokens *tokens)
+static size_t tokens_length(Tokens *tokens)
 {
     return tokens->logical_length;
 }
 
-static Token *tokens_nth(Tokens *tokens, int index)
+static Token *tokens_nth(Tokens *tokens, size_t index)
 {
     return tokens->contents[index];
 }
@@ -134,8 +135,8 @@ static Token *tokens_nth(Tokens *tokens, int index)
 int tokens_free(Tokens *tokens)
 {
     if (tokens == NULL) return 1;
-    int length = tokens->logical_length;
-    for (int i = 0; i < length; i++)
+    size_t length = tokens->logical_length;
+    for (size_t i = 0; i < length; i++)
     {
         Token *token = tokens_nth(tokens, i);
         token_free(token);
@@ -169,10 +170,10 @@ static int add_token(Tokens *tokens, Token *token)
 static void tokenizer_helper(const char *line, void *aux_data)
 {
     Tokens *tokens = (Tokens *)aux_data;
-    int line_length = strlen(line);    
-    int cursor = 0;
+    size_t line_length = strlen(line);    
+    size_t cursor = 0;
 
-    for(int i = 0; i < line_length; i++)
+    for(size_t i = 0; i < line_length; i++)
     {
         // handle whitespace.
         if (line[i] == WHITE_SPACE)
@@ -459,9 +460,9 @@ Tokens *tokenizer(Raw_Code *raw_code)
 
 void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 {
-    int length = tokens->logical_length;
+    size_t length = tokens->logical_length;
 
-    for (int i = 0; i < length; i++)
+    for (size_t i = 0; i < length; i++)
     {
         const Token *token = tokens_nth(tokens, i);
         map(token, aux_data);
@@ -753,14 +754,14 @@ int ast_node_free(AST_Node *ast_node)
     {
         matched = true;
         Vector *body = ast_node->contents.program.body;
-        for (int i = 0; i < VectorLength(body); i++)
+        for (size_t i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
             ast_node_free(sub_node);
         }
         VectorFree(body, NULL, NULL);
         Vector *built_in_bindings = ast_node->contents.program.built_in_bindings;
-        for (int i = 0; i < VectorLength(built_in_bindings); i++)
+        for (size_t i = 0; i < VectorLength(built_in_bindings); i++)
         {
             AST_Node *binding = *(AST_Node **)VectorNth(built_in_bindings, i);
             ast_node_free(binding);
@@ -772,7 +773,7 @@ int ast_node_free(AST_Node *ast_node)
     {
         matched = true;
         Vector *params = ast_node->contents.call_expression.params;
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *sub_node = *(AST_Node **)VectorNth(params, i);
             ast_node_free(sub_node);
@@ -789,7 +790,7 @@ int ast_node_free(AST_Node *ast_node)
         Vector *params = ast_node->contents.procedure.params;
         if (params != NULL)
         {
-            for (int i = 0; i < VectorLength(params); i++)
+            for (size_t i = 0; i < VectorLength(params); i++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 ast_node_free(param);
@@ -799,7 +800,7 @@ int ast_node_free(AST_Node *ast_node)
         Vector *body_exprs = ast_node->contents.procedure.body_exprs;
         if (body_exprs != NULL)
         {
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 ast_node_free(body_expr);
@@ -815,14 +816,14 @@ int ast_node_free(AST_Node *ast_node)
         Vector *params = ast_node->contents.lambda_form.params;
         Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
 
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *param = *(AST_Node **)VectorNth(params, i);
             ast_node_free(param);
         }
         VectorFree(params, NULL, NULL);
 
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
             ast_node_free(body_expr);
@@ -841,12 +842,12 @@ int ast_node_free(AST_Node *ast_node)
             matched = true;
             Vector *bindings = ast_node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
-            for (int i = 0; i < VectorLength(bindings); i++)
+            for (size_t i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 ast_node_free(binding);
             }
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 ast_node_free(body_expr);
@@ -891,7 +892,7 @@ int ast_node_free(AST_Node *ast_node)
             matched = true;
             Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
 
-            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            for (size_t i = 0; i < VectorLength(cond_clauses); i++)
             {
                 // free each cond_clause
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
@@ -906,7 +907,7 @@ int ast_node_free(AST_Node *ast_node)
             matched = true;
             Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
 
-            for (int i = 0; i < VectorLength(exprs); i++)
+            for (size_t i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 ast_node_free(expr);
@@ -927,7 +928,7 @@ int ast_node_free(AST_Node *ast_node)
             matched = true;
             Vector *exprs = ast_node->contents.conditional_form.contents.or_expression.exprs;
 
-            for (int i = 0; i < VectorLength(exprs); i++)
+            for (size_t i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 ast_node_free(expr);
@@ -952,7 +953,7 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(test_expr);
 
             Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 ast_node_free(then_body);
@@ -965,7 +966,7 @@ int ast_node_free(AST_Node *ast_node)
             // [else then-body ...+]
             // needs to free then_bodies
             Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 ast_node_free(then_body);
@@ -999,7 +1000,7 @@ int ast_node_free(AST_Node *ast_node)
     {
         matched = true;
         Vector *elements = (Vector *)(ast_node->contents.literal.value);
-        for (int i = 0; i < VectorLength(elements); i++)
+        for (size_t i = 0; i < VectorLength(elements); i++)
         {
             AST_Node *element = *(AST_Node **)VectorNth(elements, i);
             ast_node_free(element);
@@ -1011,7 +1012,7 @@ int ast_node_free(AST_Node *ast_node)
     {
         matched = true;
         Vector *elements = (Vector *)(ast_node->contents.literal.value);
-        for (int i = 0; i < VectorLength(elements); i++)
+        for (size_t i = 0; i < VectorLength(elements); i++)
         {
             AST_Node *element = *(AST_Node **)VectorNth(elements, i);
             ast_node_free(element);
@@ -1811,7 +1812,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         Vector *value = ast_node->contents.literal.value;
         Vector *value_copy = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 0; i < VectorLength(value); i++)
+        for (size_t i = 0; i < VectorLength(value); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(value, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -1827,7 +1828,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         Vector *value = ast_node->contents.literal.value;
         Vector *value_copy = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 0; i < VectorLength(value); i++)
+        for (size_t i = 0; i < VectorLength(value); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(value, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -1887,14 +1888,14 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             Vector *bindings_copy = VectorNew(sizeof(AST_Node *));
             Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
 
-            for (int i = 0; i < VectorLength(bindings); i++)
+            for (size_t i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(bindings, i);
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
                 VectorAppend(bindings_copy, &node_copy);
             }
 
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -1946,7 +1947,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
             Vector *cond_clauses_copy = VectorNew(sizeof(AST_Node *));
 
-            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            for (size_t i = 0; i < VectorLength(cond_clauses); i++)
             {
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
                 AST_Node *cond_clause_copy = ast_node_deep_copy(cond_clause, aux_data);
@@ -1962,7 +1963,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             Vector *exprs = ast_node->contents.conditional_form.contents.and_expression.exprs;
             Vector *exprs_copy = VectorNew(sizeof(AST_Node *));
 
-            for (int i = 0; i < VectorLength(exprs); i++)
+            for (size_t i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(exprs, i);
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -1986,7 +1987,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             Vector *exprs = ast_node->contents.conditional_form.contents.or_expression.exprs;
             Vector *exprs_copy = VectorNew(sizeof(AST_Node *));
 
-            for (int i = 0; i < VectorLength(exprs); i++)
+            for (size_t i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(exprs, i);
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -2010,7 +2011,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
             Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
             
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
@@ -2025,7 +2026,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
             Vector *then_bodies = ast_node->contents.cond_clause.then_bodies;
             Vector *then_bodies_copy = VectorNew(sizeof(AST_Node *));
             
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 AST_Node *then_body_copy = ast_node_deep_copy(then_body, aux_data);
@@ -2057,14 +2058,14 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
         Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(params, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
             VectorAppend(params_copy, &node_copy);
         }
 
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -2083,7 +2084,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
 
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(params, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -2116,14 +2117,14 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
         Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
         
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(params, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
             VectorAppend(params_copy, &node_copy);
         }
 
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -2142,14 +2143,14 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         Vector *body_copy = VectorNew(sizeof(AST_Node *));
         Vector *built_in_bindings_copy = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 0; i < VectorLength(body); i++)
+        for (size_t i = 0; i < VectorLength(body); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(body, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
             VectorAppend(body_copy, &node_copy);
         }
 
-        for (int i = 0; i < VectorLength(built_in_bindings); i++)
+        for (size_t i = 0; i < VectorLength(built_in_bindings); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
             VectorAppend(built_in_bindings_copy, &node);
@@ -2212,7 +2213,7 @@ int ast_node_handler_append(Visitor visitor, AST_Node_Handler *handler)
 
 AST_Node_Handler *find_ast_node_handler(Visitor visitor, AST_Node_Type type)
 {
-    for (int i = 0; i < VectorLength(visitor); i++)
+    for (size_t i = 0; i < VectorLength(visitor); i++)
     {
         AST_Node_Handler *handler = *(AST_Node_Handler **)VectorNth(visitor, i);
         if (handler->type == type) return handler;
@@ -2244,7 +2245,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
     if (node->type == Program)  
     {
         Vector *body = node->contents.program.body;
-        for (int i = 0; i < VectorLength(body); i++)
+        for (size_t i = 0; i < VectorLength(body); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(body, i);
             traverser_helper(ast_node, node, visitor, aux_data);
@@ -2254,7 +2255,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
     if (node->type == Call_Expression)
     {
         Vector *params = node->contents.call_expression.params;
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(params, i);
             traverser_helper(ast_node, node, visitor, aux_data);
@@ -2264,13 +2265,13 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
     if (node->type == Lambda_Form)
     {
         Vector *params = node->contents.lambda_form.params;
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(params, i);
             traverser_helper(ast_node, node, visitor, aux_data);
         }
         Vector *body_exprs = node->contents.lambda_form.body_exprs;
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(body_exprs, i);
             traverser_helper(ast_node, node, visitor, aux_data);
@@ -2287,12 +2288,12 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         {
             Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
-            for (int i = 0; i < VectorLength(bindings); i++)            
+            for (size_t i = 0; i < VectorLength(bindings); i++)            
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 traverser_helper(binding, node, visitor, aux_data);
             }
-            for (int i = 0; i < VectorLength(body_exprs); i++)            
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)            
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 traverser_helper(body_expr, node, visitor, aux_data);
@@ -2331,7 +2332,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         if (conditional_form_type == AND)
         {
             Vector *exprs = node->contents.conditional_form.contents.and_expression.exprs;
-            for (int i = 0; i < VectorLength(exprs); i++)
+            for (size_t i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 traverser_helper(expr, node, visitor, aux_data);
@@ -2347,7 +2348,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         if (conditional_form_type == OR)
         {
             Vector *exprs = node->contents.conditional_form.contents.or_expression.exprs;
-            for (int i = 0; i < VectorLength(exprs); i++)
+            for (size_t i = 0; i < VectorLength(exprs); i++)
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 traverser_helper(expr, node, visitor, aux_data);
@@ -2357,7 +2358,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
         if (conditional_form_type == COND)
         {
             Vector *cond_clauses = node->contents.conditional_form.contents.cond_expression.cond_clauses;
-            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            for (size_t i = 0; i < VectorLength(cond_clauses); i++)
             {
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
                 traverser_helper(cond_clause, node, visitor, aux_data);
@@ -2375,7 +2376,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
             
             traverser_helper(test_expr, node, visitor, aux_data);
 
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 traverser_helper(then_body, node, visitor, aux_data);
@@ -2386,7 +2387,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
             // [else then-body ...+]
             Vector *then_bodies = node->contents.cond_clause.then_bodies;
 
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 traverser_helper(then_body, node, visitor, aux_data);
@@ -2409,7 +2410,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
     if (node->type == List_Literal)
     {
         Vector *value = (Vector *)(node->contents.literal.value);
-        for (int i = 0; i < VectorLength(value); i++)
+        for (size_t i = 0; i < VectorLength(value); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
             traverser_helper(ast_node, node, visitor, aux_data);
@@ -2419,7 +2420,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
     if (node->type == Pair_Literal)
     {
         Vector *value = (Vector *)(node->contents.literal.value);
-        for (int i = 0; i < VectorLength(value); i++)
+        for (size_t i = 0; i < VectorLength(value); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
             traverser_helper(ast_node, node, visitor, aux_data);
@@ -2488,7 +2489,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
         // only one Program Node in AST, so the following code will run only once.
         Vector *built_in_bindings = generate_built_in_bindings(); // add built-in binding to Program.
-        for (int i = 0; i < VectorLength(built_in_bindings); i++)
+        for (size_t i = 0; i < VectorLength(built_in_bindings); i++)
         {
             AST_Node *binding = *(AST_Node **)VectorNth(built_in_bindings, i);
             generate_context(binding, node, aux_data); // generate context for built-in bindings.
@@ -2499,7 +2500,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 
         // generate context for body.
         Vector *body = node->contents.program.body;
-        for (int i = 0; i < VectorLength(body); i++)
+        for (size_t i = 0; i < VectorLength(body); i++)
         {
             AST_Node *sub_node = *(AST_Node **)(VectorNth(body, i));
             generate_context(sub_node, node, aux_data);
@@ -2529,28 +2530,28 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
 
-            for (int i = 0; i < VectorLength(bindings); i++)
+            for (size_t i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 generate_context(binding, node, aux_data);
             }
 
             // append bindings to every expr in body_exprs, even a Number_Literal ast node.
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
                 if (body_expr->context == NULL)
                 {
                     body_expr->context = VectorNew(sizeof(AST_Node *));
                 }
-                for(int j = 0; j < VectorLength(bindings); j++)
+                for(size_t j = 0; j < VectorLength(bindings); j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
                     VectorAppend(body_expr->context, &binding);
                 }
             }
 
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 generate_context(body_expr, node, aux_data);
@@ -2562,7 +2563,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             Vector *bindings = node->contents.local_binding_form.contents.lets.bindings;
             Vector *body_exprs = node->contents.local_binding_form.contents.lets.body_exprs;
             
-            for (int i = 0; i < VectorLength(bindings) - 1; i++)
+            for (size_t i = 0; i < VectorLength(bindings) - 1; i++)
             {
                 AST_Node *nxt_binding = *(AST_Node **)VectorNth(bindings, i + 1);
                 AST_Node *value = nxt_binding->contents.binding.value;
@@ -2570,35 +2571,35 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
                 {
                     value->context = VectorNew(sizeof(AST_Node *));
                 }
-                for (int j = 0; j < i + 1; j++)
+                for (size_t j = 0; j < i + 1; j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
                     VectorAppend(value->context, &binding);
                 }
             }
 
-            for (int i = 0; i < VectorLength(bindings); i++)
+            for (size_t i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 generate_context(binding, node, aux_data);
             }
  
             // append bindings to every expr in body_exprs, even a Number_Literal ast node.
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
                 if (body_expr->context == NULL)
                 {
                     body_expr->context = VectorNew(sizeof(AST_Node *));
                 }
-                for(int j = 0; j < VectorLength(bindings); j++)
+                for(size_t j = 0; j < VectorLength(bindings); j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
                     VectorAppend(body_expr->context, &binding);
                 }
             }
 
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 generate_context(body_expr, node, aux_data);
@@ -2623,7 +2624,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
                 VectorAppend(value->context, &single_binding);
             }
 
-            for (int i = 0; i < VectorLength(bindings) - 1; i++)
+            for (size_t i = 0; i < VectorLength(bindings) - 1; i++)
             {
                 AST_Node *nxt_binding = *(AST_Node **)VectorNth(bindings, i + 1);
                 AST_Node *value = nxt_binding->contents.binding.value;
@@ -2633,35 +2634,35 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
                     value->context = VectorNew(sizeof(AST_Node *));
                 }
                 
-                for (int j = 0; j <= i + 1; j++)
+                for (size_t j = 0; j <= i + 1; j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
                     VectorAppend(value->context, &binding);
                 }
             }
 
-            for (int i = 0; i < VectorLength(bindings); i++)
+            for (size_t i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 generate_context(binding, node, aux_data);
             } 
 
             // append bindings to every expr in body_exprs, even a Number_Literal ast node.
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
                 if (body_expr->context == NULL)
                 {
                     body_expr->context = VectorNew(sizeof(AST_Node *));
                 }
-                for(int j = 0; j < VectorLength(bindings); j++)
+                for(size_t j = 0; j < VectorLength(bindings); j++)
                 {
                     AST_Node *binding = *(AST_Node **)VectorNth(bindings, j);
                     VectorAppend(body_expr->context, &binding);
                 }
             }
 
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 generate_context(body_expr, node, aux_data);
@@ -2692,7 +2693,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         if (node->contents.conditional_form.type == AND)
         {
             Vector *exprs = node->contents.conditional_form.contents.and_expression.exprs;
-            for (int i = 0; i < VectorLength(exprs); i++) 
+            for (size_t i = 0; i < VectorLength(exprs); i++) 
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 generate_context(expr, node, aux_data);
@@ -2708,7 +2709,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         if (node->contents.conditional_form.type == OR)
         {
             Vector *exprs = node->contents.conditional_form.contents.or_expression.exprs;
-            for (int i = 0; i < VectorLength(exprs); i++) 
+            for (size_t i = 0; i < VectorLength(exprs); i++) 
             {
                 AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                 generate_context(expr, node, aux_data);
@@ -2718,7 +2719,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         if (node->contents.conditional_form.type == COND)
         {
             Vector *cond_clauses = node->contents.conditional_form.contents.cond_expression.cond_clauses;
-            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            for (size_t i = 0; i < VectorLength(cond_clauses); i++)
             {
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
                 generate_context(cond_clause, node, aux_data);
@@ -2738,7 +2739,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             generate_context(test_expr, node, aux_data);
 
             Vector *then_bodies = node->contents.cond_clause.then_bodies;
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 generate_context(then_body, node, aux_data);
@@ -2749,7 +2750,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             // [else then-body ...+]
             // needs to free then_bodies
             Vector *then_bodies = node->contents.cond_clause.then_bodies;
-            for (int i = 0; i < VectorLength(then_bodies); i++)
+            for (size_t i = 0; i < VectorLength(then_bodies); i++)
             {
                 AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, i);
                 generate_context(then_body, node, aux_data);
@@ -2772,7 +2773,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     if (node->type == Call_Expression)
     {
         Vector *params = node->contents.call_expression.params;
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *param = *(AST_Node **)VectorNth(params, i);
             generate_context(param, node, aux_data);
@@ -2792,28 +2793,28 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         Vector *params = node->contents.lambda_form.params;
         Vector *body_exprs = node->contents.lambda_form.body_exprs;
 
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *param = *(AST_Node **)VectorNth(params, i);
             generate_context(param, node, aux_data);
         }
 
         // append param to every expr in body_exprs, even a Number_Literal ast node.
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
             if (body_expr->context == NULL)
             {
                 body_expr->context = VectorNew(sizeof(AST_Node *));
             }
-            for(int j = 0; j < VectorLength(params); j++)
+            for(size_t j = 0; j < VectorLength(params); j++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, j);
                 VectorAppend(body_expr->context, &param);
             }
         }
 
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
             generate_context(body_expr, node, aux_data);
@@ -2834,28 +2835,28 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             Vector *params = node->contents.procedure.params;
             Vector *body_exprs = node->contents.procedure.body_exprs;
 
-            for (int i = 0; i < VectorLength(params); i++)
+            for (size_t i = 0; i < VectorLength(params); i++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 generate_context(param, node, aux_data);
             }
 
             // append param to every expr in body_exprs, even a Number_Literal ast node.
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i); 
                 if (body_expr->context == NULL)
                 {
                     body_expr->context = VectorNew(sizeof(AST_Node *));
                 }
-                for(int j = 0; j < VectorLength(params); j++)
+                for(size_t j = 0; j < VectorLength(params); j++)
                 {
                     AST_Node *param = *(AST_Node **)VectorNth(params, j);
                     VectorAppend(body_expr->context, &param);
                 }
             }
 
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 generate_context(body_expr, node, aux_data);
@@ -2891,7 +2892,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
         // only literal will appear in list literal. 
         // nothing will happend for follow code.
         Vector *elems = (Vector *)node->contents.literal.value;
-        for (int i = 0; i < VectorLength(elems); i++)
+        for (size_t i = 0; i < VectorLength(elems); i++)
         {
             AST_Node *elem = *(AST_Node **)VectorNth(elems, i);
             generate_context(elem, node, aux_data);
@@ -2902,7 +2903,7 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     {
         // same situation with List_Literal.
         Vector *elems = (Vector *)node->contents.literal.value;
-        for (int i = 0; i < VectorLength(elems); i++)
+        for (size_t i = 0; i < VectorLength(elems); i++)
         {
             AST_Node *elem = *(AST_Node **)VectorNth(elems, i);
             generate_context(elem, node, aux_data);
@@ -2934,9 +2935,9 @@ static AST_Node *search_binding_value(AST_Node *binding)
 
         if (contextable->type == Program) built_in_bindings = contextable->contents.program.built_in_bindings;
         
-        for (int i = VectorLength(context) - 1; i >= 0; i--)
+        for (size_t i = VectorLength(context); i > 0; i--)
         {
-            AST_Node *node = *(AST_Node **)VectorNth(context, i);
+            AST_Node *node = *(AST_Node **)VectorNth(context, i - 1);
             #ifdef DEBUG_MODE
             printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
             #endif
@@ -2958,9 +2959,9 @@ static AST_Node *search_binding_value(AST_Node *binding)
 
         if (built_in_bindings != NULL)
         {
-            for (int i = VectorLength(built_in_bindings) - 1; i >= 0; i--)
+            for (size_t i = VectorLength(built_in_bindings); i > 0; i--)
             {
-                AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i);
+                AST_Node *node = *(AST_Node **)VectorNth(built_in_bindings, i - 1);
                 #ifdef DEBUG_MODE
                 printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
                 #endif
@@ -3056,7 +3057,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             Vector *operands = VectorNew(sizeof(AST_Node *));
 
             // eval out operands.
-            for (int i = 0; i < VectorLength(params); i++)
+            for (size_t i = 0; i < VectorLength(params); i++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 AST_Node *operand = eval(param, aux_data);
@@ -3076,7 +3077,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             Vector *operands = VectorNew(sizeof(AST_Node *)); 
 
             // eval out operands.
-            for (int i = 0; i < VectorLength(params); i++)
+            for (size_t i = 0; i < VectorLength(params); i++)
             {
                 AST_Node *param = *(AST_Node **)VectorNth(params, i);
                 AST_Node *operand = eval(param, aux_data);
@@ -3085,7 +3086,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
             // check arity.
             int required_params_count = procedure->contents.procedure.required_params_count;
-            int operands_count = VectorLength(operands);
+            size_t operands_count = VectorLength(operands);
             if (operands_count != required_params_count)
             {
                 if (procedure->contents.procedure.name == NULL)
@@ -3093,7 +3094,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                     fprintf(stderr, "anomyous procedure: arity mismatch;\n"
                                     "the expected number of arguments does not match the given number\n"
                                     "expected: %d\n"
-                                    "given: %d\n", required_params_count, operands_count);
+                                    "given: %zu\n", required_params_count, operands_count);
                     exit(EXIT_FAILURE); 
                 }
                 else if (procedure->contents.procedure.name != NULL)
@@ -3101,7 +3102,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                     fprintf(stderr, "%s: arity mismatch;\n"
                                     "the expected number of arguments does not match the given number\n"
                                     "expected: %d\n"
-                                    "given: %d\n", procedure->contents.procedure.name, required_params_count, operands_count);
+                                    "given: %zu\n", procedure->contents.procedure.name, required_params_count, operands_count);
                     exit(EXIT_FAILURE); 
                 }
             }
@@ -3113,7 +3114,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             Vector *virtual_params_copy = VectorNew(sizeof(AST_Node *));
             Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
             
-            for (int i = 0; i < VectorLength(virtual_params); i++)
+            for (size_t i = 0; i < VectorLength(virtual_params); i++)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(virtual_params, i);
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -3127,7 +3128,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 VectorAppend(virtual_params_copy, &node_copy);
             }
 
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
                 AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -3135,7 +3136,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 if (node->context != NULL)
                 {
                     node_copy->context = VectorNew(sizeof(AST_Node *));
-                    for(int j = 0; j < VectorLength(virtual_params_copy); j++)
+                    for(size_t j = 0; j < VectorLength(virtual_params_copy); j++)
                     {
                         AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, j);
                         VectorAppend(node_copy->context, &virtual_param_copy);
@@ -3147,7 +3148,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // binding virtual params copy to actual params.
-            for (int i = 0; i < VectorLength(virtual_params_copy); i++)
+            for (size_t i = 0; i < VectorLength(virtual_params_copy); i++)
             {
                 AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
                 AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
@@ -3155,8 +3156,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // eval
-            int last = VectorLength(body_exprs_copy) - 1;
-            for (int i = 0; i < VectorLength(body_exprs_copy); i++)
+            size_t last = VectorLength(body_exprs_copy) - 1;
+            for (size_t i = 0; i < VectorLength(body_exprs_copy); i++)
             {
                 AST_Node *body_expr_copy = *(AST_Node **)VectorNth(body_exprs_copy, i);
                 result = eval(body_expr_copy, aux_data);
@@ -3167,7 +3168,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // set virtual_param_copy's value to null.
-            for (int i = 0; i < VectorLength(virtual_params_copy); i++)
+            for (size_t i = 0; i < VectorLength(virtual_params_copy); i++)
             {
                 AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
                 virtual_param_copy->contents.binding.value = NULL; 
@@ -3177,7 +3178,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             VectorFree(operands, NULL, NULL);
 
             // free virtual_params_copy.
-            for (int i = 0; i < VectorLength(virtual_params_copy); i++)
+            for (size_t i = 0; i < VectorLength(virtual_params_copy); i++)
             {
                 AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
                 ast_node_free(virtual_param_copy);
@@ -3238,7 +3239,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             Vector *body_exprs = ast_node->contents.local_binding_form.contents.lets.body_exprs;
 
             // eval bindings
-            for (int i = 0; i < VectorLength(bindings); i++)
+            for (size_t i = 0; i < VectorLength(bindings); i++)
             {
                 AST_Node *binding = *(AST_Node **)VectorNth(bindings, i);
                 AST_Node *init_value = binding->contents.binding.value;
@@ -3271,8 +3272,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // eval body_exprs
-            int last = VectorLength(body_exprs) - 1;
-            for (int i = 0; i < VectorLength(body_exprs); i++)
+            size_t last = VectorLength(body_exprs) - 1;
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 result = eval(body_expr, aux_data); // the last body_expr's result will be returned;
@@ -3375,7 +3376,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             matched = true;
             Vector *cond_clauses = ast_node->contents.conditional_form.contents.cond_expression.cond_clauses;
 
-            for (int i = 0; i < VectorLength(cond_clauses); i++)
+            for (size_t i = 0; i < VectorLength(cond_clauses); i++)
             {
                 AST_Node *cond_clause = *(AST_Node **)VectorNth(cond_clauses, i);
 
@@ -3396,7 +3397,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
                     {
                         Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
-                        for (int j = 0; j < VectorLength(then_bodies); j++)
+                        for (size_t j = 0; j < VectorLength(then_bodies); j++)
                         {
                             AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
                             result = eval(then_body, aux_data);
@@ -3413,7 +3414,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 {
                     // [else then-body ...+]
                     Vector *then_bodies = cond_clause->contents.cond_clause.then_bodies;
-                    for (int j = 0; j < VectorLength(then_bodies); j++)
+                    for (size_t j = 0; j < VectorLength(then_bodies); j++)
                     {
                         AST_Node *then_body = *(AST_Node **)VectorNth(then_bodies, j);
                         result = eval(then_body, aux_data);
@@ -3449,7 +3450,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
             if (VectorLength(exprs) > 0)
             {
-                for (int i = 0; i < VectorLength(exprs); i++)
+                for (size_t i = 0; i < VectorLength(exprs); i++)
                 {
                     AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                     AST_Node *expr_val = eval(expr, aux_data);
@@ -3504,7 +3505,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
             else if (VectorLength(exprs) > 1)
             {
-                for (int i = 0; i < VectorLength(exprs); i++)
+                for (size_t i = 0; i < VectorLength(exprs); i++)
                 {
                     AST_Node *expr = *(AST_Node **)VectorNth(exprs, i);
                     AST_Node *expr_val = eval(expr, aux_data);
@@ -3592,7 +3593,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
         Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 0; i < VectorLength(params); i++)
+        for (size_t i = 0; i < VectorLength(params); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(params, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -3605,7 +3606,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             VectorAppend(params_copy, &node_copy);
         }
 
-        for (int i = 0; i < VectorLength(body_exprs); i++)
+        for (size_t i = 0; i < VectorLength(body_exprs); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
@@ -3613,7 +3614,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 node_copy->context = VectorNew(sizeof(AST_Node *));
             }
-            for(int j = 0; j < VectorLength(params_copy); j++)
+            for(size_t j = 0; j < VectorLength(params_copy); j++)
             {
                 AST_Node *param_copy = *(AST_Node **)VectorNth(params_copy, j);
                 VectorAppend(node_copy->context, &param_copy);
@@ -3654,7 +3655,7 @@ Vector *calculator(AST ast, void *aux_data)
     Vector *body = ast->contents.program.body;
     Vector *results = VectorNew(sizeof(AST_Node *));
 
-    for (int i = 0; i < VectorLength(body); i++)
+    for (size_t i = 0; i < VectorLength(body); i++)
     {
         AST_Node *sub_node = *(AST_Node **)VectorNth(body, i);
         Result result = eval(sub_node, aux_data);
@@ -3686,7 +3687,7 @@ int results_free(Vector *results)
 {
     int error = 0;
 
-    for (int i = 0; i < VectorLength(results); i++)
+    for (size_t i = 0; i < VectorLength(results); i++)
     {
         AST_Node *result = *(AST_Node **)VectorNth(results, i);
         error = error | result_free(result);
@@ -3723,8 +3724,8 @@ static void output_result(Result result, void *aux_data)
 
         Vector *value = (Vector *)(result->contents.literal.value);
 
-        int length = VectorLength(value);
-        int last = length - 1;
+        size_t length = VectorLength(value);
+        size_t last = length - 1;
 
         if (aux_data != NULL && strcmp(aux_data, "in_list_or_in_pair") == 0)
         {
@@ -3735,7 +3736,7 @@ static void output_result(Result result, void *aux_data)
             fprintf(stdout, "'(");
         }
         
-        for (int i = 0; i < length; i++)
+        for (size_t i = 0; i < length; i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(value, i);
             output_result(node, "in_list_or_in_pair");
@@ -3802,7 +3803,7 @@ static void output_result(Result result, void *aux_data)
 
 void output_results(Vector *results, void *aux_data)
 {
-    for (int i = 0; i < VectorLength(results); i++)
+    for (size_t i = 0; i < VectorLength(results); i++)
     {
         Result result = *(AST_Node **)VectorNth(results, i);
         output_result(result, aux_data);

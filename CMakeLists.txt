@@ -249,13 +249,6 @@ given: 2"
 '\\(1 \\(\\)\\)")
 endif()
 
-list(APPEND my_source_files 
-            ./src/main.c
-            ./src/load_racket_file.c
-            ./src/interpreter.c
-            ./src/vector.c
-            ./src/custom_handler.c
-            ./src/racket_built_in.c)
-
+aux_source_directory(./src my_source_files)
 add_executable(Little-Racket ${my_source_files})
 target_link_libraries(Little-Racket m)
