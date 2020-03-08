@@ -8,7 +8,7 @@
 // tokenizer parts
 // number type
 typedef struct _z_number {
-    char *contents; // use a dynamic null-terminated string to store a number.
+    unsigned char *contents; // use a dynamic null-terminated string to store a number.
     size_t logical_length; // logical length.
     size_t allocated_length; // allocated length.
 } Number_Type;
@@ -30,7 +30,7 @@ typedef enum _z_token_type {
 } Token_Type;
 typedef struct _z_token {
     Token_Type type;
-    char *value;
+    unsigned char *value;
 } Token;
 typedef struct _z_tokens {
     Token **contents; // store all tokens here, Token [].
@@ -86,7 +86,7 @@ typedef struct _z_ast_node {
         struct {
             /*  
               value filed:
-               char * - normally literal value, such as "123.999", and set the c_native_value to 123.999(double). 
+               unsigned char * - normally literal value, such as "123.999", and set the c_native_value to 123.999(double). 
                Boolean_Type * - such as #f or #t, set c_native_value to null.
                Vector * - list or pair literal, store the contents into elements(AST_Node *[]), and c_native_value set to null.
             */
@@ -140,19 +140,19 @@ typedef struct _z_ast_node {
             AST_Node *proc_expr; // when TEST_EXPR_WITH_PROC
         } cond_clause;
         struct { // case: let ... [a 1] 'value' field will have a value, case: a (single variable identifier) 'value' field set to null.
-            char *name; // binding's name.
+            unsigned char *name; // binding's name.
             AST_Node *value; // binding's value, pointes to a AST_Node.
         } binding;
         struct { // call_expression: (+ 1 2) etc, excludes loacl bingding form or other special form such as let define if etc, just simple function call.
             // if a procedure has name, set anonymous_procedure to NULL
             // if a procedure has no name, set name to NULL
-            char *name; // search procedure by name.
+            unsigned char *name; // search procedure by name.
             AST_Node *anonymous_procedure; // anonymous function call, can not found fn by name.
             Vector *params; // params is AST_Node *[]
         } call_expression; // call expression
         struct  {
-            char *name; // copy from initial binding's name.
-            int required_params_count; // only impl required-args right now.
+            unsigned char *name; // copy from initial binding's name.
+            size_t required_params_count; // only impl required-args right now.
             Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name.
             Vector *body_exprs; // AST_Node *[]
             Function c_native_function;

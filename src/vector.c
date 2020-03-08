@@ -39,7 +39,7 @@ size_t VectorLength(Vector *v)
 
 void *VectorNth(Vector *v, size_t index)
 {
-    return (char *)v->elems + v->elem_size * index;
+    return (unsigned char *)v->elems + v->elem_size * index;
 }
 
 void VectorAppend(Vector *v, const void *value_addr)

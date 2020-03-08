@@ -7,20 +7,20 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define DOUBLE_MAX_DIGIT_LENGTH 512 
+#define DOUBLE_MAX_DIGIT_LENGTH ((size_t)512)
 
-static int int_digit_count(int num)
+static size_t int_digit_count(int num)
 {
     int digit_count = 0;
 
     if (num > 0)
     {
-        digit_count = (int)((ceil(log10(num)) + 1) * sizeof(char));
+        digit_count = (int)((ceil(log10(num)) + 1) * sizeof(unsigned char));
     }
     else if (num < 0)
     {
         num = -num;
-        digit_count = 1 + (int)((ceil(log10(num)) + 1) * sizeof(char));
+        digit_count = 1 + (int)((ceil(log10(num)) + 1) * sizeof(unsigned char));
     }
     else if(num == 0)
     {
@@ -33,14 +33,14 @@ static int int_digit_count(int num)
 static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -55,7 +55,7 @@ static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
         .value.iv = 0
     };
 
-    for (int i = 0; i < operands_count; i++)
+    for (size_t i = 0; i < operands_count; i++)
     {
         const AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
 
@@ -96,18 +96,18 @@ static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
         }
     }
 
-    char *value = NULL;
+    unsigned char *value = NULL;
     if (result.is_int == true)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%lld", result.value.iv);
+        sprintf((char *)value, "%lld", result.value.iv);
     }
     else
     {
         // convert double to string
         value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf(value, "%lf", result.value.dv);
+        sprintf((char *)value, "%lf", result.value.dv);
     }
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
@@ -216,18 +216,18 @@ static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands
         }
     }
 
-    char *value = NULL;
+    unsigned char *value = NULL;
     if (result.is_int == true)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%lld", result.value.iv);
+        sprintf((char *)value, "%lld", result.value.iv);
     }
     else
     {
         // convert double to string
         value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf(value, "%lf", result.value.dv);
+        sprintf((char *)value, "%lf", result.value.dv);
     }
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
@@ -301,18 +301,18 @@ static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *opera
         }
     }
 
-    char *value = NULL;
+    unsigned char *value = NULL;
     if (result.is_int == true)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf(value, "%lld", result.value.iv);
+        sprintf((char *)value, "%lld", result.value.iv);
     }
     else
     {
         // convert double to string
         value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf(value, "%lf", result.value.dv);
+        sprintf((char *)value, "%lf", result.value.dv);
     }
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
@@ -398,10 +398,10 @@ static AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
         result /= c_native_value;
     }
 
-    char *value = NULL;
+    unsigned char *value = NULL;
     // convert double to string
     value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-    sprintf(value, "%lf", result);
+    sprintf((char *)value, "%lf", result);
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
     free(value);
@@ -569,15 +569,15 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 
     if (list_length == 0)
     {
-        int list_num = VectorLength(operands) - 1;
+        size_t list_num = VectorLength(operands) - 1;
 
         // check arity
         if (list_num != fn->contents.procedure.required_params_count)
         {
             fprintf(stderr, "map: argument mismatch;\n"
                         "the given procedure's expected number of arguments does not match the given number of lists\n"
-                        "expected: %d\n"
-                        "given: %d\n", fn->contents.procedure.required_params_count, list_num);
+                        "expected: %zu\n"
+                        "given: %zu\n", fn->contents.procedure.required_params_count, list_num);
             exit(EXIT_FAILURE); 
         }
     }

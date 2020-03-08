@@ -1,7 +1,7 @@
-#include "../include/custom_handler.h"
+#include "../include/debug.h"
 #include "../include/interpreter.h"
 
-void print_raw_code(const char *line, void *aux_data)
+void print_raw_code(const unsigned char *line, void *aux_data)
 {
     printf("%s\n", line);
 }
@@ -33,7 +33,7 @@ static void call_expression_exit(AST_Node *node, AST_Node *parent, void *aux_dat
 
 static void procedure_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    const char *name = node->contents.procedure.name;
+    const unsigned char *name = node->contents.procedure.name;
     if (name != NULL) printf("#<procedure:%s>\n", name);
     else printf("#<procedure>\n");
 }
@@ -60,7 +60,7 @@ static void pair_exit(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static void number_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    printf(" %s ", (char *)(node->contents.literal.value));
+    printf(" %s ", (unsigned char *)(node->contents.literal.value));
     if (parent != NULL && parent->type == Pair_Literal)
     {
         AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
@@ -73,7 +73,7 @@ static void number_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static void character_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    printf("#\\%c ", *(char *)(node->contents.literal.value));
+    printf("#\\%c ", *(unsigned char *)(node->contents.literal.value));
     if (parent != NULL && parent->type == Pair_Literal)
     {
         AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
@@ -86,7 +86,7 @@ static void character_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static void string_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    printf("\"%s\" ", (char *)(node->contents.literal.value));
+    printf("\"%s\" ", (unsigned char *)(node->contents.literal.value));
     if (parent != NULL && parent->type == Pair_Literal)
     {
         AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
@@ -102,7 +102,7 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     if (parent == NULL && node->contents.binding.value == NULL)
     {
         // just single variable identifier here. print variable name only.
-        printf(" %s ", (char *)(node->contents.binding.name));
+        printf(" %s ", (unsigned char *)(node->contents.binding.name));
         return;
     }
 
@@ -133,7 +133,7 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
         }
     }
 
-    printf(" %s ", (char *)(node->contents.binding.name));
+    printf(" %s ", (unsigned char *)(node->contents.binding.name));
 }
 
 static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)

@@ -1,6 +1,6 @@
 #include "../include/load_racket_file.h"
 #include "../include/interpreter.h"
-#include "../include/custom_handler.h"
+#include "../include/debug.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory
-    Raw_Code *raw_code = racket_file_load(path);
+    Raw_Code *raw_code = racket_file_load((const unsigned char *)path);
 
     // tokenizer 
     Tokens *tokens = tokenizer(raw_code);
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory
-    Raw_Code *raw_code = racket_file_load(path);
+    Raw_Code *raw_code = racket_file_load((const unsigned char *)path);
 
     // tokenizer 
     Tokens *tokens = tokenizer(raw_code); 
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory
-    Raw_Code *raw_code = racket_file_load(path);
+    Raw_Code *raw_code = racket_file_load((const unsigned char *)path);
     // show the raw_code in gaint single string
     printf("Raw code:\n");
     racket_file_map(raw_code, print_raw_code, NULL);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
     // show result by traverser
     printf("\nResult:\n");
-    for (int i = 0; i < VectorLength(results); i++)
+    for (size_t i = 0; i < VectorLength(results); i++)
     {
         Result result = *(AST_Node **)VectorNth(results, i);
         traverser(result, custom_visitor, NULL);

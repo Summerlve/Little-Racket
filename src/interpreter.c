@@ -2,7 +2,7 @@
 #include "../include/load_racket_file.h"
 #include "../include/vector.h"
 #include "../include/racket_built_in.h"
-#include "../include/custom_handler.h"
+#include "../include/debug.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -36,7 +36,7 @@ static Number_Type *number_type_new(void)
     Number_Type *number = (Number_Type *)malloc(sizeof(Number_Type));
     number->allocated_length = 4;
     number->logical_length = 0;
-    number->contents = (char *)malloc(number->allocated_length * sizeof(char));
+    number->contents = (unsigned char *)malloc(number->allocated_length * sizeof(unsigned char));
 
     if (number->contents == NULL)
     {
@@ -57,7 +57,7 @@ static int number_type_free(Number_Type *number)
     return 0;
 }
 
-static int number_type_append(Number_Type *number, const char ch)
+static int number_type_append(Number_Type *number, const unsigned char ch)
 {
     // the ch must be a digit or '.' or '-' when a negative number.
     if (isdigit(ch) == 0 && ch != DOT && ch != BAR)
@@ -70,7 +70,7 @@ static int number_type_append(Number_Type *number, const char ch)
     if (number->logical_length == number->allocated_length - 1)
     {
         number->allocated_length *= 2;
-        number->contents = realloc(number->contents, number->allocated_length * sizeof(char));
+        number->contents = realloc(number->contents, number->allocated_length * sizeof(unsigned char));
         if (number->contents == NULL)
         {
             printf("errorno is: %d\n", errno);
@@ -79,29 +79,29 @@ static int number_type_append(Number_Type *number, const char ch)
         }
     }
 
-    memcpy(&(number->contents[number->logical_length]), &ch, sizeof(char));
+    memcpy(&(number->contents[number->logical_length]), &ch, sizeof(unsigned char));
     number->logical_length ++;
     number->contents[number->logical_length] = '\0';
 
     return 0;
 }
 
-// remember free the char * return from here.
-static char *get_number_type_contents(Number_Type *number)
+// remember free the unsigned char * return from here.
+static unsigned char *get_number_type_contents(Number_Type *number)
 {
-    char *contents = (char *)malloc(number->logical_length + sizeof(char));
-    strcpy(contents, number->contents);
+    unsigned char *contents = (unsigned char *)malloc(number->logical_length + sizeof(unsigned char));
+    strcpy((char *)contents, (char *)(number->contents));
     number_type_free(number);
     return contents;
 }
 
 // value must be a null-terminated string.
-static Token *token_new(Token_Type type, const char *value)
+static Token *token_new(Token_Type type, const unsigned char *value)
 {
     Token *token = (Token *)malloc(sizeof(Token));
     token->type = type;
-    token->value = (char *)malloc(strlen(value) + 1);
-    strcpy(token->value, value);
+    token->value = (unsigned char *)malloc(strlen((char *)value) + 1);
+    strcpy((char *)(token->value), (const char *)value);
     return token;
 }
 
@@ -167,10 +167,10 @@ static int add_token(Tokens *tokens, Token *token)
     return 0;
 }
 
-static void tokenizer_helper(const char *line, void *aux_data)
+static void tokenizer_helper(const unsigned char *line, void *aux_data)
 {
     Tokens *tokens = (Tokens *)aux_data;
-    size_t line_length = strlen(line);    
+    size_t line_length = strlen((const char *)line);    
     size_t cursor = 0;
 
     for(size_t i = 0; i < line_length; i++)
@@ -198,9 +198,9 @@ static void tokenizer_helper(const char *line, void *aux_data)
                     exit(EXIT_FAILURE);
                 }
 
-                const char *char_value = &line[cursor + 1];
-                char *tmp = (char *)malloc(sizeof(char) * 2);
-                memcpy(tmp, char_value, sizeof(char));
+                const unsigned char *char_value = &line[cursor + 1];
+                unsigned char *tmp = (unsigned char *)malloc(sizeof(unsigned char) * 2);
+                memcpy(tmp, char_value, sizeof(unsigned char));
                 tmp[1] = '\0';
                 Token *token = token_new(CHARACTER, tmp);
                 free(tmp);
@@ -213,9 +213,9 @@ static void tokenizer_helper(const char *line, void *aux_data)
             // #t #f
             if (line[cursor] == 't' || line[cursor] == 'f')
             {
-                const char *char_value = &line[cursor];
-                char *tmp = (char *)malloc(sizeof(char) * 2);
-                memcpy(tmp, char_value, sizeof(char));
+                const unsigned char *char_value = &line[cursor];
+                unsigned char *tmp = (unsigned char *)malloc(sizeof(unsigned char) * 2);
+                memcpy(tmp, char_value, sizeof(unsigned char));
                 tmp[1] = '\0';
                 Token *token = token_new(BOOLEAN, tmp);
                 free(tmp);
@@ -228,7 +228,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             // #lang
             int cmp = -1;
 
-            cmp = strncmp(&line[cursor], LANGUAGE_SIGN, strlen(LANGUAGE_SIGN));
+            cmp = strncmp((const char *)(&line[cursor]), LANGUAGE_SIGN, strlen(LANGUAGE_SIGN));
             if (cmp != 0)
             {
                 fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
@@ -243,7 +243,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
             }
 
             cursor = i + 6;
-            cmp = strcmp(&line[cursor], RACKET_SIGN);
+            cmp = strcmp((const char *)(&line[cursor]), RACKET_SIGN);
             if (cmp != 0)
             {
                 fprintf(stderr, "please dont use #lang %s, supports only: #lang racket\n", &line[cursor]);
@@ -267,14 +267,14 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle paren
         if (line[i] == LEFT_PAREN)
         {
-            Token *token = token_new(PUNCTUATION, "("); 
+            Token *token = token_new(PUNCTUATION, (const unsigned char *)"("); 
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_PAREN)
         {
-            Token *token = token_new(PUNCTUATION, ")");
+            Token *token = token_new(PUNCTUATION, (const unsigned char *)")");
             add_token(tokens, token); 
             continue;
         }
@@ -282,14 +282,14 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle square_bracket
         if (line[i] == LEFT_SQUARE_BRACKET)
         {
-            Token *token = token_new(PUNCTUATION, "[");
+            Token *token = token_new(PUNCTUATION, (const unsigned char *)"[");
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_SQUARE_BRACKET)
         {
-            Token *token = token_new(PUNCTUATION, "]");
+            Token *token = token_new(PUNCTUATION, (const unsigned char *)"]");
             add_token(tokens, token); 
             continue;
         }
@@ -328,7 +328,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 }
             }
 
-            char *contents = get_number_type_contents(number);
+            unsigned char *contents = get_number_type_contents(number);
             Token *token = token_new(NUMBER, contents);
             free(contents);
             add_token(tokens, token);
@@ -340,7 +340,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle string
         if (line[i] == DOUBLE_QUOTE)
         {
-            int count = 0;
+            size_t count = 0;
             cursor = i + 1;
             bool ends = false;
 
@@ -364,8 +364,8 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 exit(EXIT_FAILURE);
             }
 
-            char *string = (char *)malloc(count + sizeof(char));
-            strncpy(string, &line[i + 1], count);
+            unsigned char *string = (unsigned char *)malloc(count + sizeof(unsigned char));
+            strncpy((char *)string, (const char *)(&line[i + 1]), count);
             string[count] = '\0';
             Token *token = token_new(STRING, string);
             free(string);
@@ -378,7 +378,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         // handle apostrophe
         if (line[i] == APOSTROPHE)
         {
-            Token *token = token_new(PUNCTUATION, "\'");
+            Token *token = token_new(PUNCTUATION, (const unsigned char *)"\'");
             add_token(tokens, token);
             continue;
         }
@@ -387,7 +387,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
         if (line[i] == DOT)
         {
             // TO-DO check if a identifier contains '.', such as (define a.b 1)
-            Token *token = token_new(PUNCTUATION, ".");
+            Token *token = token_new(PUNCTUATION, (const unsigned char *)".");
             add_token(tokens, token);
             continue;
         }
@@ -414,7 +414,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 perror("Could not compile regex");
                 exit(EXIT_FAILURE);
             }
-            int status = regexec(&reg, &line[i], 1, match, 0);
+            int status = regexec(&reg, (const char *)(&line[i]), 1, match, 0);
 
             if (status == REG_NOMATCH)
             {
@@ -429,7 +429,7 @@ static void tokenizer_helper(const char *line, void *aux_data)
                 int identifier_len = finish_index - start_index;
                 regfree(&reg);
 
-                char *temp = malloc((identifier_len + 1) * sizeof(char));
+                unsigned char *temp = (unsigned char *)malloc((identifier_len + 1) * sizeof(unsigned char));
                 memcpy(temp, &line[start_index], identifier_len);
                 temp[identifier_len] = '\0';
                 Token *token = token_new(IDENTIFIER, temp);
@@ -472,7 +472,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
 // ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL)
 // ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
 // ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
-//   ast_node_new(tag, Local_Binding_Form, DEFINE, char *name, AST_Node *value)
+//   ast_node_new(tag, Local_Binding_Form, DEFINE, unsigned char *name, AST_Node *value)
 //   ast_node_new(tag, Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
 // ast_node_new(tag, Binding, name, AST_Node *value/NULL)
 // ast_node_new(tag, List or Pair, Vector *value/NULL)
@@ -518,15 +518,15 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
-        char *name = va_arg(ap, char *);
+        unsigned char *name = va_arg(ap, unsigned char *);
         if (name == NULL)
         {
             ast_node->contents.call_expression.name = name;
         }
         else if (name != NULL)
         {
-            ast_node->contents.call_expression.name = (char *)malloc(strlen(name) + 1);
-            strcpy(ast_node->contents.call_expression.name, name);
+            ast_node->contents.call_expression.name = (unsigned char *)malloc(strlen((const char *)name) + 1);
+            strcpy((char *)(ast_node->contents.call_expression.name), (const char *)name);
         }
         ast_node->contents.call_expression.anonymous_procedure = va_arg(ap, AST_Node *);
         Vector *params = va_arg(ap, Vector *);
@@ -538,13 +538,13 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     {
         matched = true;
         ast_node->contents.procedure.name = NULL;
-        const char *name = va_arg(ap, const char *);
+        const unsigned char *name = va_arg(ap, const unsigned char *);
         if (name != NULL)
         {
-            ast_node->contents.procedure.name = (char *)malloc(strlen(name) + 1);
-            strcpy(ast_node->contents.procedure.name, name);
+            ast_node->contents.procedure.name = (unsigned char *)malloc(strlen((const char *)name) + 1);
+            strcpy((char *)(ast_node->contents.procedure.name), (const char *)name);
         }
-        ast_node->contents.procedure.required_params_count = va_arg(ap, int);
+        ast_node->contents.procedure.required_params_count = va_arg(ap, size_t);
         ast_node->contents.procedure.params = va_arg(ap, Vector *);
         ast_node->contents.procedure.body_exprs = va_arg(ap, Vector *);
         ast_node->contents.procedure.c_native_function = va_arg(ap, Function);
@@ -578,7 +578,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         if (local_binding_form_type == DEFINE)
         {
             matched = true;
-            const char *name = va_arg(ap, const char *);
+            const unsigned char *name = va_arg(ap, const unsigned char *);
             AST_Node *value = va_arg(ap, AST_Node *);
             ast_node->contents.local_binding_form.contents.define.binding = ast_node_new(ast_node->tag, Binding, name, value);
         }
@@ -641,9 +641,9 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     if (ast_node->type == Binding)
     {
         matched = true;
-        const char *name = va_arg(ap, const char *);
-        ast_node->contents.binding.name = (char *)malloc(strlen(name) + 1);
-        strcpy(ast_node->contents.binding.name, name);
+        const unsigned char *name = va_arg(ap, const unsigned char *);
+        ast_node->contents.binding.name = (unsigned char *)malloc(strlen((const char *)name) + 1);
+        strcpy((char *)(ast_node->contents.binding.name), (const char *)name);
         ast_node->contents.binding.value = va_arg(ap, AST_Node *);
     }
 
@@ -668,15 +668,14 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     if (ast_node->type == Number_Literal)
     {
         matched = true;
-        const char *value = va_arg(ap, const char *);
-        ast_node->contents.literal.value = malloc(strlen(value) + 1);
-        strcpy((char *)ast_node->contents.literal.value, value);
+        const unsigned char *value = va_arg(ap, const unsigned char *);
+        ast_node->contents.literal.value = malloc(strlen((const char *)value) + 1);
+        strcpy((char *)ast_node->contents.literal.value, (const char *)value);
         // check '.' to decide use int or double.
         if (strchr(ast_node->contents.literal.value, '.') == NULL)
         {
             // convert string to long long int.
-            char *endptr = NULL;
-            long long int c_native_value = strtoll(ast_node->contents.literal.value, &endptr, 10);
+            long long int c_native_value = strtoll(ast_node->contents.literal.value, (char **)NULL, 10);
             ast_node->contents.literal.c_native_value = malloc(sizeof(long long int));
             memcpy(ast_node->contents.literal.c_native_value, &c_native_value, sizeof(long long int));
         }
@@ -692,18 +691,18 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
     if (ast_node->type == String_Literal)
     {
         matched = true;
-        const char *value = va_arg(ap, const char *);
-        ast_node->contents.literal.value = malloc(strlen(value) + 1);
-        strcpy((char *)(ast_node->contents.literal.value), value);
+        const unsigned char *value = va_arg(ap, const unsigned char *);
+        ast_node->contents.literal.value = malloc(strlen((const char *)value) + 1);
+        strcpy((char *)(ast_node->contents.literal.value), (const char *)value);
         ast_node->contents.literal.c_native_value = NULL;
     }
 
     if (ast_node->type == Character_Literal)
     {
         matched = true;
-        const char *character = va_arg(ap, const char *);
-        ast_node->contents.literal.value = malloc(sizeof(char));
-        memcpy(ast_node->contents.literal.value, character, sizeof(char));
+        const unsigned char *character = va_arg(ap, const unsigned char *);
+        ast_node->contents.literal.value = malloc(sizeof(unsigned char));
+        memcpy(ast_node->contents.literal.value, character, sizeof(unsigned char));
         ast_node->contents.literal.c_native_value = NULL;
     }
 
@@ -785,7 +784,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Procedure)
     {
         matched = true;
-        char *name = ast_node->contents.procedure.name;
+        unsigned char *name = ast_node->contents.procedure.name;
         if (name != NULL) free(ast_node->contents.procedure.name);
         Vector *params = ast_node->contents.procedure.params;
         if (params != NULL)
@@ -990,7 +989,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Binding)
     {
         matched = true;
-        const char *name = ast_node->contents.binding.name;
+        const unsigned char *name = ast_node->contents.binding.name;
         if (name != NULL) free((void *)name);
         AST_Node *value = ast_node->contents.binding.value;
         if (value != NULL) ast_node_free(value);
@@ -1095,7 +1094,7 @@ AST_Node_Tag ast_node_get_tag(AST_Node *ast_node)
 }
 
 // recursion function <walk> walk over the tokens array, and generates a ast.
-static AST_Node *walk(Tokens *tokens, int *current_p)
+static AST_Node *walk(Tokens *tokens, size_t *current_p)
 {
     Token *token = tokens_nth(tokens, *current_p);
 
@@ -1114,7 +1113,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     if (token->type == IDENTIFIER)
     {
         // handle null
-        if (strcmp(token->value, "null") == 0)
+        if (strcmp((const char *)(token->value), "null") == 0)
         {
             AST_Node *null_expr = ast_node_new(IN_AST, NULL_Expression);
             (*current_p)++; // skip null itself
@@ -1122,7 +1121,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
         }
 
         // handle empty
-        if (strcmp(token->value, "empty") == 0)
+        if (strcmp((const char *)(token->value), "empty") == 0)
         {
             AST_Node *empty_expr = ast_node_new(IN_AST, EMPTY_Expression);
             (*current_p)++; // skip empty itself
@@ -1159,11 +1158,11 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
     if (token->type == BOOLEAN)
     {
         Boolean_Type *boolean_type = malloc(sizeof(Boolean_Type));
-        if (strchr(token->value, 't') != NULL)
+        if (strchr((const char *)(token->value), 't') != NULL)
         {
             *boolean_type = R_TRUE;
         }
-        if (strchr(token->value, 'f') != NULL)
+        if (strchr((const char *)(token->value), 'f') != NULL)
         {
             *boolean_type = R_FALSE;
         }
@@ -1174,7 +1173,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
     if (token->type == PUNCTUATION)
     {
-        char token_value = (token->value)[0];
+        unsigned char token_value = (token->value)[0];
 
         // '(' and ')' normally function call or each kind of form such as let let* if cond etc
         if (token_value == LEFT_PAREN)
@@ -1185,9 +1184,9 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 
             // handle Local_Binding_Form
             // handle 'let' 'let*' 'letrec' contains '[' and ']'
-            if ((strcmp(token->value, "let") == 0) ||
-                (strcmp(token->value, "let*") == 0) ||
-                (strcmp(token->value, "letrec") == 0))
+            if ((strcmp((const char *)(token->value), "let") == 0) ||
+                (strcmp((const char *)(token->value), "let*") == 0) ||
+                (strcmp((const char *)(token->value), "letrec") == 0))
             {
                 Token *name_token = token;
                 Vector *bindings = VectorNew(sizeof(AST_Node *));
@@ -1258,15 +1257,15 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                 }
 
                 AST_Node *ast_node = NULL;
-                if (strcmp(name_token->value, "let") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET, bindings, body_exprs);
-                if (strcmp(name_token->value, "let*") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET_STAR, bindings, body_exprs);
-                if (strcmp(name_token->value, "letrec") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LETREC, bindings, body_exprs); 
+                if (strcmp((const char *)(name_token->value), "let") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET, bindings, body_exprs);
+                if (strcmp((const char *)(name_token->value), "let*") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET_STAR, bindings, body_exprs);
+                if (strcmp((const char *)(name_token->value), "letrec") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LETREC, bindings, body_exprs); 
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
             }
 
             // handle 'define' 
-            if (strcmp(token->value, "define") == 0)
+            if (strcmp((const char *)(token->value), "define") == 0)
             {
                 // move to binding's name.
                 (*current_p)++;
@@ -1289,7 +1288,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // handle 'lambda'
-            if (strcmp(token->value, "lambda") == 0)
+            if (strcmp((const char *)(token->value), "lambda") == 0)
             {
                 Vector *params = VectorNew(sizeof(AST_Node *));
                 Vector *body_exprs = VectorNew(sizeof(AST_Node *));
@@ -1350,7 +1349,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // handle 'if'
-            if (strcmp(token->value, "if") == 0)
+            if (strcmp((const char *)(token->value), "if") == 0)
             {
                 // move to test_expr
                 (*current_p)++;
@@ -1373,7 +1372,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
             
             // handle 'and'
-            if (strcmp(token->value, "and") == 0)
+            if (strcmp((const char *)(token->value), "and") == 0)
             {
                 // move to first expr or ')'
                 (*current_p)++;
@@ -1413,7 +1412,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // handle 'not'
-            if (strcmp(token->value, "not") == 0)
+            if (strcmp((const char *)(token->value), "not") == 0)
             {
                 // move to expr
                 (*current_p)++;
@@ -1435,7 +1434,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // handle 'or'
-            if (strcmp(token->value, "or") == 0)
+            if (strcmp((const char *)(token->value), "or") == 0)
             {
                 // move to first expr or ')'
                 (*current_p)++;
@@ -1475,7 +1474,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // handle cond
-            if (strcmp(token->value, "cond") == 0)
+            if (strcmp((const char *)(token->value), "cond") == 0)
             {
                 Vector *cond_clauses = VectorNew(sizeof(AST_Node *));
                 int else_statement_counter = 0;
@@ -1500,7 +1499,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
                     (*current_p)++;
                     token = tokens_nth(tokens, *current_p);
 
-                    if (strcmp(token->value, "else") == 0)
+                    if (strcmp((const char *)(token->value), "else") == 0)
                     {
                         // else statement
                         Vector *then_bodies = VectorNew(sizeof(AST_Node *));
@@ -1580,7 +1579,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             }
 
             // handle set!
-            if (strcmp(token->value, "set!") == 0)
+            if (strcmp((const char *)(token->value), "set!") == 0)
             {
                 // move to id.
                 (*current_p)++;
@@ -1696,7 +1695,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
             bool is_pair = false;
             int cursor = *current_p + 1;
             Token *tmp = tokens_nth(tokens, cursor);
-            char tmp_value = tmp->value[0];
+            unsigned char tmp_value = tmp->value[0];
             if (tmp_value == DOT) is_pair = true;
 
             AST_Node *ast_node = NULL;
@@ -1753,7 +1752,7 @@ static AST_Node *walk(Tokens *tokens, int *current_p)
 AST parser(Tokens *tokens)
 {
     AST ast = ast_node_new(IN_AST, Program, NULL, NULL);
-    int current = 0;
+    size_t current = 0;
 
     while (current < tokens_length(tokens))
     // the value of 'current' was changed in walk() by current_p.
@@ -1870,7 +1869,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         {
             matched = true;
             AST_Node *binding = ast_node->contents.local_binding_form.contents.define.binding;
-            char *name = binding->contents.binding.name;
+            unsigned char *name = binding->contents.binding.name;
             AST_Node *value = binding->contents.binding.value;
 
             AST_Node *value_copy = ast_node_deep_copy(value, aux_data);
@@ -2078,7 +2077,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
-        const char *name = ast_node->contents.call_expression.name;
+        const unsigned char *name = ast_node->contents.call_expression.name;
         AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
         Vector *params = ast_node->contents.call_expression.params;
 
@@ -2097,7 +2096,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Binding)
     {
         matched = true;
-        char *name = ast_node->contents.binding.name;
+        unsigned char *name = ast_node->contents.binding.name;
         AST_Node *value = ast_node->contents.binding.value;
         AST_Node *value_copy = NULL;
         if (value != NULL) value_copy = ast_node_deep_copy(value, aux_data);
@@ -2108,7 +2107,7 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == Procedure)
     {
         matched = true;
-        char *name = ast_node->contents.procedure.name;
+        unsigned char *name = ast_node->contents.procedure.name;
         int required_params_count = ast_node->contents.procedure.required_params_count; 
         Vector *params = ast_node->contents.procedure.params; 
         Vector *body_exprs = ast_node->contents.procedure.body_exprs; 
@@ -2941,7 +2940,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
             #ifdef DEBUG_MODE
             printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
             #endif
-            if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0)
+            if (strcmp((const char *)(binding->contents.binding.name), (const char *)(node->contents.binding.name)) == 0)
             {
                 binding_contains_value = node;
 
@@ -2965,7 +2964,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
                 #ifdef DEBUG_MODE
                 printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
                 #endif
-                if (strcmp(binding->contents.binding.name, node->contents.binding.name) == 0)
+                if (strcmp((const char *)(binding->contents.binding.name), (const char *)(node->contents.binding.name)) == 0)
                 {
                     binding_contains_value = node;
 
@@ -3012,7 +3011,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         
-        const char *name = ast_node->contents.call_expression.name;
+        const unsigned char *name = ast_node->contents.call_expression.name;
         AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
         AST_Node *procedure = NULL;
 
@@ -3225,8 +3224,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
             if (binding->contents.binding.value->type == Procedure)
             {
                 AST_Node *procedure = binding->contents.binding.value;
-                procedure->contents.procedure.name = malloc(strlen(binding->contents.binding.name) + 1);
-                strcpy(procedure->contents.procedure.name, binding->contents.binding.name);
+                procedure->contents.procedure.name = malloc(strlen((const char *)(binding->contents.binding.name)) + 1);
+                strcpy((char *)(procedure->contents.procedure.name), (const char *)(binding->contents.binding.name));
             }
         }
         
@@ -3266,8 +3265,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 if (binding->contents.binding.value->type == Procedure)
                 {
                     AST_Node *procedure = binding->contents.binding.value;
-                    procedure->contents.procedure.name = malloc(strlen(binding->contents.binding.name) + 1);
-                    strcpy(procedure->contents.procedure.name, binding->contents.binding.name);
+                    procedure->contents.procedure.name = malloc(strlen((const char *)(binding->contents.binding.name)) + 1);
+                    strcpy((char *)(procedure->contents.procedure.name), (const char *)(binding->contents.binding.name));
                 }
             }
 
@@ -3308,8 +3307,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         if (binding->contents.binding.value->type == Procedure)
         {
             AST_Node *procedure = binding->contents.binding.value;
-            procedure->contents.procedure.name = malloc(strlen(binding->contents.binding.name) + 1);
-            strcpy(procedure->contents.procedure.name, binding->contents.binding.name);
+            procedure->contents.procedure.name = malloc(strlen((const char *)(binding->contents.binding.name)) + 1);
+            strcpy((char *)(procedure->contents.procedure.name), (const char *)(binding->contents.binding.name));
         }
         generate_context(binding->contents.binding.value, ast_node, aux_data);
 
@@ -3555,8 +3554,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         ast_node->type == EMPTY_Expression)
     {
         // return '()
-        // the element's size in list means nothing, so use 1 byte(sizeof(char))
-        Vector *empty_vector = VectorNew(sizeof(char));
+        // the element's size in list means nothing, so use 1 byte(sizeof(unsigned char))
+        Vector *empty_vector = VectorNew(sizeof(unsigned char));
         AST_Node *empty_list = ast_node_new(IN_AST, List_Literal, empty_vector);
         return empty_list;
     }
@@ -3703,19 +3702,19 @@ static void output_result(Result result, void *aux_data)
     if (result->type == Number_Literal)
     {
         matched = true;
-        fprintf(stdout, "%s", (char *)(result->contents.literal.value));
+        fprintf(stdout, "%s", (unsigned char *)(result->contents.literal.value));
     }
 
     if (result->type ==  String_Literal)
     {
         matched = true;
-        fprintf(stdout, "\"%s\"", (char *)(result->contents.literal.value));
+        fprintf(stdout, "\"%s\"", (unsigned char *)(result->contents.literal.value));
     }
 
     if (result->type ==  Character_Literal)
     {
         matched = true;
-        fprintf(stdout, "#\\%c", *(char *)(result->contents.literal.value));
+        fprintf(stdout, "#\\%c", *(unsigned char *)(result->contents.literal.value));
     }
 
     if (result->type ==  List_Literal)
@@ -3785,7 +3784,7 @@ static void output_result(Result result, void *aux_data)
     {
         matched = true;
 
-        char *name = result->contents.procedure.name;
+        unsigned char *name = result->contents.procedure.name;
 
         if (name == NULL)
             fprintf(stdout, "#<procedure>");
