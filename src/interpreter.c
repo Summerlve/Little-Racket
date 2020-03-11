@@ -512,8 +512,11 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         if (body == NULL) body = VectorNew(sizeof(AST_Node *));
         Vector *built_in_bindings = va_arg(ap, Vector *);
         if (built_in_bindings == NULL) built_in_bindings = VectorNew(sizeof(AST_Node *));
+        Vector *addon_bindings = va_arg(ap, Vector *);
+        if (addon_bindings == NULL) addon_bindings = VectorNew(sizeof(AST_Node *));
         ast_node->contents.program.body = body;
         ast_node->contents.program.built_in_bindings = built_in_bindings;
+        ast_node->contents.program.addon_bindings = addon_bindings;
     }
 
     if (ast_node->type == Call_Expression)
@@ -1694,7 +1697,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
 
             // check list or pair '.', dont move current_p, use a tmp value instead
             bool is_pair = false;
-            int cursor = *current_p + 1;
+            size_t cursor = *current_p + 1;
             Token *tmp = tokens_nth(tokens, cursor);
             unsigned char tmp_value = tmp->value[0];
             if (tmp_value == DOT) is_pair = true;
@@ -1752,7 +1755,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
 
 AST parser(Tokens *tokens)
 {
-    AST ast = ast_node_new(IN_AST, Program, NULL, NULL);
+    AST ast = ast_node_new(IN_AST, Program, NULL, NULL, NULL);
     size_t current = 0;
 
     while (current < tokens_length(tokens))
@@ -2940,8 +2943,10 @@ static AST_Node *search_binding_value(AST_Node *binding)
     {
         Vector *context = contextable->context;
         Vector *built_in_bindings = NULL;
+        Vector *addon_bindings = NULL;
 
         if (contextable->type == Program) built_in_bindings = contextable->contents.program.built_in_bindings;
+        if (contextable->type == Program) addon_bindings = contextable->contents.program.addon_bindings; 
         
         for (size_t i = VectorLength(context); i > 0; i--)
         {
@@ -2989,7 +2994,32 @@ static AST_Node *search_binding_value(AST_Node *binding)
                 }
             }
         }
-        
+
+        if (addon_bindings != NULL)
+        {
+            for (size_t i = VectorLength(addon_bindings); i > 0; i--)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(addon_bindings, i - 1);
+                #ifdef DEBUG_MODE
+                printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
+                #endif
+                if (strcmp((const char *)(binding->contents.binding.name), (const char *)(node->contents.binding.name)) == 0)
+                {
+                    binding_contains_value = node;
+
+                    // check value
+                    AST_Node *value = binding_contains_value->contents.binding.value;
+                    if (value == NULL)
+                    {
+                        fprintf(stderr, "search_binding_value(): unbound identifier: %s\n", binding->contents.binding.name);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    goto found;
+                }
+            }
+        }
+
         contextable = find_contextable_node(contextable->parent);
     }
 

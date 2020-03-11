@@ -246,7 +246,11 @@ given: 2"
     set_tests_properties(null-empty-test PROPERTIES PASS_REGULAR_EXPRESSION 
 "'\\(\\)[\r\n\t ]*\
 '\\(\\)[\r\n\t ]*\
-'\\(1 \\(\\)\\)")
+'\\(1 \\(\\)\\)"
+    )
+
+    add_test(sha256-test Little-Racket ../test/sha256.test.rkt)
+    set_tests_properties(sha256-test PROPERTIES PASS_REGULAR_EXPRESSION "881dad820d90a1ee555a48ac9ab322dda62914143c96a505dca9f7b17f386904")
 endif()
 
 aux_source_directory(./src my_source_files)

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define SHA256_HASH_STRING_LEN ((size_t)64)
+
 AST_Node *racket_addon_string_sha256(AST_Node *procedure, Vector *operands)
 {
     // check arity
@@ -27,17 +29,23 @@ AST_Node *racket_addon_string_sha256(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE);  
     }
 
-    const unsigned char *value = (unsigned char *)(operand->contents.literal.value);
+    unsigned char *value = (unsigned char *)(operand->contents.literal.value);
     unsigned char hash[crypto_hash_sha256_BYTES];
     crypto_hash_sha256(hash, value, strlen((const char *)value));
 
+    char tmp[3]; tmp[0] = '\0';
+    char *result = malloc(SHA256_HASH_STRING_LEN + 1); 
+
     for(unsigned int i = 0; i < crypto_hash_sha256_BYTES; i++)
     {
-        printf("%02x", hash[i]);
+        sprintf(tmp, "%02x", hash[i]);
+        memcpy(&result[i * 2], tmp, 2);
     }
-    printf("\n");
 
-    return NULL;
+    result[SHA256_HASH_STRING_LEN] = '\0';
+
+    AST_Node *ast_node = ast_node_new(NOT_IN_AST, String_Literal, result);
+    return ast_node;
 }
 
 Vector *generate_addon_bindings(void)
