@@ -3,6 +3,7 @@
 #include "../include/vector.h"
 #include "../include/racket_built_in.h"
 #include "../include/debug.h"
+#include "../include/addon.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -469,7 +470,7 @@ void tokens_map(Tokens *tokens, TokensMapFunction map, void *aux_data)
     }
 }
 
-// ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL)
+// ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL, addon_bindings/NULL)
 // ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
 // ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
 //   ast_node_new(tag, Local_Binding_Form, DEFINE, unsigned char *name, AST_Node *value)
@@ -2494,8 +2495,16 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
             generate_context(binding, node, aux_data); // generate context for built-in bindings.
             VectorAppend(node->contents.program.built_in_bindings, &binding);
         }
-
         free_built_in_bindings(built_in_bindings, NULL); // free 'built_in_bindings' itself only.
+
+        Vector *addon_bindings = generate_addon_bindings(); // add addon binding to Program.
+        for (size_t i = 0; i < VectorLength(addon_bindings); i++)
+        {
+            AST_Node *binding = *(AST_Node **)VectorNth(addon_bindings, i);
+            generate_context(binding, node, aux_data);
+            VectorAppend(node->contents.program.addon_bindings, &binding);
+        }
+        free_addon_bindings(addon_bindings, NULL); // free 'addon_bindings' itself only.
 
         // generate context for body.
         Vector *body = node->contents.program.body;

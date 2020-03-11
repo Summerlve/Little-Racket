@@ -1,4 +1,7 @@
 # Little-Racket
+## Dependence: ##
+1. libsodium [(link to libsodium)](https://github.com/jedisct1/libsodium)
+---
 
 ## Target: ##
 
@@ -41,11 +44,15 @@
 3. (>=), (<=)
 4. racket null and empty
 
-### LRL (Little-Racket-Integrate-With-Third-Part-Lib) - 2020.1 ###
+### LRL (Little-Racket-Integrate-With-Third-Part-Lib) - 2020.3 ###
+
+1. SHA256 hash function provided by libsodium
 
 ---
 
 ## Using cmake to build this project. ##
+
+make sure you have installed libsodium first.
 
 ### Compile the project: ###
 ```bash

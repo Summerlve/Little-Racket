@@ -11,16 +11,16 @@
 
 static size_t int_digit_count(int num)
 {
-    int digit_count = 0;
+    size_t digit_count = 0;
 
     if (num > 0)
     {
-        digit_count = (int)((ceil(log10(num)) + 1) * sizeof(unsigned char));
+        digit_count = (size_t)((ceil(log10(num)) + 1) * sizeof(unsigned char));
     }
     else if (num < 0)
     {
         num = -num;
-        digit_count = 1 + (int)((ceil(log10(num)) + 1) * sizeof(unsigned char));
+        digit_count = 1 + (size_t)((ceil(log10(num)) + 1) * sizeof(unsigned char));
     }
     else if(num == 0)
     {
@@ -118,14 +118,14 @@ static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -175,7 +175,7 @@ static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands
         }
     }
 
-    for (int i = 1; i < operands_count; i++)
+    for (size_t i = 1; i < operands_count; i++)
     {
         const AST_Node *subtrahend = *(AST_Node **)VectorNth(operands, i); 
 
@@ -238,14 +238,14 @@ static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands
 static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -260,7 +260,7 @@ static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *opera
         .value.iv = 1 
     };
 
-    for (int i = 0; i < operands_count; i++)
+    for (size_t i = 0; i < operands_count; i++)
     {
         const AST_Node *operand = *(AST_Node **)VectorNth(operands, i);
 
@@ -323,14 +323,14 @@ static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *opera
 static AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -369,7 +369,7 @@ static AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     }
     
 
-    for (int i = 1; i < operands_count; i++)
+    for (size_t i = 1; i < operands_count; i++)
     {
         const AST_Node *divisor = *(AST_Node **)VectorNth(operands, i); 
 
@@ -412,14 +412,14 @@ static AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -452,7 +452,7 @@ static AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operand
     Boolean_Type *result = malloc(sizeof(Boolean_Type));
     *result = R_TRUE; // true by default.
 
-    for (int i = 1; i < VectorLength(operands); i++)
+    for (size_t i = 1; i < VectorLength(operands); i++)
     {
         AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
 
@@ -517,14 +517,14 @@ static AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operand
 static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -544,9 +544,9 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE); 
     }
 
-    int list_length = VectorLength((Vector *)(first_list->contents.literal.value));
+    size_t list_length = VectorLength((Vector *)(first_list->contents.literal.value));
 
-    for (int i = 1; i < VectorLength(operands); i++)
+    for (size_t i = 1; i < VectorLength(operands); i++)
     {
         // check list
         AST_Node *list = *(AST_Node **)VectorNth(operands, i);
@@ -557,7 +557,7 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
         }
 
         // check list size
-        int cur_list_length = VectorLength((Vector *)(list->contents.literal.value));
+        size_t cur_list_length = VectorLength((Vector *)(list->contents.literal.value));
         if (list_length != cur_list_length)
         {
             fprintf(stderr, "%s: all lists must have same size\n", procedure->contents.procedure.name);
@@ -582,11 +582,11 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
         }
     }
 
-    for (int i = 0; i < list_length; i++)
+    for (size_t i = 0; i < list_length; i++)
     {
         Vector *column = VectorNew(sizeof(AST_Node *));
 
-        for (int j = 1; j < VectorLength(operands); j++)
+        for (size_t j = 1; j < VectorLength(operands); j++)
         {
             AST_Node *list = *(AST_Node **)VectorNth(operands, j);
             Vector *value = (Vector *)(list->contents.literal.value);
@@ -629,14 +629,14 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count != arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -657,14 +657,14 @@ static AST_Node *racket_native_is_list(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count != arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -687,7 +687,7 @@ static AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
     Vector *list = (Vector *)(list_literal->contents.literal.value);
     Vector *value = VectorNew(sizeof(AST_Node *));
 
-    for (int i = 0; i < VectorLength(list); i++)
+    for (size_t i = 0; i < VectorLength(list); i++)
     {
         Vector *column = VectorNew(sizeof(AST_Node *));
         AST_Node *item = *(AST_Node **)VectorNth(list, i);
@@ -737,14 +737,14 @@ static AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -777,7 +777,7 @@ static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *ope
     Boolean_Type *result = malloc(sizeof(Boolean_Type));
     *result = R_TRUE; // true by default.
 
-    for (int i = 1; i < VectorLength(operands); i++)
+    for (size_t i = 1; i < VectorLength(operands); i++)
     {
         AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
 
@@ -830,14 +830,14 @@ static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *ope
 static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -870,7 +870,7 @@ static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *ope
     Boolean_Type *result = malloc(sizeof(Boolean_Type));
     *result = R_TRUE; // true by default.
 
-    for (int i = 1; i < VectorLength(operands); i++)
+    for (size_t i = 1; i < VectorLength(operands); i++)
     {
         AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
 
@@ -923,14 +923,14 @@ static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *ope
 static AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count != arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -952,20 +952,20 @@ static AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
     Vector *value = VectorNew(sizeof(AST_Node *));
 
-    for (int i = 0; i < operands_count; i++)
+    for (size_t i = 0; i < operands_count; i++)
     {
         AST_Node *node = *(AST_Node **)VectorNth(operands, i);
         AST_Node *node_copy = ast_node_deep_copy(node, NULL);
@@ -980,14 +980,14 @@ static AST_Node *racket_native_list(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count != arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -1006,7 +1006,7 @@ static AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
     {
         fprintf(stderr, "%s: contract violation\n"
                         "expected: pair?\n"
-                        "given: %d\n", procedure->contents.procedure.name, operands_count);
+                        "given: %zu\n", procedure->contents.procedure.name, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -1019,14 +1019,14 @@ static AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count != arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
     
@@ -1045,7 +1045,7 @@ static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
     {
         fprintf(stderr, "%s: contract violation\n"
                         "expected: pair?\n"
-                        "given: %d\n", procedure->contents.procedure.name, operands_count);
+                        "given: %zu\n", procedure->contents.procedure.name, operands_count);
         exit(EXIT_FAILURE);
     }
 
@@ -1060,7 +1060,7 @@ static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
     {
         Vector *list = VectorNew(sizeof(AST_Node *));
 
-        for (int i = 1; i < VectorLength(value); i++)
+        for (size_t i = 1; i < VectorLength(value); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(value, i);
             AST_Node *node_copy = ast_node_deep_copy(node, NULL);
@@ -1080,14 +1080,14 @@ static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count != arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -1104,7 +1104,7 @@ static AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
         Vector *cdr_value = (Vector *)(cdr->contents.literal.value);
 
         VectorAppend(value, &car);
-        for (int i = 0; i < VectorLength(cdr_value); i++)
+        for (size_t i = 0; i < VectorLength(cdr_value); i++)
         {
             AST_Node *node = *(AST_Node **)VectorNth(cdr_value, i);
             VectorAppend(value, &node);
@@ -1129,14 +1129,14 @@ static AST_Node *racket_native_cons(AST_Node *procedure, Vector *operands)
 static AST_Node *racket_native_less_or_equal_than(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -1169,7 +1169,7 @@ static AST_Node *racket_native_less_or_equal_than(AST_Node *procedure, Vector *o
     Boolean_Type *result = malloc(sizeof(Boolean_Type));
     *result = R_TRUE; // true by default.
 
-    for (int i = 1; i < VectorLength(operands); i++)
+    for (size_t i = 1; i < VectorLength(operands); i++)
     {
         AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
 
@@ -1222,14 +1222,14 @@ static AST_Node *racket_native_less_or_equal_than(AST_Node *procedure, Vector *o
 static AST_Node *racket_native_more_or_equal_than(AST_Node *procedure, Vector *operands)
 {
     // check arity
-    int arity = procedure->contents.procedure.required_params_count;
-    int operands_count = VectorLength(operands);
+    size_t arity = procedure->contents.procedure.required_params_count;
+    size_t operands_count = VectorLength(operands);
     if (operands_count < arity)
     {
         fprintf(stderr, "%s: arity mismatch;\n"
                         "the expected number of arguments does not match the given number\n"
-                        "expected: at least %d\n"
-                        "given: %d\n", procedure->contents.procedure.name, arity, operands_count);
+                        "expected: at least %zu\n"
+                        "given: %zu\n", procedure->contents.procedure.name, arity, operands_count);
         exit(EXIT_FAILURE); 
     }
 
@@ -1262,7 +1262,7 @@ static AST_Node *racket_native_more_or_equal_than(AST_Node *procedure, Vector *o
     Boolean_Type *result = malloc(sizeof(Boolean_Type));
     *result = R_TRUE; // true by default.
 
-    for (int i = 1; i < VectorLength(operands); i++)
+    for (size_t i = 1; i < VectorLength(operands); i++)
     {
         AST_Node *cur_number = *(AST_Node **)VectorNth(operands, i); 
 

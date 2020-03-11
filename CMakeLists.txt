@@ -250,5 +250,8 @@ given: 2"
 endif()
 
 aux_source_directory(./src my_source_files)
-add_executable(Little-Racket ${my_source_files})
-target_link_libraries(Little-Racket m)
+add_executable(${PROJECT_NAME} ${my_source_files})
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+find_package(Sodium REQUIRED)
+include_directories(${sodium_INCLUDE_DIR})
+target_link_libraries(${PROJECT_NAME} m ${sodium_LIBRARY_RELEASE})

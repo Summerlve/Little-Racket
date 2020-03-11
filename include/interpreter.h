@@ -48,6 +48,8 @@ typedef enum _z_ast_node_tag{
     NOT_IN_AST, // fresh data, not in ast.
     BUILT_IN_PROCEDURE, // built-in procedure.
     BUILT_IN_BINDING, // built-in binding.
+    ADDON_PROCEDURE, // addon procedure
+    ADDON_BINDING, // addon binding
     IMMUTABLE // read only value, can not be changed.
 } AST_Node_Tag;
 typedef void (*Function)(void); // Function points to any type of function.
@@ -164,6 +166,7 @@ typedef struct _z_ast_node {
         struct {
             Vector *body; // program's body is AST_Node *[]
             Vector *built_in_bindings; // like context in AST_Node, store the built-in bindings.
+            Vector *addon_bindings; // like context in AST_Node, store the addon bindings.
         } program;
         struct {
             AST_Node *value; // '()
