@@ -5,6 +5,7 @@
 #include <regex.h>
 #include <stddef.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 // tokenizer helper function
 static void tokenizer_helper(const unsigned char *line, void *aux_data);

@@ -1,8 +1,10 @@
 #include "../include/parser.h"
+#include "../include/tokenizer.h"
 #include "../include/vector.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdbool.h>
 
 static AST_Node *walk(Tokens *tokens, size_t *current_p);
 static void visitor_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data);

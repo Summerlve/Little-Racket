@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdbool.h>
 
 static bool is_absolute_path(const unsigned char *path)
 {

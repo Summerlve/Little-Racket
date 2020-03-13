@@ -1,8 +1,6 @@
 #ifndef INTERPRETER
 #define INTERPRETER
 
-#include "load_racket_file.h"
-#include "tokenizer.h"
 #include "parser.h"
 #include "vector.h"
 

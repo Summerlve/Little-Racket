@@ -2,9 +2,9 @@
 #define LOAD_RACKET_FILE
 
 #include <stdio.h>
-#include <stdbool.h>
 
 #define LINE_MAX 1024 // the most characters of single line in a racket file 
+
 typedef struct _z_Raw_Code {
     FILE *fp; // store file poniter to racket file stream
     unsigned char *absolute_path;
