@@ -1,5 +1,6 @@
 #include "../include/debug.h"
-#include "../include/interpreter.h"
+#include "../include/tokenizer.h"
+#include "../include/parser.h"
 
 void print_raw_code(const unsigned char *line, void *aux_data)
 {

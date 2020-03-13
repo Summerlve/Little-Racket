@@ -8,7 +8,7 @@
 
 static bool is_absolute_path(const unsigned char *path)
 {
-    // Absolute paths tend to start with the / character.
+    // Absolute paths tend to start with the / character
     if (path[0] == '/')
     {
         return true;
@@ -19,7 +19,7 @@ static bool is_absolute_path(const unsigned char *path)
     }
 }
 
-// remember release the memory.
+// remember release the memory
 static unsigned char *generate_racket_file_absolute_path(const unsigned char *path)
 {
     if (is_absolute_path(path) == true)
@@ -33,7 +33,7 @@ static unsigned char *generate_racket_file_absolute_path(const unsigned char *pa
     unsigned char *temp = (unsigned char *)malloc(PATH_MAX);
     unsigned char *absolute_path = (unsigned char *)malloc(PATH_MAX);
     getcwd((char *)temp, PATH_MAX);
-    // append path_from_input to the tail of temp.
+    // append path_from_input to the tail of temp
     strcat((char *)temp, "/");
     strcat((char *)temp, (const char *)path);
     // get absolute_path 
@@ -47,8 +47,8 @@ static FILE *open_racket_file(const unsigned char *path)
 {
     if (strstr((const char *)path, ".rkt") == NULL)
     {
-        // if the path dont includes '.rkt'.
-        // print error to console and exit program with failure.
+        // if the path dont includes '.rkt'
+        // print error to console and exit program with failure
         perror("load .rkt file please");
         exit(EXIT_FAILURE);
     }
@@ -57,7 +57,7 @@ static FILE *open_racket_file(const unsigned char *path)
     fp = fopen((const char *)path, "r");
     if (fp == NULL)
     {  
-        // load .rkt file failed, exit program with failure.
+        // load .rkt file failed, exit program with failure
         perror((const char *)path);
         exit(EXIT_FAILURE);
     }
@@ -68,11 +68,11 @@ static FILE *open_racket_file(const unsigned char *path)
 static Raw_Code *raw_code_new(const unsigned char *path)
 {
     Raw_Code *raw_code = (Raw_Code *)malloc(sizeof(Raw_Code));
-    // generate absolute path of a racket file. 
+    // generate absolute path of a racket file 
     raw_code->absolute_path = generate_racket_file_absolute_path(path); 
     // open racket file
     raw_code->fp = open_racket_file(raw_code->absolute_path);
-    raw_code->allocated_length = 4; // init 4 lines space to store.
+    raw_code->allocated_length = 4; // init 4 lines space to store
     raw_code->line_number = 0;
     raw_code->contents = (unsigned char **)malloc(raw_code->allocated_length * sizeof(unsigned char *));
     if (raw_code->contents == NULL)
@@ -156,12 +156,12 @@ Raw_Code *racket_file_load(const unsigned char *path)
     Raw_Code *raw_code = raw_code_new(path);
     
     // copy racket file to Raw_Code::contents
-    unsigned char *line = (unsigned char *)malloc(LINE_MAX); // line buffer.
+    unsigned char *line = (unsigned char *)malloc(LINE_MAX); // line buffer
 
     while (fgets((char *)line, LINE_MAX, raw_code->fp) != NULL)
     {
         add_line(raw_code, line);
-        // remove newline character in each line.
+        // remove newline character in each line
         size_t index = strcspn((const char *)(raw_code->contents[raw_code->line_number - 1]), "\r\n");
         if (index == 0)
         {
@@ -179,12 +179,12 @@ Raw_Code *racket_file_load(const unsigned char *path)
         }
     }  
 
-    // free the line buffer.
+    // free the line buffer
     free(line);
 
     if (feof(raw_code->fp))
     {
-        // load racket file completed.
+        // load racket file completed
     }
 
     if (ferror(raw_code->fp))

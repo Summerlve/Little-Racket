@@ -1,4 +1,6 @@
 #include "../include/load_racket_file.h"
+#include "../include/tokenizer.h"
+#include "../include/parser.h"
 #include "../include/interpreter.h"
 #include "../include/debug.h"
 #include <stdio.h>

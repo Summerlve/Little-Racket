@@ -1,5 +1,6 @@
 #include "../include/addon.h"
-#include "../include/interpreter.h"
+#include "../include/parser.h"
+#include "../include/vector.h"
 #include <sodium.h>
 #include <string.h>
 #include <stdlib.h>
