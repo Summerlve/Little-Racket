@@ -72,7 +72,6 @@ Vector *VectorCopy(Vector *v, VectorCopyFunction copy_fn, void *aux_data)
         for (size_t i = 0; i < length; i++)
         {
             void *value_addr = VectorNth(v, i);
-            AST_Node *binding = *(AST_Node **)value_addr;
             void *copy_val_addr = copy_fn(value_addr, i, v, new_vector, aux_data);
             // you can return null to ignore some value.
             if (copy_val_addr != NULL) VectorAppend(new_vector, copy_val_addr);

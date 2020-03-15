@@ -1127,6 +1127,34 @@ Vector *calculator(AST ast, void *aux_data)
             {
                 VectorAppend(results, &result);
             }
+            else if (ast_node_get_tag(result) == BUILT_IN_BINDING)
+            {
+                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
+                result_copy->tag = NOT_IN_AST;
+                VectorAppend(results, &result_copy);
+            }
+            else if (ast_node_get_tag(result) == BUILT_IN_PROCEDURE)
+            {
+                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
+                result_copy->tag = NOT_IN_AST;
+                VectorAppend(results, &result_copy);
+            }
+            else if (ast_node_get_tag(result) == ADDON_BINDING)
+            {
+                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
+                result_copy->tag = NOT_IN_AST;
+                VectorAppend(results, &result_copy);
+            }
+            else if (ast_node_get_tag(result) == ADDON_PROCEDURE)
+            {
+                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
+                result_copy->tag = NOT_IN_AST;
+                VectorAppend(results, &result_copy);
+            }
+            else if (ast_node_get_tag(result) == IMMUTABLE)
+            {
+                // placeholder
+            }
         }
     }
 

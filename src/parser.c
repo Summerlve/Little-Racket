@@ -967,24 +967,39 @@ AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data)
         Vector *body_exprs = ast_node->contents.procedure.body_exprs; 
         Function c_native_function = ast_node->contents.procedure.c_native_function;
 
-        Vector *params_copy = VectorNew(sizeof(AST_Node *));
-        Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
-        
-        for (size_t i = 0; i < VectorLength(params); i++)
+        if (params == NULL && body_exprs == NULL && c_native_function != NULL)
         {
-            AST_Node *node = *(AST_Node **)VectorNth(params, i);
-            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
-            VectorAppend(params_copy, &node_copy);
+            // built-in or addon procedure
+            copy = ast_node_new(ast_node->tag, Procedure, name, required_params_count, NULL, NULL, c_native_function);
         }
-
-        for (size_t i = 0; i < VectorLength(body_exprs); i++)
+        else if (params != NULL && body_exprs != NULL && c_native_function == NULL)
         {
-            AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
-            AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
-            VectorAppend(body_exprs_copy, &node_copy);
+            // user defined procedure
+            Vector *params_copy = VectorNew(sizeof(AST_Node *));
+            Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
+            
+            for (size_t i = 0; i < VectorLength(params); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(params, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                VectorAppend(params_copy, &node_copy);
+            }
+    
+            for (size_t i = 0; i < VectorLength(body_exprs); i++)
+            {
+                AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
+                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                VectorAppend(body_exprs_copy, &node_copy);
+            }
+    
+            copy = ast_node_new(ast_node->tag, Procedure, name, required_params_count, params_copy, body_exprs_copy, NULL);
         }
-
-        copy = ast_node_new(ast_node->tag, Procedure, name, required_params_count, params_copy, body_exprs_copy, c_native_function);
+        else
+        {
+            // something wrong here
+            fprintf(stderr, "ast_node_deep_copy(): can not copy procedure\n");
+            exit(EXIT_FAILURE); 
+        }
     }
 
     if (ast_node->type == Program)

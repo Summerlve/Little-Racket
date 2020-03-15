@@ -91,7 +91,9 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
 '\\(#t #f #f\\)[\r\n\t ]*\
 '\\(\\)[\r\n\t ]*\
 '\\(\\)[\r\n\t ]*\
-#f"
+#f[\r\n\t ]*\
+#<procedure:=>[\r\n\t ]*\
+#<procedure:>=>"
     )
 
     add_test(map-test Little-Racket ../test/map.test.rkt)
@@ -250,7 +252,10 @@ given: 2"
     )
 
     add_test(sha256-test Little-Racket ../test/sha256.test.rkt)
-    set_tests_properties(sha256-test PROPERTIES PASS_REGULAR_EXPRESSION "881dad820d90a1ee555a48ac9ab322dda62914143c96a505dca9f7b17f386904")
+    set_tests_properties(sha256-test PROPERTIES PASS_REGULAR_EXPRESSION
+"\"881dad820d90a1ee555a48ac9ab322dda62914143c96a505dca9f7b17f386904\"[\r\n\t ]*\
+#<procedure:string-sha256>"
+    )
 endif()
 
 aux_source_directory(./src my_source_files)
