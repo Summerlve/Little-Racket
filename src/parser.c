@@ -1657,27 +1657,28 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             
             // handle normally function call
             struct {
-                bool is_name;
+                bool named;
                 union {
                     Token *name_token;
                     AST_Node *lambda;
                 } value;
-            } name_or_lambda = {.is_name = false, .value = {NULL}};
+            } named_or_lambda = {.named = false, .value = {NULL}};
 
+            // named function call
             if (token->type == IDENTIFIER)
             {
-                name_or_lambda.is_name = true;
-                name_or_lambda.value.name_token = token;
+                named_or_lambda.named = true;
+                named_or_lambda.value.name_token = token;
             }
 
             if (token->type != IDENTIFIER)
             {
-                // ((lambda (x) x) x) 
-                name_or_lambda.is_name = false;
-                name_or_lambda.value.lambda = walk(tokens, current_p); 
+                // anonymous function call, like: ((lambda (x) x) x) 
+                named_or_lambda.named = false;
+                named_or_lambda.value.lambda = walk(tokens, current_p); 
 
                 // check lambda form
-                if (name_or_lambda.value.lambda->type != Lambda_Form)
+                if (named_or_lambda.value.lambda->type != Lambda_Form)
                 {
                     fprintf(stderr, "walk(): call expression: bad syntax\n");
                     exit(EXIT_FAILURE);
@@ -1686,12 +1687,14 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
 
             Vector *params = VectorNew(sizeof(AST_Node *));
 
-            // point to the first argument when name only
-            if (name_or_lambda.is_name == true)
+            // point to the first argument when named function call only
+            if (named_or_lambda.named == true)
             {
                 (*current_p)++; 
-                token = tokens_nth(tokens, *current_p);
             }
+
+            // update token
+            token = tokens_nth(tokens, *current_p);
 
             while ((token->type != PUNCTUATION) ||
                    (token->type == PUNCTUATION && (token->value)[0] != RIGHT_PAREN)
@@ -1704,14 +1707,14 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
 
             AST_Node *ast_node = NULL;
 
-            if (name_or_lambda.is_name == true) 
+            if (named_or_lambda.named == true) 
             {
-                ast_node = ast_node_new(IN_AST, Call_Expression, name_or_lambda.value.name_token->value, NULL, params);
+                ast_node = ast_node_new(IN_AST, Call_Expression, named_or_lambda.value.name_token->value, NULL, params);
             }
 
-            if (name_or_lambda.is_name == false) 
+            if (named_or_lambda.named == false) 
             {
-                ast_node = ast_node_new(IN_AST, Call_Expression, NULL, name_or_lambda.value.lambda, params);
+                ast_node = ast_node_new(IN_AST, Call_Expression, NULL, named_or_lambda.value.lambda, params);
             }
             
             (*current_p)++; // skip ')'
