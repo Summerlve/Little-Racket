@@ -1,6 +1,7 @@
 # Little-Racket
 ## Dependence: ##
 1. libsodium [(link to libsodium)](https://github.com/jedisct1/libsodium)
+
 ---
 
 ## Target: ##
@@ -57,12 +58,19 @@ make sure you have installed libsodium first.
 ### Compile the project: ###
 ```bash
 > cd <path_to_the_project>
-> chmod 744 ./build.sh 
+> chmod 755 ./build.sh 
 > sudo ./build.sh
 > cd ./build
 # you can find executable file named "Little-Racket" in current folder.
 > ./Little-Racket <path_to_racket_file>
 > ......
+```
+### Install the project: ###
+```bash
+> cd <path_to_the_project>
+> chmod 755 ./install.sh
+> sudo ./install.sh
+# Default install to /usr/local/bin
 ```
 
 ---

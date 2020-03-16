@@ -1,29 +1,47 @@
 cmake_minimum_required(VERSION 3.14)
 project(Little-Racket LANGUAGES C)
 
+# Release mode
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
     if(NOT WIN32)
         string(ASCII 27 Esc)
         set(ColourReset "${Esc}[m")
         set(Green "${Esc}[32m")
     endif()
-    message("${Green}!! Little Racket (Release mode).${ColourReset}")
+    message("${Green}!! Little Racket (Release mode)${ColourReset}")
     add_compile_definitions(RELEASE_MODE)
+
+# Install mode
+elseif (${CMAKE_BUILD_TYPE} STREQUAL "Install")
+    if(NOT WIN32)
+        string(ASCII 27 Esc)
+        set(ColourReset "${Esc}[m")
+        set(Blue "${Esc}[34m")
+    endif()
+    message("${Blue}!! Little Racket (Install mode)${ColourReset}")
+    add_compile_definitions(RELEASE_MODE) # first release then install
+    set(CMAKE_INSTALL_PREFIX /usr/local) # This variable defaults to /usr/local in cmake
+    set(z_install_dest bin)
+    message("${Blue}!! Default install to ${CMAKE_INSTALL_PREFIX}/${z_install_dest}${ColourReset}")
+
+# Debug mode
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     if(NOT WIN32)
         string(ASCII 27 Esc)
         set(ColourReset "${Esc}[m")
         set(Red "${Esc}[31m")
     endif()
-    message("${Red}!! Little Racket (Debug mode).${ColourReset}")
+    message("${Red}!! Little Racket (Debug mode)${ColourReset}")
     add_compile_definitions(DEBUG_MODE)
+
+# Test mode
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Test")
     if(NOT WIN32)
         string(ASCII 27 Esc)
         set(ColourReset "${Esc}[m")
         set(Yellow "${Esc}[33m")
     endif()
-    message("${Yellow}!! Little Racket (Test mode).${ColourReset}")
+    message("${Yellow}!! Little Racket (Test mode)${ColourReset}")
     add_compile_definitions(TEST_MODE)
 
     # test
@@ -265,9 +283,14 @@ given: 2"
     )
 endif()
 
-aux_source_directory(./src my_source_files)
-add_executable(${PROJECT_NAME} ${my_source_files})
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 find_package(Sodium REQUIRED)
 include_directories(${sodium_INCLUDE_DIR})
+aux_source_directory(./src my_source_files)
+add_executable(${PROJECT_NAME} ${my_source_files})
 target_link_libraries(${PROJECT_NAME} m ${sodium_LIBRARY_RELEASE})
+
+# Install mode
+if (${CMAKE_BUILD_TYPE} STREQUAL "Install")
+    install(TARGETS ${PROJECT_NAME} DESTINATION ${z_install_dest})
+endif()
