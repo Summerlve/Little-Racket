@@ -1,3 +1,4 @@
+#include "../include/global.h"
 #include "../include/parser.h"
 #include "../include/tokenizer.h"
 #include "../include/vector.h"
@@ -10,28 +11,30 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p);
 static void visitor_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data);
 static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data);
 
-// ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL, addon_bindings/NULL)
-// ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
-// ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
-//   ast_node_new(tag, Local_Binding_Form, DEFINE, unsigned char *name, AST_Node *value)
-//   ast_node_new(tag, Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
-// ast_node_new(tag, Binding, name, AST_Node *value/NULL)
-// ast_node_new(tag, List or Pair, Vector *value/NULL)
-// ast_node_new(tag, xxx_Literal, value)
-// ast_node_new(tag, Procedure, name/NULL, required_params_count, params, body_exprs, c_native_function/NULL)
-// ast_node_new(tag, Conditional_Form, Conditional_Form_Type, ...)
-//   ast_node_new(tag, Conditional_Form, IF, test_expr, then_expr, else_expr)
-//   ast_node_new(tag, Conditional_Form, AND, Vector *exprs/NULL)
-//   ast_node_new(tag, Conditional_Form, NOT, AST_Node *expr/NULL)
-//   ast_node_new(tag, Conditional_Form, OR, Vector *exprs/NULL)
-//   ast_node_new(tag, Conditional_Form, COND, Vector *cond_clauses/NULL)
-//   ast_node_new(tag, Cond_Clause, Cond_Clause_Type type, AST_Node *test_expr/NULL, Vector *then_bodies/NULL, AST_Node *proc_expr/NULL)
-//      ast_node_new(tag, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr, then_bodies, NULL)
-//      ast_node_new(tag, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies, NULL)
-// ast_node_new(tag, Lambda_Form, params, body_exprs)
-// ast_node_new(tag, Set_Form, id/NULL, expr/NULL)
-// ast_node_new(tag, NULL_Expression)
-// ast_node_new(tag, EMPTY_Expression)
+/*
+    ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL, addon_bindings/NULL)
+    ast_node_new(tag, Call_Expression, name/NULL, anonymous_procedure/NULL, params/NULL)
+    ast_node_new(tag, Local_Binding_Form, Local_Binding_Form_Type, ...)
+    ast_node_new(tag, Local_Binding_Form, DEFINE, unsigned char *name, AST_Node *value)
+    ast_node_new(tag, Local_Binding_Form, LET/LET_STAR/LETREC, bindings/NULL, body_exprs/NULL)
+    ast_node_new(tag, Binding, name, AST_Node *value/NULL)
+    ast_node_new(tag, List or Pair, Vector *value/NULL)
+    ast_node_new(tag, xxx_Literal, value)
+    ast_node_new(tag, Procedure, name/NULL, required_params_count, params, body_exprs, c_native_function/NULL)
+    ast_node_new(tag, Conditional_Form, Conditional_Form_Type, ...)
+    ast_node_new(tag, Conditional_Form, IF, test_expr, then_expr, else_expr)
+    ast_node_new(tag, Conditional_Form, AND, Vector *exprs/NULL)
+    ast_node_new(tag, Conditional_Form, NOT, AST_Node *expr/NULL)
+    ast_node_new(tag, Conditional_Form, OR, Vector *exprs/NULL)
+    ast_node_new(tag, Conditional_Form, COND, Vector *cond_clauses/NULL)
+    ast_node_new(tag, Cond_Clause, Cond_Clause_Type type, AST_Node *test_expr/NULL, Vector *then_bodies/NULL, AST_Node *proc_expr/NULL)
+        ast_node_new(tag, Cond_Clause, TEST_EXPR_WITH_THENBODY, test_expr, then_bodies, NULL)
+        ast_node_new(tag, Cond_Clause, ELSE_STATEMENT, NULL, then_bodies, NULL)
+    ast_node_new(tag, Lambda_Form, params, body_exprs)
+    ast_node_new(tag, Set_Form, id/NULL, expr/NULL)
+    ast_node_new(tag, NULL_Expression)
+    ast_node_new(tag, EMPTY_Expression)
+*/
 AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
 {
     AST_Node *ast_node = (AST_Node *)malloc(sizeof(AST_Node));
@@ -70,7 +73,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         else if (name != NULL)
         {
             ast_node->contents.call_expression.name = (unsigned char *)malloc(strlen((const char *)name) + 1);
-            strcpy((char *)(ast_node->contents.call_expression.name), (const char *)name);
+            strcpy(TYPECAST(char *, ast_node->contents.call_expression.name), TYPECAST(const char *, name));
         }
         ast_node->contents.call_expression.anonymous_procedure = va_arg(ap, AST_Node *);
         Vector *params = va_arg(ap, Vector *);
@@ -86,7 +89,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         if (name != NULL)
         {
             ast_node->contents.procedure.name = (unsigned char *)malloc(strlen((const char *)name) + 1);
-            strcpy((char *)(ast_node->contents.procedure.name), (const char *)name);
+            strcpy(TYPECAST(char *, ast_node->contents.procedure.name), TYPECAST(const char *, name));
         }
         ast_node->contents.procedure.required_params_count = va_arg(ap, size_t);
         ast_node->contents.procedure.params = va_arg(ap, Vector *);
@@ -187,7 +190,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         matched = true;
         const unsigned char *name = va_arg(ap, const unsigned char *);
         ast_node->contents.binding.name = (unsigned char *)malloc(strlen((const char *)name) + 1);
-        strcpy((char *)(ast_node->contents.binding.name), (const char *)name);
+        strcpy(TYPECAST(char *, ast_node->contents.binding.name), TYPECAST(const char *, name));
         ast_node->contents.binding.value = va_arg(ap, AST_Node *);
     }
 
@@ -214,7 +217,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         matched = true;
         const unsigned char *value = va_arg(ap, const unsigned char *);
         ast_node->contents.literal.value = malloc(strlen((const char *)value) + 1);
-        strcpy((char *)ast_node->contents.literal.value, (const char *)value);
+        strcpy(TYPECAST(char *, ast_node->contents.literal.value), TYPECAST(const char *, value));
         // check '.' to decide use int or double
         if (strchr(ast_node->contents.literal.value, '.') == NULL)
         {
@@ -237,7 +240,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...)
         matched = true;
         const unsigned char *value = va_arg(ap, const unsigned char *);
         ast_node->contents.literal.value = malloc(strlen((const char *)value) + 1);
-        strcpy((char *)(ast_node->contents.literal.value), (const char *)value);
+        strcpy(TYPECAST(char *, ast_node->contents.literal.value), TYPECAST(const char *, value));
         ast_node->contents.literal.c_native_value = NULL;
     }
 
@@ -542,8 +545,8 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Binding)
     {
         matched = true;
-        const unsigned char *name = ast_node->contents.binding.name;
-        if (name != NULL) free((void *)name);
+        unsigned char *name = ast_node->contents.binding.name;
+        if (name != NULL) free(name);
         AST_Node *value = ast_node->contents.binding.value;
         if (value != NULL) ast_node_free(value);
     }
@@ -551,7 +554,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == List_Literal)
     {
         matched = true;
-        Vector *elements = (Vector *)(ast_node->contents.literal.value);
+        Vector *elements = TYPECAST(Vector *, ast_node->contents.literal.value);
         for (size_t i = 0; i < VectorLength(elements); i++)
         {
             AST_Node *element = *(AST_Node **)VectorNth(elements, i);
@@ -563,7 +566,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Pair_Literal)
     {
         matched = true;
-        Vector *elements = (Vector *)(ast_node->contents.literal.value);
+        Vector *elements = TYPECAST(Vector *, ast_node->contents.literal.value);
         for (size_t i = 0; i < VectorLength(elements); i++)
         {
             AST_Node *element = *(AST_Node **)VectorNth(elements, i);
@@ -1166,7 +1169,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
     if (token->type == IDENTIFIER)
     {
         // handle null
-        if (strcmp((const char *)(token->value), "null") == 0)
+        if (strcmp(TYPECAST(const char *, token->value), "null") == 0)
         {
             AST_Node *null_expr = ast_node_new(IN_AST, NULL_Expression);
             (*current_p)++; // skip null itself
@@ -1174,7 +1177,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
         }
 
         // handle empty
-        if (strcmp((const char *)(token->value), "empty") == 0)
+        if (strcmp(TYPECAST(const char *, token->value), "empty") == 0)
         {
             AST_Node *empty_expr = ast_node_new(IN_AST, EMPTY_Expression);
             (*current_p)++; // skip empty itself
@@ -1237,9 +1240,9 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
 
             // handle Local_Binding_Form
             // handle 'let' 'let*' 'letrec' contains '[' and ']'
-            if ((strcmp((const char *)(token->value), "let") == 0) ||
-                (strcmp((const char *)(token->value), "let*") == 0) ||
-                (strcmp((const char *)(token->value), "letrec") == 0))
+            if ((strcmp(TYPECAST(const char *, token->value), "let") == 0) ||
+                (strcmp(TYPECAST(const char *, token->value), "let*") == 0) ||
+                (strcmp(TYPECAST(const char *, token->value), "letrec") == 0))
             {
                 Token *name_token = token;
                 Vector *bindings = VectorNew(sizeof(AST_Node *));
@@ -1310,15 +1313,15 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
                 }
 
                 AST_Node *ast_node = NULL;
-                if (strcmp((const char *)(name_token->value), "let") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET, bindings, body_exprs);
-                if (strcmp((const char *)(name_token->value), "let*") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET_STAR, bindings, body_exprs);
-                if (strcmp((const char *)(name_token->value), "letrec") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LETREC, bindings, body_exprs); 
+                if (strcmp(TYPECAST(const char *, name_token->value), "let") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET, bindings, body_exprs);
+                if (strcmp(TYPECAST(const char *, name_token->value), "let*") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LET_STAR, bindings, body_exprs);
+                if (strcmp(TYPECAST(const char *, name_token->value), "letrec") == 0) ast_node = ast_node_new(IN_AST, Local_Binding_Form, LETREC, bindings, body_exprs); 
                 (*current_p)++; // skip ')' of let expression
                 return ast_node;
             }
 
             // handle 'define' 
-            if (strcmp((const char *)(token->value), "define") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "define") == 0)
             {
                 // move to binding's name
                 (*current_p)++;
@@ -1341,7 +1344,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
 
             // handle 'lambda'
-            if (strcmp((const char *)(token->value), "lambda") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "lambda") == 0)
             {
                 Vector *params = VectorNew(sizeof(AST_Node *));
                 Vector *body_exprs = VectorNew(sizeof(AST_Node *));
@@ -1402,7 +1405,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
 
             // handle 'if'
-            if (strcmp((const char *)(token->value), "if") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "if") == 0)
             {
                 // move to test_expr
                 (*current_p)++;
@@ -1425,7 +1428,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
             
             // handle 'and'
-            if (strcmp((const char *)(token->value), "and") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "and") == 0)
             {
                 // move to first expr or ')'
                 (*current_p)++;
@@ -1465,7 +1468,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
 
             // handle 'not'
-            if (strcmp((const char *)(token->value), "not") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "not") == 0)
             {
                 // move to expr
                 (*current_p)++;
@@ -1487,7 +1490,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
 
             // handle 'or'
-            if (strcmp((const char *)(token->value), "or") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "or") == 0)
             {
                 // move to first expr or ')'
                 (*current_p)++;
@@ -1527,7 +1530,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
 
             // handle cond
-            if (strcmp((const char *)(token->value), "cond") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "cond") == 0)
             {
                 Vector *cond_clauses = VectorNew(sizeof(AST_Node *));
                 int else_statement_counter = 0;
@@ -1552,7 +1555,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
                     (*current_p)++;
                     token = tokens_nth(tokens, *current_p);
 
-                    if (strcmp((const char *)(token->value), "else") == 0)
+                    if (strcmp(TYPECAST(const char *, token->value), "else") == 0)
                     {
                         // else statement
                         Vector *then_bodies = VectorNew(sizeof(AST_Node *));
@@ -1632,7 +1635,7 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
             }
 
             // handle set!
-            if (strcmp((const char *)(token->value), "set!") == 0)
+            if (strcmp(TYPECAST(const char *, token->value), "set!") == 0)
             {
                 // move to id
                 (*current_p)++;
@@ -1999,7 +2002,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
     if (node->type == List_Literal)
     {
-        Vector *value = (Vector *)(node->contents.literal.value);
+        Vector *value = TYPECAST(Vector *, node->contents.literal.value);
         for (size_t i = 0; i < VectorLength(value); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);
@@ -2009,7 +2012,7 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
     if (node->type == Pair_Literal)
     {
-        Vector *value = (Vector *)(node->contents.literal.value);
+        Vector *value = TYPECAST(Vector *, node->contents.literal.value);
         for (size_t i = 0; i < VectorLength(value); i++)
         {
             AST_Node *ast_node = *(AST_Node **)VectorNth(value, i);

@@ -1,3 +1,4 @@
+#include "../include/global.h"
 #include "../include/racket_built_in.h"
 #include "../include/interpreter.h"
 #include <stdio.h>
@@ -14,12 +15,12 @@ static size_t int_digit_count(int num)
 
     if (num > 0)
     {
-        digit_count = (size_t)((ceil(log10(num)) + 1) * sizeof(unsigned char));
+        digit_count = TYPECAST(size_t, (ceil(log10(num)) + 1) * sizeof(unsigned char));
     }
     else if (num < 0)
     {
         num = -num;
-        digit_count = 1 + (size_t)((ceil(log10(num)) + 1) * sizeof(unsigned char));
+        digit_count = 1 + TYPECAST(size_t, (ceil(log10(num)) + 1) * sizeof(unsigned char));
     }
     else if(num == 0)
     {
@@ -85,7 +86,7 @@ static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
             if (result.is_int == true)
             {
                 result.is_int = false;
-                double tmp = (double)result.value.iv;
+                double tmp = TYPECAST(double, result.value.iv);
                 result.value.dv = tmp + c_native_value;
             }
             else
@@ -100,13 +101,13 @@ static AST_Node *racket_native_addition(AST_Node *procedure, Vector *operands)
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf((char *)value, "%lld", result.value.iv);
+        sprintf(TYPECAST(char *, value), "%lld", result.value.iv);
     }
     else
     {
         // convert double to string
         value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf((char *)value, "%lf", result.value.dv);
+        sprintf(TYPECAST(char *, value), "%lf", result.value.dv);
     }
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
@@ -205,7 +206,7 @@ static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands
             if (result.is_int == true)
             {
                 result.is_int = false;
-                double tmp = (double)result.value.iv;
+                double tmp = TYPECAST(double, result.value.iv);
                 result.value.dv = tmp - c_native_value;
             }
             else
@@ -220,13 +221,13 @@ static AST_Node *racket_native_subtraction(AST_Node *procedure, Vector *operands
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf((char *)value, "%lld", result.value.iv);
+        sprintf(TYPECAST(char *, value), "%lld", result.value.iv);
     }
     else
     {
         // convert double to string
         value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf((char *)value, "%lf", result.value.dv);
+        sprintf(TYPECAST(char *, value), "%lf", result.value.dv);
     }
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
@@ -290,7 +291,7 @@ static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *opera
             if (result.is_int == true)
             {
                 result.is_int = false;
-                double tmp = (double)result.value.iv;
+                double tmp = TYPECAST(double, result.value.iv);
                 result.value.dv = tmp * c_native_value;
             }
             else
@@ -305,13 +306,13 @@ static AST_Node *racket_native_multiplication(AST_Node *procedure, Vector *opera
     {
         // convert int to string.
         value = malloc(int_digit_count(result.value.iv) + 1);
-        sprintf((char *)value, "%lld", result.value.iv);
+        sprintf(TYPECAST(char *, value), "%lld", result.value.iv);
     }
     else
     {
         // convert double to string
         value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-        sprintf((char *)value, "%lf", result.value.dv);
+        sprintf(TYPECAST(char *, value), "%lf", result.value.dv);
     }
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
@@ -400,7 +401,7 @@ static AST_Node *racket_native_division(AST_Node *procedure, Vector *operands)
     unsigned char *value = NULL;
     // convert double to string
     value = malloc(DOUBLE_MAX_DIGIT_LENGTH + 1);
-    sprintf((char *)value, "%lf", result);
+    sprintf(TYPECAST(char *, value), "%lf", result);
     
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Number_Literal, value);
     free(value);
@@ -543,7 +544,7 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE); 
     }
 
-    size_t list_length = VectorLength((Vector *)(first_list->contents.literal.value));
+    size_t list_length = VectorLength(TYPECAST(Vector *, first_list->contents.literal.value));
 
     for (size_t i = 1; i < VectorLength(operands); i++)
     {
@@ -556,7 +557,7 @@ static AST_Node *racket_native_map(AST_Node *procedure, Vector *operands)
         }
 
         // check list size
-        size_t cur_list_length = VectorLength((Vector *)(list->contents.literal.value));
+        size_t cur_list_length = VectorLength(TYPECAST(Vector *, list->contents.literal.value));
         if (list_length != cur_list_length)
         {
             fprintf(stderr, "%s: all lists must have same size\n", procedure->contents.procedure.name);
@@ -683,7 +684,7 @@ static AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE); 
     }
 
-    Vector *list = (Vector *)(list_literal->contents.literal.value);
+    Vector *list = TYPECAST(Vector *, list_literal->contents.literal.value);
     Vector *value = VectorNew(sizeof(AST_Node *));
 
     for (size_t i = 0; i < VectorLength(list); i++)
@@ -719,7 +720,7 @@ static AST_Node *racket_native_filter(AST_Node *procedure, Vector *operands)
         }
 
         // if #t append item to value
-        Boolean_Type *is_true = (Boolean_Type *)(result->contents.literal.value);
+        Boolean_Type *is_true = TYPECAST(Boolean_Type *, result->contents.literal.value);
 
         if (*is_true == R_TRUE)
         {
@@ -938,7 +939,7 @@ static AST_Node *racket_native_is_pair(AST_Node *procedure, Vector *operands)
 
     if (v->type == Pair_Literal)
         *value = R_TRUE;
-    else if (v->type == List_Literal && VectorLength((Vector *)(v->contents.literal.value)) != 0)
+    else if (v->type == List_Literal && VectorLength(TYPECAST(Vector *, v->contents.literal.value)) != 0)
         *value = R_TRUE;
     else
         *value = R_FALSE;
@@ -996,7 +997,7 @@ static AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
 
     if (ast_node->type == Pair_Literal)
         is_pair = true;
-    else if (ast_node->type == List_Literal && VectorLength((Vector *)(ast_node->contents.literal.value)) != 0)
+    else if (ast_node->type == List_Literal && VectorLength(TYPECAST(Vector *, ast_node->contents.literal.value)) != 0)
         is_pair = true;
     else
         is_pair = false;
@@ -1009,7 +1010,7 @@ static AST_Node *racket_native_car(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE); 
     }
 
-    Vector *value = (Vector *)(ast_node->contents.literal.value);
+    Vector *value = TYPECAST(Vector *, ast_node->contents.literal.value);
     AST_Node *car = *(AST_Node **)VectorNth(value, 0);
     return ast_node_deep_copy(car, NULL);
 }
@@ -1035,7 +1036,7 @@ static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
 
     if (ast_node->type == Pair_Literal)
         is_pair = true;
-    else if (ast_node->type == List_Literal && VectorLength((Vector *)(ast_node->contents.literal.value)) != 0)
+    else if (ast_node->type == List_Literal && VectorLength(TYPECAST(Vector *, ast_node->contents.literal.value)) != 0)
         is_pair = true;
     else
         is_pair = false;
@@ -1048,7 +1049,7 @@ static AST_Node *racket_native_cdr(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE);
     }
 
-    Vector *value = (Vector *)(ast_node->contents.literal.value);
+    Vector *value = TYPECAST(Vector *, ast_node->contents.literal.value);
 
     if (ast_node->type == Pair_Literal)
     {
@@ -1316,71 +1317,71 @@ Vector *generate_built_in_bindings(void)
     AST_Node *binding = NULL;
     AST_Node *procedure = NULL;
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "+", 0, NULL, NULL, (void(*)(void))racket_native_addition); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "+", 0, NULL, NULL, TYPECAST(void(*)(void), racket_native_addition)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "+", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE,Procedure,  "-", 1, NULL, NULL, (void(*)(void))racket_native_subtraction); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE,Procedure,  "-", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_subtraction)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "-", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "*", 0, NULL, NULL, (void(*)(void))racket_native_multiplication); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "*", 0, NULL, NULL, TYPECAST(void(*)(void), racket_native_multiplication)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "*", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "/", 1, NULL, NULL, (void(*)(void))racket_native_division); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "/", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_division)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "/", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "=", 1, NULL, NULL, (void(*)(void))racket_native_number_equal); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "=", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_number_equal)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "=", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">", 1, NULL, NULL, (void(*)(void))racket_native_number_more_than); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_number_more_than)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, ">", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<", 1, NULL, NULL, (void(*)(void))racket_native_number_less_than); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_number_less_than)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "<", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "map", 2, NULL, NULL, (void(*)(void))racket_native_map); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "map", 2, NULL, NULL, TYPECAST(void(*)(void), racket_native_map)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "map", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "filter", 2, NULL, NULL, (void(*)(void))racket_native_filter); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "filter", 2, NULL, NULL, TYPECAST(void(*)(void), racket_native_filter)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "filter", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "list?", 1, NULL, NULL, (void(*)(void))racket_native_is_list); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "list?", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_is_list)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "list?", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "pair?", 1, NULL, NULL, (void(*)(void))racket_native_is_pair); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "pair?", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_is_pair)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "pair?", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "car", 1, NULL, NULL, (void(*)(void))racket_native_car); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "car", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_car)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "car", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cdr", 1, NULL, NULL, (void(*)(void))racket_native_cdr); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cdr", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_cdr)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "cdr", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "list", 0, NULL, NULL, (void(*)(void))racket_native_list); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "list", 0, NULL, NULL, TYPECAST(void(*)(void), racket_native_list)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "list", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cons", 2, NULL, NULL, (void(*)(void))racket_native_cons); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "cons", 2, NULL, NULL, TYPECAST(void(*)(void), racket_native_cons)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "cons", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<=", 1, NULL, NULL, (void(*)(void))racket_native_less_or_equal_than); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, "<=", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_less_or_equal_than)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, "<=", procedure);
     VectorAppend(built_in_bindings, &binding);
 
-    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">=", 1, NULL, NULL, (void(*)(void))racket_native_more_or_equal_than); 
+    procedure = ast_node_new(BUILT_IN_PROCEDURE, Procedure, ">=", 1, NULL, NULL, TYPECAST(void(*)(void), racket_native_more_or_equal_than)); 
     binding = ast_node_new(BUILT_IN_BINDING, Binding, ">=", procedure);
     VectorAppend(built_in_bindings, &binding);
 

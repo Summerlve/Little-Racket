@@ -1,3 +1,4 @@
+#include "../include/global.h"
 #include "../include/addon.h"
 #include "../include/parser.h"
 #include "../include/vector.h"
@@ -5,8 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-#define SHA256_HASH_STRING_LEN ((size_t)64)
 
 AST_Node *racket_addon_string_sha256(AST_Node *procedure, Vector *operands)
 {
@@ -30,9 +29,9 @@ AST_Node *racket_addon_string_sha256(AST_Node *procedure, Vector *operands)
         exit(EXIT_FAILURE);  
     }
 
-    unsigned char *value = (unsigned char *)(operand->contents.literal.value);
+    unsigned char *value = TYPECAST(unsigned char *, operand->contents.literal.value);
     unsigned char hash[crypto_hash_sha256_BYTES];
-    crypto_hash_sha256(hash, value, strlen((const char *)value));
+    crypto_hash_sha256(hash, value, strlen(TYPECAST(const char *, value)));
 
     char tmp[3]; tmp[0] = '\0';
     char *result = malloc(SHA256_HASH_STRING_LEN + 1); 
@@ -55,7 +54,7 @@ Vector *generate_addon_bindings(void)
     AST_Node *binding = NULL;
     AST_Node *procedure = NULL;
 
-    procedure = ast_node_new(ADDON_PROCEDURE, Procedure, "string-sha256", 1, NULL, NULL, (void(*)(void))racket_addon_string_sha256);
+    procedure = ast_node_new(ADDON_PROCEDURE, Procedure, "string-sha256", 1, NULL, NULL, TYPECAST(void(*)(void), racket_addon_string_sha256));
     binding = ast_node_new(ADDON_BINDING, Binding, "string-sha256", procedure);
     VectorAppend(addon_bindings, &binding);
 

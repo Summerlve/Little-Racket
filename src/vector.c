@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void VectorExpand(Vector *v);
+
 Vector *VectorNew(size_t elem_size)
 {
     Vector *v = (Vector *)malloc(sizeof(Vector));
@@ -20,15 +22,23 @@ Vector *VectorNew(size_t elem_size)
     return v;
 }
 
-static void VectorExpand(Vector *v)
+int VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
 {
-    v->allocated_length *= 2;
-    v->elems = realloc(v->elems, v->elem_size * v->allocated_length);
-    if (v->elems == NULL)
+    if (v == NULL) return 1;
+    
+    if (free_fn != NULL)
     {
-        perror("Vector::elems realloc failed");
-        exit(EXIT_FAILURE);
+        size_t length = VectorLength(v);
+        for (size_t i = 0; i < length; i++)
+        {
+            void *value_addr = VectorNth(v, i);
+            free_fn(value_addr, i, v, aux_data);
+        }
     }
+
+    free(v->elems);
+    free(v);
+    return 0;
 }
 
 size_t VectorLength(Vector *v)
@@ -41,16 +51,6 @@ void *VectorNth(Vector *v, size_t index)
     return (unsigned char *)v->elems + v->elem_size * index;
 }
 
-void VectorAppend(Vector *v, const void *value_addr)
-{
-    if (v->logicl_length == v->allocated_length)
-        VectorExpand(v);
-
-    void *dest = VectorNth(v, VectorLength(v));
-    memcpy(dest, value_addr, v->elem_size);
-    v->logicl_length ++;
-}
-
 void VectorMap(Vector *v, VectorMapFunction map, void *aux_data)
 {
     size_t length = VectorLength(v);
@@ -60,6 +60,16 @@ void VectorMap(Vector *v, VectorMapFunction map, void *aux_data)
         void *value_addr = VectorNth(v, i);
         map(value_addr, i, v, aux_data);
     }
+}
+
+void VectorAppend(Vector *v, const void *value_addr)
+{
+    if (v->logicl_length == v->allocated_length)
+        VectorExpand(v);
+
+    void *dest = VectorNth(v, VectorLength(v));
+    memcpy(dest, value_addr, v->elem_size);
+    v->logicl_length ++;
 }
 
 Vector *VectorCopy(Vector *v, VectorCopyFunction copy_fn, void *aux_data)
@@ -89,21 +99,13 @@ Vector *VectorCopy(Vector *v, VectorCopyFunction copy_fn, void *aux_data)
     return new_vector;
 }
 
-int VectorFree(Vector *v, VectorFreeFunction free_fn, void *aux_data)
+static void VectorExpand(Vector *v)
 {
-    if (v == NULL) return 1;
-    
-    if (free_fn != NULL)
+    v->allocated_length *= 2;
+    v->elems = realloc(v->elems, v->elem_size * v->allocated_length);
+    if (v->elems == NULL)
     {
-        size_t length = VectorLength(v);
-        for (size_t i = 0; i < length; i++)
-        {
-            void *value_addr = VectorNth(v, i);
-            free_fn(value_addr, i, v, aux_data);
-        }
+        perror("Vector::elems realloc failed");
+        exit(EXIT_FAILURE);
     }
-
-    free(v->elems);
-    free(v);
-    return 0;
 }

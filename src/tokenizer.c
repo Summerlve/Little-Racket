@@ -1,3 +1,4 @@
+#include "../include/global.h"
 #include "../include/tokenizer.h"
 #include <stdlib.h>
 #include <string.h>
@@ -70,7 +71,7 @@ int number_type_append(Number_Type *number, const unsigned char ch)
 unsigned char *get_number_type_contents(Number_Type *number)
 {
     unsigned char *contents = (unsigned char *)malloc(number->logical_length + sizeof(unsigned char));
-    strcpy((char *)contents, (char *)(number->contents));
+    strcpy(TYPECAST(char *, contents), TYPECAST(char *, number->contents));
     number_type_free(number);
     return contents;
 }
@@ -81,7 +82,7 @@ Token *token_new(Token_Type type, const unsigned char *value)
     Token *token = (Token *)malloc(sizeof(Token));
     token->type = type;
     token->value = (unsigned char *)malloc(strlen((char *)value) + 1);
-    strcpy((char *)(token->value), (const char *)value);
+    strcpy(TYPECAST(char *, token->value), TYPECAST(const char *, value));
     return token;
 }
 
@@ -168,7 +169,7 @@ Tokens *tokenizer(Raw_Code *raw_code)
 static void tokenizer_helper(const unsigned char *line, void *aux_data)
 {
     Tokens *tokens = (Tokens *)aux_data;
-    size_t line_length = strlen((const char *)line);    
+    size_t line_length = strlen(TYPECAST(const char *, line));    
     size_t cursor = 0;
 
     for(size_t i = 0; i < line_length; i++)
@@ -226,7 +227,7 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
             // #lang
             int cmp = -1;
 
-            cmp = strncmp((const char *)(&line[cursor]), LANGUAGE_SIGN, strlen(LANGUAGE_SIGN));
+            cmp = strncmp(TYPECAST(const char *, &line[cursor]), LANGUAGE_SIGN, strlen(LANGUAGE_SIGN));
             if (cmp != 0)
             {
                 fprintf(stderr, "please use #lang to determine which language are used, supports only: #lang racket\n");
@@ -241,7 +242,7 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
             }
 
             cursor = i + 6;
-            cmp = strcmp((const char *)(&line[cursor]), RACKET_SIGN);
+            cmp = strcmp(TYPECAST(const char *, &line[cursor]), RACKET_SIGN);
             if (cmp != 0)
             {
                 fprintf(stderr, "please dont use #lang %s, supports only: #lang racket\n", &line[cursor]);
@@ -265,14 +266,14 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
         // handle paren
         if (line[i] == LEFT_PAREN)
         {
-            Token *token = token_new(PUNCTUATION, (const unsigned char *)"("); 
+            Token *token = token_new(PUNCTUATION, TYPECAST(const unsigned char *, "(")); 
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_PAREN)
         {
-            Token *token = token_new(PUNCTUATION, (const unsigned char *)")");
+            Token *token = token_new(PUNCTUATION, TYPECAST(const unsigned char *, ")"));
             add_token(tokens, token); 
             continue;
         }
@@ -280,14 +281,14 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
         // handle square_bracket
         if (line[i] == LEFT_SQUARE_BRACKET)
         {
-            Token *token = token_new(PUNCTUATION, (const unsigned char *)"[");
+            Token *token = token_new(PUNCTUATION, TYPECAST(const unsigned char *, "["));
             add_token(tokens, token); 
             continue;
         }
 
         if (line[i] == RIGHT_SQUARE_BRACKET)
         {
-            Token *token = token_new(PUNCTUATION, (const unsigned char *)"]");
+            Token *token = token_new(PUNCTUATION, TYPECAST(const unsigned char *, "]"));
             add_token(tokens, token); 
             continue;
         }
@@ -363,7 +364,7 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
             }
 
             unsigned char *string = (unsigned char *)malloc(count + sizeof(unsigned char));
-            strncpy((char *)string, (const char *)(&line[i + 1]), count);
+            strncpy(TYPECAST(char *, string), TYPECAST(const char *, &line[i + 1]), count);
             string[count] = '\0';
             Token *token = token_new(STRING, string);
             free(string);
@@ -376,7 +377,7 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
         // handle apostrophe
         if (line[i] == APOSTROPHE)
         {
-            Token *token = token_new(PUNCTUATION, (const unsigned char *)"\'");
+            Token *token = token_new(PUNCTUATION, TYPECAST(const unsigned char *, "\'"));
             add_token(tokens, token);
             continue;
         }
@@ -385,7 +386,7 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
         if (line[i] == DOT)
         {
             // TO-DO check if a identifier contains '.', such as (define a.b 1)
-            Token *token = token_new(PUNCTUATION, (const unsigned char *)".");
+            Token *token = token_new(PUNCTUATION, TYPECAST(const unsigned char *, "."));
             add_token(tokens, token);
             continue;
         }
@@ -412,7 +413,7 @@ static void tokenizer_helper(const unsigned char *line, void *aux_data)
                 perror("Could not compile regex");
                 exit(EXIT_FAILURE);
             }
-            int status = regexec(&reg, (const char *)(&line[i]), 1, match, 0);
+            int status = regexec(&reg, TYPECAST(const char *, &line[i]), 1, match, 0);
 
             if (status == REG_NOMATCH)
             {

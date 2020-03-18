@@ -1,3 +1,4 @@
+#include "../include/global.h"
 #include "../include/debug.h"
 #include "../include/tokenizer.h"
 #include "../include/parser.h"
@@ -61,10 +62,10 @@ static void pair_exit(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static void number_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    printf(" %s ", (unsigned char *)(node->contents.literal.value));
+    printf(" %s ", TYPECAST(unsigned char *, node->contents.literal.value));
     if (parent != NULL && parent->type == Pair_Literal)
     {
-        AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
+        AST_Node *car = *(AST_Node **)VectorNth(TYPECAST(Vector *, parent->contents.literal.value), 0);    
         if (node == car)
         {
             printf(" . ");
@@ -77,7 +78,7 @@ static void character_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     printf("#\\%c ", *(unsigned char *)(node->contents.literal.value));
     if (parent != NULL && parent->type == Pair_Literal)
     {
-        AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
+        AST_Node *car = *(AST_Node **)VectorNth(TYPECAST(Vector *, parent->contents.literal.value), 0);    
         if (node == car)
         {
             printf(" . ");
@@ -87,10 +88,10 @@ static void character_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 
 static void string_enter(AST_Node *node, AST_Node *parent, void *aux_data)
 {
-    printf("\"%s\" ", (unsigned char *)(node->contents.literal.value));
+    printf("\"%s\" ", TYPECAST(unsigned char *, node->contents.literal.value));
     if (parent != NULL && parent->type == Pair_Literal)
     {
-        AST_Node *car = *(AST_Node **)VectorNth((Vector *)(parent->contents.literal.value), 0);    
+        AST_Node *car = *(AST_Node **)VectorNth(TYPECAST(Vector *, parent->contents.literal.value), 0);    
         if (node == car)
         {
             printf(" . ");
@@ -103,7 +104,7 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
     if (parent == NULL && node->contents.binding.value == NULL)
     {
         // just single variable identifier here. print variable name only.
-        printf(" %s ", (unsigned char *)(node->contents.binding.name));
+        printf(" %s ", TYPECAST(unsigned char *, node->contents.binding.name));
         return;
     }
 
@@ -134,7 +135,7 @@ static void binding_enter(AST_Node *node, AST_Node *parent, void *aux_data)
         }
     }
 
-    printf(" %s ", (unsigned char *)(node->contents.binding.name));
+    printf(" %s ", TYPECAST(unsigned char *, node->contents.binding.name));
 }
 
 static void binding_exit(AST_Node *node, AST_Node *parent, void *aux_data)

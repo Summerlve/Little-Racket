@@ -19,8 +19,14 @@ typedef struct _z_Raw_Code {
     size_t allocated_length; // allocated number
 } Raw_Code;
 typedef void (*RacketFileMapFunction)(const unsigned char *line, void *aux_data); // racket file lines map function
+Raw_Code *raw_code_new(const unsigned char *path);
+int raw_code_free(Raw_Code * raw_code);
+int add_line(Raw_Code *raw_code, const unsigned char *line);
+unsigned char *raw_code_contents_nth(Raw_Code *raw_code, size_t index);
+void raw_code_contents_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data);
 Raw_Code *racket_file_load(const unsigned char *path); // load racket file into memory
 int racket_file_free(Raw_Code *raw_code);
+unsigned char *racket_file_nth(Raw_Code *raw_code, size_t index);
 void racket_file_map(Raw_Code *raw_code, RacketFileMapFunction map, void *aux_data);
 
 #endif

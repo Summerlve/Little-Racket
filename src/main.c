@@ -1,3 +1,4 @@
+#include "../include/global.h"
 #include "../include/load_racket_file.h"
 #include "../include/tokenizer.h"
 #include "../include/parser.h"
@@ -19,7 +20,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory
-    Raw_Code *raw_code = racket_file_load((const unsigned char *)path);
+    Raw_Code *raw_code = racket_file_load(TYPECAST(const unsigned char *, path));
 
     // tokenizer 
     Tokens *tokens = tokenizer(raw_code);
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory
-    Raw_Code *raw_code = racket_file_load((const unsigned char *)path);
+    Raw_Code *raw_code = racket_file_load(TYPECAST(const unsigned char *, path));
 
     // tokenizer 
     Tokens *tokens = tokenizer(raw_code); 
@@ -83,7 +84,7 @@ int main(int argc, char *argv[])
     const char *path = argv[1];
 
     // load racket file content into memory
-    Raw_Code *raw_code = racket_file_load((const unsigned char *)path);
+    Raw_Code *raw_code = racket_file_load(TYPECAST(const unsigned char *, path));
     // show the raw_code in gaint single string
     printf("Raw code:\n");
     racket_file_map(raw_code, print_raw_code, NULL);

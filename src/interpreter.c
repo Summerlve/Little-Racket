@@ -1,4 +1,4 @@
-
+#include "../include/global.h"
 #include "../include/interpreter.h"
 #include "../include/parser.h"
 #include "../include/racket_built_in.h"
@@ -686,8 +686,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
             if (binding->contents.binding.value->type == Procedure)
             {
                 AST_Node *procedure = binding->contents.binding.value;
-                procedure->contents.procedure.name = malloc(strlen((const char *)(binding->contents.binding.name)) + 1);
-                strcpy((char *)(procedure->contents.procedure.name), (const char *)(binding->contents.binding.name));
+                procedure->contents.procedure.name = malloc(strlen(TYPECAST(const char *, binding->contents.binding.name)) + 1);
+                strcpy(TYPECAST(char *, procedure->contents.procedure.name), TYPECAST(const char *, binding->contents.binding.name));
             }
         }
         
@@ -725,8 +725,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 if (binding->contents.binding.value->type == Procedure)
                 {
                     AST_Node *procedure = binding->contents.binding.value;
-                    procedure->contents.procedure.name = malloc(strlen((const char *)(binding->contents.binding.name)) + 1);
-                    strcpy((char *)(procedure->contents.procedure.name), (const char *)(binding->contents.binding.name));
+                    procedure->contents.procedure.name = malloc(strlen(TYPECAST(const char *, binding->contents.binding.name)) + 1);
+                    strcpy(TYPECAST(char *, procedure->contents.procedure.name), TYPECAST(const char *, binding->contents.binding.name));
                 }
             }
 
@@ -765,8 +765,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         if (binding->contents.binding.value->type == Procedure)
         {
             AST_Node *procedure = binding->contents.binding.value;
-            procedure->contents.procedure.name = malloc(strlen((const char *)(binding->contents.binding.name)) + 1);
-            strcpy((char *)(procedure->contents.procedure.name), (const char *)(binding->contents.binding.name));
+            procedure->contents.procedure.name = malloc(strlen(TYPECAST(const char *, binding->contents.binding.name)) + 1);
+            strcpy(TYPECAST(char *, procedure->contents.procedure.name), TYPECAST(const char *, binding->contents.binding.name));
         }
         generate_context(binding->contents.binding.value, ast_node, aux_data);
 
@@ -1240,7 +1240,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
             #ifdef DEBUG_MODE
             printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
             #endif
-            if (strcmp((const char *)(binding->contents.binding.name), (const char *)(node->contents.binding.name)) == 0)
+            if (strcmp(TYPECAST(const char *, binding->contents.binding.name), TYPECAST(const char *, node->contents.binding.name)) == 0)
             {
                 binding_contains_value = node;
 
@@ -1264,7 +1264,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
                 #ifdef DEBUG_MODE
                 printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
                 #endif
-                if (strcmp((const char *)(binding->contents.binding.name), (const char *)(node->contents.binding.name)) == 0)
+                if (strcmp(TYPECAST(const char *, binding->contents.binding.name), TYPECAST(const char *, node->contents.binding.name)) == 0)
                 {
                     binding_contains_value = node;
 
@@ -1289,7 +1289,7 @@ static AST_Node *search_binding_value(AST_Node *binding)
                 #ifdef DEBUG_MODE
                 printf("searching for name: %s, cur node's name: %s\n", binding->contents.binding.name, node->contents.binding.name);
                 #endif
-                if (strcmp((const char *)(binding->contents.binding.name), (const char *)(node->contents.binding.name)) == 0)
+                if (strcmp(TYPECAST(const char *, binding->contents.binding.name), TYPECAST(const char *, node->contents.binding.name)) == 0)
                 {
                     binding_contains_value = node;
 
@@ -1343,13 +1343,13 @@ static void output_result(Result result, void *aux_data)
     if (result->type == Number_Literal)
     {
         matched = true;
-        fprintf(stdout, "%s", (unsigned char *)(result->contents.literal.value));
+        fprintf(stdout, "%s", TYPECAST(unsigned char *, result->contents.literal.value));
     }
 
     if (result->type ==  String_Literal)
     {
         matched = true;
-        fprintf(stdout, "\"%s\"", (unsigned char *)(result->contents.literal.value));
+        fprintf(stdout, "\"%s\"", TYPECAST(unsigned char *, result->contents.literal.value));
     }
 
     if (result->type ==  Character_Literal)
@@ -1362,7 +1362,7 @@ static void output_result(Result result, void *aux_data)
     {
         matched = true;
 
-        Vector *value = (Vector *)(result->contents.literal.value);
+        Vector *value = TYPECAST(Vector *, result->contents.literal.value);
 
         size_t length = VectorLength(value);
         size_t last = length - 1;
@@ -1389,7 +1389,7 @@ static void output_result(Result result, void *aux_data)
     {
         matched = true;
 
-        Vector *value = (Vector *)(result->contents.literal.value);
+        Vector *value = TYPECAST(Vector *, result->contents.literal.value);
         AST_Node *car = *(AST_Node **)VectorNth(value, 0);
         AST_Node *cdr = *(AST_Node **)VectorNth(value, 1);
 
@@ -1413,7 +1413,7 @@ static void output_result(Result result, void *aux_data)
     {
         matched = true;
 
-        Boolean_Type *value = (Boolean_Type *)(result->contents.literal.value);
+        Boolean_Type *value = TYPECAST(Boolean_Type *, result->contents.literal.value);
 
         if (*value == R_TRUE)
             fprintf(stdout, "#t");
