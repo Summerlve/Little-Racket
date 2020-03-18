@@ -43,8 +43,8 @@ AST_Node *racket_addon_string_sha256(AST_Node *procedure, Vector *operands)
     }
 
     result[SHA256_HASH_STRING_LEN] = '\0';
-
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, String_Literal, result);
+    free(result);
     return ast_node;
 }
 
