@@ -1214,15 +1214,16 @@ static AST_Node *walk(Tokens *tokens, size_t *current_p)
     if (token->type == BOOLEAN)
     {
         Boolean_Type *boolean_type = malloc(sizeof(Boolean_Type));
-        if (strchr((const char *)(token->value), 't') != NULL)
+        if (strchr(TYPECAST(const char *, token->value), 't') != NULL)
         {
             *boolean_type = R_TRUE;
         }
-        if (strchr((const char *)(token->value), 'f') != NULL)
+        if (strchr(TYPECAST(const char *, token->value), 'f') != NULL)
         {
             *boolean_type = R_FALSE;
         }
         AST_Node *ast_node = ast_node_new(IN_AST, Boolean_Literal, boolean_type);
+        free(boolean_type);
         (*current_p)++;
         return ast_node;
     }

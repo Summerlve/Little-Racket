@@ -509,7 +509,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             exit(EXIT_FAILURE); 
         }
 
-        // built-in procedure
+        // built-in or addon procedure
         if (procedure->contents.procedure.c_native_function != NULL)
         {
             Vector *params = ast_node->contents.call_expression.params;
@@ -526,10 +526,9 @@ Result eval(AST_Node *ast_node, void *aux_data)
             Function c_native_function = procedure->contents.procedure.c_native_function;
             result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
 
-            // double here.
-            // VectorFree(operands, operand_free_helper, NULL);
-
-            VectorFree(operands, NULL, NULL);
+            // double free here.
+            VectorFree(operands, operand_free_helper, NULL);
+            // VectorFree(operands, NULL, NULL);
         }
 
         // programmer defined procedure
@@ -547,7 +546,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // check arity
-            int required_params_count = procedure->contents.procedure.required_params_count;
+            size_t required_params_count = procedure->contents.procedure.required_params_count;
             size_t operands_count = VectorLength(operands);
             if (operands_count != required_params_count)
             {
@@ -555,7 +554,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 {
                     fprintf(stderr, "anomyous procedure: arity mismatch;\n"
                                     "the expected number of arguments does not match the given number\n"
-                                    "expected: %d\n"
+                                    "expected: %zu\n"
                                     "given: %zu\n", required_params_count, operands_count);
                     exit(EXIT_FAILURE); 
                 }
@@ -563,7 +562,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 {
                     fprintf(stderr, "%s: arity mismatch;\n"
                                     "the expected number of arguments does not match the given number\n"
-                                    "expected: %d\n"
+                                    "expected: %zu\n"
                                     "given: %zu\n", procedure->contents.procedure.name, required_params_count, operands_count);
                     exit(EXIT_FAILURE); 
                 }
@@ -578,35 +577,35 @@ Result eval(AST_Node *ast_node, void *aux_data)
             
             for (size_t i = 0; i < VectorLength(virtual_params); i++)
             {
-                AST_Node *node = *(AST_Node **)VectorNth(virtual_params, i);
-                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
+                AST_Node *virtual_param_copy = ast_node_deep_copy(virtual_param, aux_data);
+                ast_node_set_tag(virtual_param_copy, NOT_IN_AST);
 
-                if (node->context != NULL)
+                if (virtual_param->context != NULL)
                 {
-                    node_copy->context = VectorCopy(node->context, context_copy_helper, NULL);
+                    virtual_param_copy->context = VectorCopy(virtual_param->context, context_copy_helper, NULL);
                 }
 
-                generate_context(node_copy, node->parent, NULL);
-                VectorAppend(virtual_params_copy, &node_copy);
+                generate_context(virtual_param_copy, virtual_param->parent, NULL);
+                VectorAppend(virtual_params_copy, &virtual_param_copy);
             }
 
             for (size_t i = 0; i < VectorLength(body_exprs); i++)
             {
-                AST_Node *node = *(AST_Node **)VectorNth(body_exprs, i);
-                AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
+                AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
+                AST_Node *body_expr_copy = ast_node_deep_copy(body_expr, aux_data);
+                ast_node_set_tag(body_expr_copy, NOT_IN_AST);
 
-                if (node->context != NULL)
+                // body_expr must have context includes params in procedure
+                body_expr_copy->context = VectorNew(sizeof(AST_Node *));
+                for(size_t j = 0; j < VectorLength(virtual_params_copy); j++)
                 {
-                    node_copy->context = VectorNew(sizeof(AST_Node *));
-                    for(size_t j = 0; j < VectorLength(virtual_params_copy); j++)
-                    {
-                        AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, j);
-                        VectorAppend(node_copy->context, &virtual_param_copy);
-                    }
+                    AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, j);
+                    VectorAppend(body_expr_copy->context, &virtual_param_copy);
                 }
 
-                generate_context(node_copy, node->parent, NULL);
-                VectorAppend(body_exprs_copy, &node_copy);
+                generate_context(body_expr_copy, body_expr->parent, NULL);
+                VectorAppend(body_exprs_copy, &body_expr_copy);
             }
 
             // binding virtual params copy to actual params
@@ -637,7 +636,9 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // free operands
-            VectorFree(operands, NULL, NULL);
+            // double free problem here
+            VectorFree(operands, operand_free_helper, NULL);
+            // VectorFree(operands, NULL, NULL);
 
             // free virtual_params_copy
             for (size_t i = 0; i < VectorLength(virtual_params_copy); i++)
@@ -645,11 +646,14 @@ Result eval(AST_Node *ast_node, void *aux_data)
                 AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
                 ast_node_free(virtual_param_copy);
             }
-            
             VectorFree(virtual_params_copy, NULL, NULL);
 
             // free body_exprs_copy
-            // TO-DO solve problem here !
+            for (size_t i = 0; i < VectorLength(body_exprs_copy); i++)
+            {
+                AST_Node *body_expr_copy = *(AST_Node **)VectorNth(body_exprs_copy, i);
+                ast_node_free(body_expr_copy);
+            }
             VectorFree(body_exprs_copy, NULL, NULL);
         }
     }
@@ -1005,7 +1009,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         ast_node->type == Boolean_Literal)
     {
         matched = true;
-        result = ast_node;
+        result = ast_node_deep_copy(ast_node, NULL);
+        ast_node_set_tag(result, NOT_IN_AST);
     }
 
     if (ast_node->type == NULL_Expression ||
@@ -1022,14 +1027,16 @@ Result eval(AST_Node *ast_node, void *aux_data)
     if (ast_node->type == List_Literal)
     {
         matched = true;
-        result = ast_node;
+        result = ast_node_deep_copy(ast_node, NULL);
+        ast_node_set_tag(result, NOT_IN_AST);
     }
 
     // Pair_Literal works out itself
     if (ast_node->type == Pair_Literal)
     {
         matched = true;
-        result = ast_node;
+        result = ast_node_deep_copy(ast_node, NULL);
+        ast_node_set_tag(result, NOT_IN_AST);
     }
 
     // Procedure works out itself
@@ -1170,6 +1177,8 @@ int results_free(Vector *results)
         AST_Node *result = *(AST_Node **)VectorNth(results, i);
         error = error | result_free(result);
     }
+
+    error = error | VectorFree(results, NULL, NULL);
 
     return error;
 }

@@ -112,7 +112,7 @@ typedef struct _z_ast_node {
             // if a procedure has name, set anonymous_procedure to NULL
             // if a procedure has no name, set name to NULL
             unsigned char *name; // search procedure by name
-            AST_Node *anonymous_procedure; // anonymous function call, can not found fn by name
+            AST_Node *anonymous_procedure; // anonymous function call, can not found fn by name, actually its a lambda expr.
             Vector *params; // params is AST_Node *[]
         } call_expression; // call expression
         struct  {
@@ -121,7 +121,7 @@ typedef struct _z_ast_node {
             Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name
             Vector *body_exprs; // AST_Node *[]
             Function c_native_function;
-        } procedure;
+        } procedure; // any procedure must be in-ast, means in the tree, includes BUILT_IN_PROCEDURE etc.
         struct {
             Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name
             Vector *body_exprs; // AST_Node *[]

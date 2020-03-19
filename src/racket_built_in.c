@@ -510,6 +510,7 @@ static AST_Node *racket_native_number_equal(AST_Node *procedure, Vector *operand
     }
 
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, result);
+    free(result);
     return ast_node;
 }
 
@@ -823,6 +824,7 @@ static AST_Node *racket_native_number_more_than(AST_Node *procedure, Vector *ope
     }
 
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, result);
+    free(result);
     return ast_node;
 }
 
@@ -916,6 +918,7 @@ static AST_Node *racket_native_number_less_than(AST_Node *procedure, Vector *ope
     }
 
     AST_Node *ast_node = ast_node_new(NOT_IN_AST, Boolean_Literal, result);
+    free(result);
     return ast_node;
 }
 

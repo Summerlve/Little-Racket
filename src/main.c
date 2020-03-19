@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
     racket_file_free(raw_code);
     tokens_free(tokens);
     ast_free(ast);
+    ast_free(ast_copy);
     results_free(results);
     visitor_free(custom_visitor);
     #endif
