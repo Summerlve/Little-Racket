@@ -328,6 +328,7 @@ int ast_node_free(AST_Node *ast_node)
     if (ast_node->type == Call_Expression)
     {
         matched = true;
+
         Vector *params = ast_node->contents.call_expression.params;
         for (size_t i = 0; i < VectorLength(params); i++)
         {
@@ -335,7 +336,12 @@ int ast_node_free(AST_Node *ast_node)
             ast_node_free(sub_node);
         }
         VectorFree(params, NULL, NULL);
-        free(ast_node->contents.call_expression.name);
+
+        unsigned char *name = ast_node->contents.call_expression.name;
+        if (name != NULL) free(ast_node->contents.call_expression.name);
+
+        AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
+        if (anonymous_procedure != NULL) ast_node_free(anonymous_procedure);
     }
 
     if (ast_node->type == Procedure)

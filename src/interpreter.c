@@ -484,9 +484,13 @@ Result eval(AST_Node *ast_node, void *aux_data)
             if (anonymous_procedure->type == Lambda_Form)
             {
                 procedure = eval(anonymous_procedure, aux_data);
+                generate_context(procedure, ast_node, NULL);
+                ast_node->contents.call_expression.anonymous_procedure = procedure;
+                ast_node_free(anonymous_procedure);
             }
             else if (anonymous_procedure->type == Procedure)
             {
+                // map
                 procedure = anonymous_procedure;
             }
         }
@@ -672,9 +676,9 @@ Result eval(AST_Node *ast_node, void *aux_data)
             // eval the init value of binding into a new ast_node, and instead of the init value node by new ast_node
             matched = true;
             AST_Node *binding = ast_node->contents.local_binding_form.contents.define.binding;
+            
             AST_Node *init_value = binding->contents.binding.value;
             AST_Node *eval_value = eval(init_value, aux_data);
-            binding->contents.binding.value = eval_value;
 
             if (eval_value == init_value)
             {
@@ -683,31 +687,28 @@ Result eval(AST_Node *ast_node, void *aux_data)
 
             if (eval_value != init_value)
             {
-                if (eval_value != NULL &&
-                    ast_node_get_tag(eval_value) == IN_AST &&
-                    eval_value->type != Procedure)
+                if (eval_value == NULL)
                 {
-                    AST_Node *copy = ast_node_deep_copy(eval_value, NULL);
-                    ast_node_set_tag_recursive(copy, IN_AST);
-                    generate_context(copy, binding, NULL);
-                    binding->contents.binding.value = copy;
+                    // something wrong here
+                    fprintf(stderr, "eval(): something wrong here\n");
+                    exit(EXIT_FAILURE); 
                 }
-                else if (eval_value != NULL &&
-                         ast_node_get_tag(eval_value) == NOT_IN_AST &&
-                         eval_value->type != Procedure)
+
+                if (ast_node_get_tag(eval_value) == NOT_IN_AST)
                 {
-                    ast_node_set_tag(binding->contents.binding.value, IN_AST);
-                    // maybe double free here
+                    ast_node_set_tag_recursive(eval_value, IN_AST);
+                    generate_context(eval_value, binding, aux_data);
+                    binding->contents.binding.value = eval_value;
+                    ast_node_free(init_value); // free old value
+                }
+
+                if (eval_value->type == Procedure)
+                {
+                    eval_value->contents.procedure.name = malloc(strlen(TYPECAST(const char *, binding->contents.binding.name)) + 1);
+                    strcpy(TYPECAST(char *, eval_value->contents.procedure.name), TYPECAST(const char *, binding->contents.binding.name));
+                    generate_context(eval_value, binding, aux_data);
                     ast_node_free(init_value);
                 }
-                generate_context(binding->contents.binding.value, binding, NULL);
-            }
-
-            if (binding->contents.binding.value->type == Procedure)
-            {
-                AST_Node *procedure = binding->contents.binding.value;
-                procedure->contents.procedure.name = malloc(strlen(TYPECAST(const char *, binding->contents.binding.name)) + 1);
-                strcpy(TYPECAST(char *, procedure->contents.procedure.name), TYPECAST(const char *, binding->contents.binding.name));
             }
         }
         
@@ -1114,8 +1115,6 @@ Result eval(AST_Node *ast_node, void *aux_data)
         {
             result->context = VectorCopy(ast_node->context, context_simple_copy_helper, NULL);
         }
-
-        generate_context(result, ast_node->parent, NULL);
     }
 
     if (matched == false)

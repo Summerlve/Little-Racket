@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
-    ast_free(ast);
-    results_free(results);
+    results_free(results); // first
+    ast_free(ast); // second
     #endif
 
     #ifdef TEST_MODE 
@@ -69,8 +69,8 @@ int main(int argc, char *argv[])
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
-    ast_free(ast);
-    results_free(results);
+    results_free(results); // first
+    ast_free(ast); // second
     #endif
 
     #ifdef DEBUG_MODE
@@ -124,9 +124,9 @@ int main(int argc, char *argv[])
     // release memory
     racket_file_free(raw_code);
     tokens_free(tokens);
-    ast_free(ast);
+    results_free(results); // first
+    ast_free(ast); // second
     ast_free(ast_copy);
-    results_free(results);
     visitor_free(custom_visitor);
     #endif
 
