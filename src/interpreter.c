@@ -11,10 +11,11 @@
 
 static AST_Node *find_contextable_node(AST_Node *current_node);
 static AST_Node *search_binding_value(AST_Node *binding);
-static void *context_copy_helper(void *value_addr, size_t index, Vector *original_vector, Vector *new_vector, void *aux_data);
-static void operand_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data); 
 static int result_free(Result result);
 static void output_result(Result result, void *aux_data);
+static void *context_simple_copy_helper(void *value_addr, size_t index, Vector *original_vector, Vector *new_vector, void *aux_data);
+static void middle_thing_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data);
+static int middle_thing_free(AST_Node *ast_node, void *aux_data);
 
 void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
 {
@@ -459,8 +460,10 @@ void generate_context(AST_Node *node, AST_Node *parent, void *aux_data)
     }
 }
 
-// return null when work out no value
-// this function will make some ast_node not in ast, should be free manually
+/*
+    return NULL or NOT_IN_AST(return copy of the original one) or Procedure(procedure return itself)
+    this function will make some ast_node not in ast, should be free manually
+*/
 Result eval(AST_Node *ast_node, void *aux_data)
 {
     if (ast_node == NULL) return NULL;
@@ -475,12 +478,17 @@ Result eval(AST_Node *ast_node, void *aux_data)
         AST_Node *anonymous_procedure = ast_node->contents.call_expression.anonymous_procedure;
         AST_Node *procedure = NULL;
 
-        // anonymous procedure call or ((lambda (x) x) 1)
+        // directly anonymous procedure call see in map function impl, or ((lambda (x) x) 1) need to eval out
         if (name == NULL && anonymous_procedure != NULL)
         {
-            procedure = anonymous_procedure;
-            if (procedure->type == Lambda_Form)
-                procedure = eval(procedure, aux_data);
+            if (anonymous_procedure->type == Lambda_Form)
+            {
+                procedure = eval(anonymous_procedure, aux_data);
+            }
+            else if (anonymous_procedure->type == Procedure)
+            {
+                procedure = anonymous_procedure;
+            }
         }
         // named procedure call
         else if (name != NULL && anonymous_procedure == NULL)
@@ -526,9 +534,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             Function c_native_function = procedure->contents.procedure.c_native_function;
             result = ((AST_Node *(*)(AST_Node *procedure, Vector *operands))c_native_function)(procedure, operands);
 
-            // double free here.
-            VectorFree(operands, operand_free_helper, NULL);
-            // VectorFree(operands, NULL, NULL);
+            VectorFree(operands, middle_thing_free_helper, NULL);
         }
 
         // programmer defined procedure
@@ -579,11 +585,11 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *virtual_param = *(AST_Node **)VectorNth(virtual_params, i);
                 AST_Node *virtual_param_copy = ast_node_deep_copy(virtual_param, aux_data);
-                ast_node_set_tag(virtual_param_copy, NOT_IN_AST);
+                ast_node_set_tag_recursive(virtual_param_copy, NOT_IN_AST);
 
                 if (virtual_param->context != NULL)
                 {
-                    virtual_param_copy->context = VectorCopy(virtual_param->context, context_copy_helper, NULL);
+                    virtual_param_copy->context = VectorCopy(virtual_param->context, context_simple_copy_helper, NULL);
                 }
 
                 generate_context(virtual_param_copy, virtual_param->parent, NULL);
@@ -594,10 +600,20 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *body_expr = *(AST_Node **)VectorNth(body_exprs, i);
                 AST_Node *body_expr_copy = ast_node_deep_copy(body_expr, aux_data);
-                ast_node_set_tag(body_expr_copy, NOT_IN_AST);
+                ast_node_set_tag_recursive(body_expr_copy, NOT_IN_AST);
 
                 // body_expr must have context includes params in procedure
-                body_expr_copy->context = VectorNew(sizeof(AST_Node *));
+                if (body_expr->context == NULL)
+                {
+                    body_expr_copy->context = VectorNew(sizeof(AST_Node *));
+                }
+
+                if (body_expr->context != NULL)
+                {
+                    body_expr_copy->context = VectorCopy(body_expr->context, context_simple_copy_helper, NULL);
+                }
+
+                // append virtual_param_copy to body_expr_copy's context
                 for(size_t j = 0; j < VectorLength(virtual_params_copy); j++)
                 {
                     AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, j);
@@ -622,9 +638,9 @@ Result eval(AST_Node *ast_node, void *aux_data)
             {
                 AST_Node *body_expr_copy = *(AST_Node **)VectorNth(body_exprs_copy, i);
                 result = eval(body_expr_copy, aux_data);
-                if (i != last && result != NULL && ast_node_get_tag(result) == NOT_IN_AST)
+                if (i != last)
                 {
-                    ast_node_free(result);
+                    middle_thing_free(result, aux_data);
                 }
             }
 
@@ -636,25 +652,13 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
 
             // free operands
-            // double free problem here
-            VectorFree(operands, operand_free_helper, NULL);
-            // VectorFree(operands, NULL, NULL);
+            VectorFree(operands, middle_thing_free_helper, NULL);
 
             // free virtual_params_copy
-            for (size_t i = 0; i < VectorLength(virtual_params_copy); i++)
-            {
-                AST_Node *virtual_param_copy = *(AST_Node **)VectorNth(virtual_params_copy, i);
-                ast_node_free(virtual_param_copy);
-            }
-            VectorFree(virtual_params_copy, NULL, NULL);
+            VectorFree(virtual_params_copy, middle_thing_free_helper, NULL);
 
             // free body_exprs_copy
-            for (size_t i = 0; i < VectorLength(body_exprs_copy); i++)
-            {
-                AST_Node *body_expr_copy = *(AST_Node **)VectorNth(body_exprs_copy, i);
-                ast_node_free(body_expr_copy);
-            }
-            VectorFree(body_exprs_copy, NULL, NULL);
+            VectorFree(body_exprs_copy, middle_thing_free_helper, NULL);
         }
     }
     
@@ -672,13 +676,25 @@ Result eval(AST_Node *ast_node, void *aux_data)
             AST_Node *eval_value = eval(init_value, aux_data);
             binding->contents.binding.value = eval_value;
 
+            if (eval_value == init_value)
+            {
+                // do nothing
+            }
+
             if (eval_value != init_value)
             {
-                if (eval_value != NULL && ast_node_get_tag(eval_value) == IN_AST)
+                if (eval_value != NULL &&
+                    ast_node_get_tag(eval_value) == IN_AST &&
+                    eval_value->type != Procedure)
                 {
-                    binding->contents.binding.value = ast_node_deep_copy(eval_value, NULL);
+                    AST_Node *copy = ast_node_deep_copy(eval_value, NULL);
+                    ast_node_set_tag_recursive(copy, IN_AST);
+                    generate_context(copy, binding, NULL);
+                    binding->contents.binding.value = copy;
                 }
-                else if (eval_value != NULL && ast_node_get_tag(eval_value) == NOT_IN_AST)
+                else if (eval_value != NULL &&
+                         ast_node_get_tag(eval_value) == NOT_IN_AST &&
+                         eval_value->type != Procedure)
                 {
                     ast_node_set_tag(binding->contents.binding.value, IN_AST);
                     // maybe double free here
@@ -999,7 +1015,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
             }
             value = binding_contains_value->contents.binding.value;
         }
-        result = value;
+        // make sure the return value of eval() will be absolutely NOT_IN_AST
+        result = eval(value, aux_data);
     }
 
     // these kind of AST_Node_Type works out them self
@@ -1010,7 +1027,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         result = ast_node_deep_copy(ast_node, NULL);
-        ast_node_set_tag(result, NOT_IN_AST);
+        ast_node_set_tag_recursive(result, NOT_IN_AST);
     }
 
     if (ast_node->type == NULL_Expression ||
@@ -1028,7 +1045,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         result = ast_node_deep_copy(ast_node, NULL);
-        ast_node_set_tag(result, NOT_IN_AST);
+        ast_node_set_tag_recursive(result, NOT_IN_AST);
     }
 
     // Pair_Literal works out itself
@@ -1036,7 +1053,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
     {
         matched = true;
         result = ast_node_deep_copy(ast_node, NULL);
-        ast_node_set_tag(result, NOT_IN_AST);
+        ast_node_set_tag_recursive(result, NOT_IN_AST);
     }
 
     // Procedure works out itself
@@ -1052,7 +1069,8 @@ Result eval(AST_Node *ast_node, void *aux_data)
         Vector *params = ast_node->contents.lambda_form.params;
         Vector *body_exprs = ast_node->contents.lambda_form.body_exprs;
 
-        result = ast_node_new(NOT_IN_AST, Procedure, NULL, -1, NULL, NULL, NULL);
+        // init an empty procedure
+        result = ast_node_new(NOT_IN_AST, Procedure, NULL, 0, NULL, NULL, NULL);
 
         Vector *params_copy = VectorNew(sizeof(AST_Node *));
         Vector *body_exprs_copy = VectorNew(sizeof(AST_Node *));
@@ -1063,7 +1081,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
             AST_Node *node_copy = ast_node_deep_copy(node, aux_data);
             if (node->context != NULL)
             {
-                Vector *context_copy = VectorCopy(node->context, context_copy_helper, NULL);
+                Vector *context_copy = VectorCopy(node->context, context_simple_copy_helper, NULL);
                 node_copy->context = context_copy;
             }
             generate_context(node_copy, result, NULL);
@@ -1094,7 +1112,7 @@ Result eval(AST_Node *ast_node, void *aux_data)
         // if lambda_form itself has context, it should be inherit to the procedure
         if (ast_node->context != NULL)
         {
-            result->context = VectorCopy(ast_node->context, context_copy_helper, NULL);
+            result->context = VectorCopy(ast_node->context, context_simple_copy_helper, NULL);
         }
 
         generate_context(result, ast_node->parent, NULL);
@@ -1124,44 +1142,7 @@ Vector *calculator(AST ast, void *aux_data)
         Result result = eval(sub_node, aux_data);
         if (result != NULL)
         {
-            if (ast_node_get_tag(result) == IN_AST)
-            {
-                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
-                result_copy->tag = NOT_IN_AST;
-                VectorAppend(results, &result_copy);
-            }
-            else if (ast_node_get_tag(result) == NOT_IN_AST)
-            {
-                VectorAppend(results, &result);
-            }
-            else if (ast_node_get_tag(result) == BUILT_IN_BINDING)
-            {
-                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
-                result_copy->tag = NOT_IN_AST;
-                VectorAppend(results, &result_copy);
-            }
-            else if (ast_node_get_tag(result) == BUILT_IN_PROCEDURE)
-            {
-                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
-                result_copy->tag = NOT_IN_AST;
-                VectorAppend(results, &result_copy);
-            }
-            else if (ast_node_get_tag(result) == ADDON_BINDING)
-            {
-                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
-                result_copy->tag = NOT_IN_AST;
-                VectorAppend(results, &result_copy);
-            }
-            else if (ast_node_get_tag(result) == ADDON_PROCEDURE)
-            {
-                AST_Node *result_copy = ast_node_deep_copy(result, NULL);
-                result_copy->tag = NOT_IN_AST;
-                VectorAppend(results, &result_copy);
-            }
-            else if (ast_node_get_tag(result) == IMMUTABLE)
-            {
-                // placeholder
-            }
+            VectorAppend(results, &result);
         }
     }
 
@@ -1175,7 +1156,7 @@ int results_free(Vector *results)
     for (size_t i = 0; i < VectorLength(results); i++)
     {
         AST_Node *result = *(AST_Node **)VectorNth(results, i);
-        error = error | result_free(result);
+        error = error | middle_thing_free(result, NULL);
     }
 
     error = error | VectorFree(results, NULL, NULL);
@@ -1327,24 +1308,6 @@ static AST_Node *search_binding_value(AST_Node *binding)
     found: return binding_contains_value;
 }
 
-static void *context_copy_helper(void *value_addr, size_t index, Vector *original_vector, Vector *new_vector, void *aux_data)
-{
-    AST_Node *binding = *(AST_Node **)value_addr;
-    return value_addr;
-}
-
-static void operand_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data) 
-{
-    AST_Node *operand = *(AST_Node **)value_addr;
-    if (operand->tag == NOT_IN_AST) ast_node_free(operand);
-}
-
-static int result_free(Result result)
-{
-    if (result == NULL) return 1;
-    return ast_node_free(result);
-}
-
 static void output_result(Result result, void *aux_data)
 {
     bool matched = false;
@@ -1447,5 +1410,31 @@ static void output_result(Result result, void *aux_data)
         // when no matches any AST_Node_Type
         fprintf(stderr, "output_result(): can not output AST_Node_Type: %d\n", result->type);
         exit(EXIT_FAILURE);
+    }
+}
+
+static void *context_simple_copy_helper(void *value_addr, size_t index, Vector *original_vector, Vector *new_vector, void *aux_data)
+{
+    return value_addr;
+}
+
+static void middle_thing_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data)
+{
+    AST_Node *ast_node = *(AST_Node **)value_addr;
+    middle_thing_free(ast_node, aux_data);
+}
+
+static int middle_thing_free(AST_Node *ast_node, void *aux_data)
+{
+    if (ast_node != NULL &&
+        ast_node_get_tag(ast_node) == NOT_IN_AST &&
+        ast_node->type != Procedure)
+    {
+        ast_node_free(ast_node);
+        return 0;
+    }
+    else 
+    {
+        return 1;
     }
 }

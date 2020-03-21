@@ -21,7 +21,8 @@ typedef enum _z_ast_node_type {
     List_Literal, Pair_Literal, Boolean_Literal,
     Local_Binding_Form, Set_Form, Conditional_Form, Lambda_Form,
     Call_Expression, Binding, Procedure, Program, Cond_Clause,
-    NULL_Expression, EMPTY_Expression
+    NULL_Expression, EMPTY_Expression,
+    LAST // sign for iterate
 } AST_Node_Type;
 typedef enum _z_local_binding_form_type {
     DEFINE, LET, LET_STAR, LETREC
@@ -112,7 +113,7 @@ typedef struct _z_ast_node {
             // if a procedure has name, set anonymous_procedure to NULL
             // if a procedure has no name, set name to NULL
             unsigned char *name; // search procedure by name
-            AST_Node *anonymous_procedure; // anonymous function call, can not found fn by name, actually its a lambda expr.
+            AST_Node *anonymous_procedure; // anonymous function call, can not found fn by name, actually its a lambda expr
             Vector *params; // params is AST_Node *[]
         } call_expression; // call expression
         struct  {
@@ -125,7 +126,7 @@ typedef struct _z_ast_node {
         struct {
             Vector *params; // AST_Node *[] type: binding, set binding.value to null when define a function, just record the variable's name
             Vector *body_exprs; // AST_Node *[]
-        } lambda_form;
+        } lambda_form; // any lambda_form must be in-ast, and freed when it evaled out a procedure
         struct {
             Vector *body; // program's body is AST_Node *[]
             Vector *built_in_bindings; // like context in AST_Node, store the built-in bindings
@@ -144,6 +145,7 @@ AST_Node *ast_node_new(AST_Node_Tag tag, AST_Node_Type type, ...);
 int ast_node_free(AST_Node *ast_node);
 AST_Node *ast_node_deep_copy(AST_Node *ast_node, void *aux_data);
 void ast_node_set_tag(AST_Node *ast_node, AST_Node_Tag tag);
+void ast_node_set_tag_recursive(AST_Node *ast_node, AST_Node_Tag tag);
 AST_Node_Tag ast_node_get_tag(AST_Node *ast_node);
 AST parser(Tokens *tokens); // retrun AST
 int ast_free(AST ast);

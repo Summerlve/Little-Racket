@@ -10,6 +10,7 @@
 static AST_Node *walk(Tokens *tokens, size_t *current_p);
 static void visitor_free_helper(void *value_addr, size_t index, Vector *vector, void *aux_data);
 static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, void *aux_data);
+static void set_tag_rec_visitor_helper(AST_Node *node, AST_Node *parent, void *aux);
 
 /*
     ast_node_new(tag, Program, body/NULL, built_in_bindings/NULL, addon_bindings/NULL)
@@ -1062,6 +1063,22 @@ void ast_node_set_tag(AST_Node *ast_node, AST_Node_Tag tag)
     ast_node->tag = tag;
 }
 
+void ast_node_set_tag_recursive(AST_Node *ast_node, AST_Node_Tag tag)
+{
+    ast_node_set_tag(ast_node, tag);
+    Visitor visitor = visitor_new();
+
+    // generate handler for all type
+    for (AST_Node_Type type = Number_Literal; type != LAST; type++)
+    {
+        AST_Node_Handler *handler = ast_node_handler_new(type, set_tag_rec_visitor_helper, NULL);
+        ast_node_handler_append(visitor, handler);
+    }
+
+    traverser(ast_node, visitor, (void *)(&tag));
+    visitor_free(visitor);
+}
+
 AST_Node_Tag ast_node_get_tag(AST_Node *ast_node)
 {
     if (ast_node == NULL)
@@ -2032,4 +2049,10 @@ static void traverser_helper(AST_Node *node, AST_Node *parent, Visitor visitor, 
 
     // exit
     if(handler->exit != NULL) handler->exit(node, parent, aux_data);
+}
+
+static void set_tag_rec_visitor_helper(AST_Node *node, AST_Node *parent, void *aux)
+{
+    // inherit tag from parent
+    ast_node_set_tag(node, *(AST_Node_Tag *)aux);
 }

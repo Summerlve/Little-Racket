@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
     AST ast_copy = ast_node_deep_copy(ast, NULL);
     traverser(ast_copy, custom_visitor, NULL);
     printf("\n");
+    ast_node_set_tag_recursive(ast_copy, NOT_IN_AST);
 
     // calculator
     Vector *results = calculator(ast, NULL);
